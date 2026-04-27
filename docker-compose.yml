@@ -30,7 +30,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: 4000
-      DATABASE_URL: ${DATABASE_URL:-postgresql://crunedu:crunedu_password@postgres:5432/crunedu_db?schema=public}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://crunedu:crunedu_password@postgres:5432/crunedu_db?schema=public}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       JWT_SECRET: ${JWT_SECRET:-change_this_local_secret}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
