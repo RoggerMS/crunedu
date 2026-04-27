@@ -1,97 +1,170 @@
-# AGENTS.md — Reglas permanentes del proyecto CrunEdu
+# AGENTS.md — CrunEdu
 
-## 1) Contexto del proyecto
-CrunEdu es una plataforma educativa enfocada en entregar un MVP funcional, mantenible y validable rápidamente.
-El objetivo principal es iterar con cambios pequeños, seguros y trazables, priorizando estabilidad, claridad y velocidad de ejecución.
+## 1. Project context
 
-## 2) Stack técnico
-> Mantener este bloque actualizado cuando el stack evolucione.
+CrunEdu is an independent educational social network for university students, initially focused on students from La Cantuta.
 
-- Frontend: TypeScript + framework web del repositorio.
-- Backend/API: Node.js + TypeScript (según estructura actual del repo).
-- Base de datos: Prisma ORM + motor configurado en el proyecto.
-- Testing/verificación: comandos locales del repositorio (lint, typecheck, tests, build).
+CrunEdu is not an official university platform, not an official university website, and not a formal LMS.
 
-## 3) Reglas obligatorias
-1. **No modificar código funcional sin requerimiento explícito.**
-2. **No implementar funcionalidades fuera del MVP.**
-3. **No cambiar `schema.prisma` salvo necesidad real y justificada.**
-4. **Código técnico siempre en inglés** (nombres de variables, funciones, clases, commits técnicos, etc.).
-5. **Interfaz visible al usuario en español** (labels, textos, mensajes UX).
-6. Trabajar con cambios pequeños, atómicos y fáciles de revertir.
-7. Documentar cada cambio realizado de forma breve y verificable.
-8. Antes de proponer refactors grandes, dividir en fases cortas con validación intermedia.
+The MVP must stay simple, modular, maintainable, and verifiable.
 
-## 4) Comandos seguros
-Ejecutar preferentemente comandos de lectura, validación y calidad:
+The main product goal is to help students solve real university problems through:
 
-- `git status`
-- `git diff`
-- `git add -p`
-- `npm run lint`
-- `npm run typecheck`
-- `npm test`
-- `npm run build`
-- `npx prisma validate`
-- `npx prisma format` (solo si aplica y sin cambiar lógica)
+- communities
+- posts
+- questions and answers
+- comments
+- useful guides
+- allowed notes/documents
+- student procedures
+- university moments
+- a basic store managed by CrunEdu
 
-> Usar equivalentes (`pnpm`, `yarn`, etc.) únicamente si el repositorio ya los usa.
+The platform should first become useful for students from La Cantuta before expanding to other universities.
 
-## 5) Comandos prohibidos
-- `docker compose down -v` (**prohibido**).
-- Comandos destructivos sin aprobación explícita del responsable del proyecto:
-  - `rm -rf` sobre carpetas del proyecto
-  - `git reset --hard`
-  - `git clean -fd`
-  - `truncate`, `drop`, o reseteos de datos sin respaldo
-- Migraciones o regeneraciones masivas no justificadas para el objetivo actual.
+## 2. Product direction
 
-## 6) Cómo verificar web
-Para cambios web/UI, seguir esta secuencia mínima:
+CrunEdu should work as a student community platform.
 
-1. Levantar entorno local con el comando estándar del repositorio.
-2. Validar que la página objetivo carga sin errores en consola.
-3. Recorrer flujo funcional afectado (happy path + caso límite básico).
-4. Verificar textos visibles en español.
-5. Revisar responsive básico (mobile y desktop).
-6. Adjuntar evidencia breve (captura/log) cuando corresponda.
+The core loop is:
 
-## 7) Cómo verificar API
-Para cambios de backend/API, seguir esta secuencia mínima:
+1. A student enters because they have a doubt, need, or university problem.
+2. The student finds a community, post, guide, question, or useful information.
+3. The student can publish, ask, answer, or comment.
+4. Other students interact with the content.
+5. Useful information remains organized.
+6. The student returns because the platform helped them.
 
-1. Ejecutar lint + typecheck.
-2. Ejecutar tests unitarios/integración del módulo afectado.
-3. Probar endpoint con datos válidos e inválidos.
-4. Verificar códigos HTTP, shape de respuesta y mensajes de error.
-5. Confirmar que no se rompe compatibilidad del contrato existente (MVP).
-6. Registrar comandos usados y resultado.
+The first functional social goal is:
 
-## 8) Cómo trabajar por módulos pequeños
-- Dividir tareas grandes en submódulos de impacto acotado.
-- Implementar un cambio por vez, validar y recién después continuar.
-- Evitar mezclar en un mismo commit: refactor + feature + fix.
-- Si aparece alcance nuevo, documentar y posponer fuera del MVP.
-- Priorizar PRs cortos, con contexto claro y checklist de validación.
+- users can log in
+- users can browse communities
+- users can see posts
+- users can create posts
+- users can comment or answer later
 
-## 9) Alcance MVP (restricción permanente)
-- Queda explícitamente prohibido agregar funcionalidades “nice-to-have” fuera del MVP.
-- Cualquier ampliación de alcance requiere justificación y aprobación previa.
+Do not build advanced features before the basic social loop works.
 
-## 10) Política de base de datos
-- `schema.prisma` es sensible: solo cambiar ante necesidad real del requerimiento.
-- Si se modifica, debe incluir:
-  - justificación concreta,
-  - impacto esperado,
-  - plan de migración/rollback,
-  - validación de compatibilidad con el MVP.
+## 3. Tech stack
 
-## 11) Idioma de desarrollo y producto
-- **Desarrollo interno/técnico:** inglés.
-- **Producto visible al usuario:** español.
+The current project is a monorepo.
 
-## 12) Definición de terminado (DoD) mínima
-Un cambio se considera completo cuando:
-- cumple alcance MVP,
-- respeta estas reglas,
-- pasa verificaciones aplicables (web o API),
-- queda documentado de manera breve (qué cambió, cómo se validó, riesgos).
+Main stack:
+
+- Operating system used by the project owner: Windows 11
+- Local editor: VS Code
+- Local container environment: Docker Desktop
+- Repository path on the user's machine: `C:\GITHUB\crunedu`
+
+Applications and packages:
+
+- `apps/web`: Next.js + React + TypeScript + Tailwind CSS
+- `apps/api`: NestJS + TypeScript
+- `packages/database`: Prisma + PostgreSQL
+- `packages/shared`: shared TypeScript types and constants
+- `packages/ui`: shared UI package if used by the repo
+
+Local Docker Compose services:
+
+- Web: `http://localhost:3000`
+- API: `http://localhost:4000/api`
+- PostgreSQL: `5432`
+- Redis: `6379`
+- MinIO API: `9000`
+- MinIO Console: `9001`
+- Mailhog UI: `8025`
+- Mailhog SMTP: `1025`
+
+## 4. Current confirmed project state
+
+The following has already been confirmed locally by the user:
+
+- Docker works.
+- The API works.
+- `GET http://localhost:4000/api/health` works.
+- Prisma migrate worked.
+- Prisma seed worked.
+- Admin user exists:
+  - email: `admin@crunedu.local`
+  - password: `CrunEdu123!`
+- Register works:
+  - `POST http://localhost:4000/api/auth/register`
+- Login works:
+  - `POST http://localhost:4000/api/auth/login`
+  - returns an `accessToken` JWT.
+- Communities module is functional.
+- `GET http://localhost:4000/api/communities` returns real communities from PostgreSQL:
+  - Cachimbos
+  - Apuntes
+  - Trámites
+  - General
+- The frontend page `/app/comunidades` has been connected to consume real communities.
+- A `.dockerignore` file was created or corrected to prevent Docker from including `node_modules`, `.next`, `dist`, and similar folders.
+- The Docker error `invalid file request node_modules/@crunedu/api` was solved by using `.dockerignore`.
+
+Preserve all working functionality.
+
+## 5. Important note about Codex cloud
+
+Codex cloud runs in a separate Linux environment.
+
+Do not assume that `localhost:3000` or `localhost:4000` inside Codex cloud refers to the user's local Windows Docker environment.
+
+The user's local services run on Windows 11 through Docker Desktop.
+
+Therefore:
+
+- If `curl localhost:4000` fails inside Codex cloud, it does not mean the user's local API is broken.
+- If `curl localhost:3000` fails inside Codex cloud, it does not mean the user's local frontend is broken.
+- Runtime verification with Docker is usually done by the user locally unless the complete stack is explicitly started inside the Codex environment.
+- Prefer static checks, code inspection, lint, typecheck, and build commands inside Codex.
+- When local runtime verification is needed, provide exact PowerShell commands for the user to run locally.
+
+## 6. Hard rules
+
+Always follow these rules:
+
+1. Never run `docker compose down -v`.
+2. Never delete Docker volumes.
+3. Never reset, wipe, or drop the database unless the user explicitly approves it.
+4. Never run destructive commands without explicit approval.
+5. Do not change `schema.prisma` unless strictly necessary for the requested MVP task.
+6. Do not implement features outside the requested MVP module.
+7. Do not build a full marketplace yet.
+8. Do not implement external sellers yet.
+9. Do not implement automatic payments yet.
+10. Do not implement advanced cart logic yet.
+11. Do not implement commissions yet.
+12. Do not implement shipping integration yet.
+13. Do not implement chat yet.
+14. Do not implement notifications yet.
+15. Do not implement advanced file uploads yet.
+16. Do not add new production dependencies unless necessary.
+17. Do not run `npm audit fix --force`.
+18. Do not break auth.
+19. Do not break communities.
+20. Do not break Prisma seed.
+21. Do not break Docker setup.
+22. Keep code simple, modular, and readable.
+23. Technical code must be written in English.
+24. Visible UI copy must be written in Spanish.
+25. Work in small, verifiable steps.
+
+## 7. Forbidden commands
+
+Never run these commands unless the user explicitly approves and the risk is clearly explained:
+
+```bash
+docker compose down -v
+docker volume rm
+docker system prune -a
+rm -rf *
+rm -rf node_modules package-lock.json
+git reset --hard
+git clean -fd
+npm audit fix --force
+npx prisma migrate reset
+npx prisma db push --force-reset
+dropdb
+truncate
+```
