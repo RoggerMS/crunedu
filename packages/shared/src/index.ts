@@ -49,3 +49,33 @@ export interface Community {
   membersCount: number;
   postsCount: number;
 }
+
+
+export interface FeedAuthor {
+  id: number;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+}
+
+export interface FeedCommunity {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export interface FeedPost {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  author: FeedAuthor;
+  community: FeedCommunity | null;
+  commentsCount: number;
+}
+
+export interface CreateFeedPostPayload {
+  title: string;
+  content: string;
+  communityId: number;
+}
