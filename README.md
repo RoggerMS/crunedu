@@ -69,8 +69,22 @@ Admin local creado por el seed:
 docker compose ps
 docker compose logs -f
 docker compose down
-docker compose down -v
 ```
+
+## Nota importante sobre PostgreSQL en Docker
+
+Si ves este error en el contenedor de API:
+
+- `PrismaClientInitializationError: Can't reach database server at localhost:5432`
+
+normalmente significa que la API dentro de Docker está intentando conectarse a `localhost` en lugar del servicio `postgres`.
+
+Esta base ya separa ambas URLs:
+
+- `DOCKER_DATABASE_URL`: conexión interna entre contenedores (`postgres:5432`).
+- `DATABASE_URL`: conexión desde tu host (Windows) a PostgreSQL (`localhost:5432`).
+
+Si cambias variables en `.env`, mantén esa separación para evitar el error `P1001` en Docker.
 
 ## Qué NO incluye el MVP
 
