@@ -1,0 +1,584 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- ENUMS ---
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum CommunityRole {
+  MEMBER
+  MODERATOR
+}
+
+enum ContentStatus {
+  PUBLISHED
+  HIDDEN
+  DELETED
+  PENDING_REVIEW
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  HIDDEN
+  SOLD_OUT
+  DELETED
+}
+
+enum InquiryStatus {
+  NEW
+  CONTACTED
+  CLOSED
+  CANCELLED
+}
+
+enum ReportStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+// --- 1. ESTRUCTURA ACADÉMICA ---
+model University {
+  id        Int      @id @default(autoincrement())
+  name      String
+  shortName String?  @map("short_name")
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  faculties Faculty[]
+  profiles  Profile[]
+
+  @@map("universities")
+}
+
+model Faculty {
+  id           Int      @id @default(autoincrement())
+  universityId Int      @map("university_id")
+  name         String
+  slug         String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  university University @relation(fields: [universityId], references: [id])
+  careers    Career[]
+  profiles   Profile[]
+
+  @@unique([universityId, slug])
+  @@index([universityId])
+  @@map("faculties")
+}
+
+model Career {
+  id        Int      @id @default(autoincrement())
+  facultyId Int      @map("faculty_id")
+  name      String
+  slug      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  faculty  Faculty   @relation(fields: [facultyId], references: [id])
+  profiles Profile[]
+
+  @@unique([facultyId, slug])
+  @@index([facultyId])
+  @@map("careers")
+}
+
+// --- 2. USUARIOS, AUTENTICACIÓN Y PERFILES ---
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(USER)
+  isVerified   Boolean  @default(false) @map("is_verified")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  profile                 Profile?
+  communitiesCreated      Community[]
+  communityMembers        CommunityMember[]
+  posts                   Post[]
+  questions               Question[]
+  answers                 Answer[]
+  documents               Document[]
+  comments                Comment[]
+  reactions               Reaction[]
+  savedPosts              SavedPost[]
+  productsCreated         Product[]
+  productFavorites        ProductFavorite[]
+  productInquiries        ProductInquiry[]
+  reportsMade             Report[]
+  notifications           Notification[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  moderationLogs          ModerationLog[]
+
+  @@index([role])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model EmailVerificationToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model Profile {
+  id               Int      @id @default(autoincrement())
+  userId           Int      @unique @map("user_id")
+  firstName        String   @map("first_name")
+  lastName         String   @map("last_name")
+  avatarUrl        String?  @map("avatar_url")
+  avatarStorageKey String?  @map("avatar_storage_key")
+  description      String?
+  universityId     Int?     @map("university_id")
+  facultyId        Int?     @map("faculty_id")
+  careerId         Int?     @map("career_id")
+  cycle            String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university University? @relation(fields: [universityId], references: [id])
+  faculty    Faculty?    @relation(fields: [facultyId], references: [id])
+  career     Career?     @relation(fields: [careerId], references: [id])
+
+  @@index([universityId])
+  @@index([facultyId])
+  @@index([careerId])
+  @@map("profiles")
+}
+
+// --- 3. COMUNIDADES ---
+model Community {
+  id          Int           @id @default(autoincrement())
+  name        String
+  slug        String        @unique
+  description String?
+  avatarUrl   String?       @map("avatar_url")
+  coverUrl    String?       @map("cover_url")
+  createdBy   Int           @map("created_by")
+  status      ContentStatus @default(PUBLISHED)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  creator   User              @relation(fields: [createdBy], references: [id])
+  members   CommunityMember[]
+  posts     Post[]
+  questions Question[]
+  documents Document[]
+
+  @@index([createdBy])
+  @@index([status])
+  @@index([createdAt])
+  @@map("communities")
+}
+
+model CommunityMember {
+  id          Int           @id @default(autoincrement())
+  communityId Int           @map("community_id")
+  userId      Int           @map("user_id")
+  role        CommunityRole @default(MEMBER)
+  joinedAt    DateTime      @default(now()) @map("joined_at")
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@index([userId])
+  @@map("community_members")
+}
+
+// --- 4. CONTENIDO CORE ---
+model Post {
+  id          Int           @id @default(autoincrement())
+  userId      Int           @map("user_id")
+  communityId Int?          @map("community_id")
+  content     String
+  status      ContentStatus @default(PUBLISHED)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  user      User        @relation(fields: [userId], references: [id])
+  community Community?  @relation(fields: [communityId], references: [id])
+  comments  Comment[]
+  reactions Reaction[]
+  savedBy   SavedPost[]
+  reports   Report[]
+  tags      PostTag[]
+
+  @@index([userId])
+  @@index([communityId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("posts")
+}
+
+model Question {
+  id          Int           @id @default(autoincrement())
+  userId      Int           @map("user_id")
+  communityId Int?          @map("community_id")
+  title       String
+  content     String
+  status      ContentStatus @default(PUBLISHED)
+  isResolved  Boolean       @default(false) @map("is_resolved")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  user      User          @relation(fields: [userId], references: [id])
+  community Community?    @relation(fields: [communityId], references: [id])
+  answers   Answer[]
+  reports   Report[]
+  tags      QuestionTag[]
+
+  @@index([userId])
+  @@index([communityId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("questions")
+}
+
+model Answer {
+  id         Int           @id @default(autoincrement())
+  questionId Int           @map("question_id")
+  userId     Int           @map("user_id")
+  content    String
+  isUseful   Boolean       @default(false) @map("is_useful")
+  status     ContentStatus @default(PUBLISHED)
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+  reports  Report[]
+
+  @@index([questionId])
+  @@index([userId])
+  @@index([status])
+  @@map("answers")
+}
+
+model Document {
+  id          Int           @id @default(autoincrement())
+  userId      Int           @map("user_id")
+  communityId Int?          @map("community_id")
+  title       String
+  description String?
+  fileUrl     String        @map("file_url")
+  storageKey  String        @map("storage_key")
+  fileType    String        @map("file_type")
+  sizeBytes   Int           @map("size_bytes")
+  status      ContentStatus @default(PUBLISHED)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  user      User          @relation(fields: [userId], references: [id])
+  community Community?    @relation(fields: [communityId], references: [id])
+  reports   Report[]
+  tags      DocumentTag[]
+
+  @@index([userId])
+  @@index([communityId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("documents")
+}
+
+// --- 5. ETIQUETAS ---
+model Tag {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  slug String @unique
+
+  posts     PostTag[]
+  questions QuestionTag[]
+  documents DocumentTag[]
+
+  @@map("tags")
+}
+
+model PostTag {
+  postId Int @map("post_id")
+  tagId  Int @map("tag_id")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@index([tagId])
+  @@map("post_tags")
+}
+
+model QuestionTag {
+  questionId Int @map("question_id")
+  tagId      Int @map("tag_id")
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([questionId, tagId])
+  @@index([tagId])
+  @@map("question_tags")
+}
+
+model DocumentTag {
+  documentId Int @map("document_id")
+  tagId      Int @map("tag_id")
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, tagId])
+  @@index([tagId])
+  @@map("document_tags")
+}
+
+// --- 6. INTERACCIONES ---
+model Comment {
+  id        Int           @id @default(autoincrement())
+  postId    Int           @map("post_id")
+  userId    Int           @map("user_id")
+  content   String
+  status    ContentStatus @default(PUBLISHED)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  post    Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id])
+  reports Report[]
+
+  @@index([postId])
+  @@index([userId])
+  @@index([status])
+  @@map("comments")
+}
+
+model Reaction {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  userId    Int      @map("user_id")
+  type      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId])
+  @@map("reactions")
+}
+
+model SavedPost {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId])
+  @@map("saved_posts")
+}
+
+// --- 7. TIENDA BÁSICA ---
+model ProductCategory {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  products Product[]
+
+  @@map("product_categories")
+}
+
+model Product {
+  id              Int           @id @default(autoincrement())
+  title           String
+  description     String
+  price           Decimal       @db.Decimal(10, 2)
+  currency        String        @default("PEN")
+  categoryId      Int           @map("category_id")
+  status          ProductStatus @default(DRAFT)
+  stock           Int           @default(1)
+  isFeatured      Boolean       @default(false) @map("is_featured")
+  contactMethod   String        @map("contact_method")
+  whatsappMessage String?       @map("whatsapp_message")
+  createdBy       Int           @map("created_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  category  ProductCategory   @relation(fields: [categoryId], references: [id])
+  admin     User              @relation(fields: [createdBy], references: [id])
+  images    ProductImage[]
+  favorites ProductFavorite[]
+  inquiries ProductInquiry[]
+  reports   Report[]
+
+  @@index([categoryId])
+  @@index([createdBy])
+  @@index([status])
+  @@index([isFeatured])
+  @@index([createdAt])
+  @@map("products")
+}
+
+model ProductImage {
+  id         Int      @id @default(autoincrement())
+  productId  Int      @map("product_id")
+  imageUrl   String   @map("image_url")
+  storageKey String   @map("storage_key")
+  position   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model ProductFavorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  productId Int      @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@map("product_favorites")
+}
+
+model ProductInquiry {
+  id                     Int           @id @default(autoincrement())
+  productId              Int           @map("product_id")
+  userId                 Int           @map("user_id")
+  contactName            String        @map("contact_name")
+  contactPhone           String        @map("contact_phone")
+  message                String
+  preferredContactMethod String        @map("preferred_contact_method")
+  status                 InquiryStatus @default(NEW)
+  createdAt              DateTime      @default(now()) @map("created_at")
+  updatedAt              DateTime      @updatedAt @map("updated_at")
+
+  product Product @relation(fields: [productId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([productId])
+  @@index([userId])
+  @@index([status])
+  @@map("product_inquiries")
+}
+
+// --- 8. MODERACIÓN Y NOTIFICACIONES ---
+model Report {
+  id          Int          @id @default(autoincrement())
+  reporterId  Int          @map("reporter_id")
+  reason      String
+  description String?
+  status      ReportStatus @default(OPEN)
+
+  postId     Int? @map("post_id")
+  commentId  Int? @map("comment_id")
+  questionId Int? @map("question_id")
+  answerId   Int? @map("answer_id")
+  documentId Int? @map("document_id")
+  productId  Int? @map("product_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  reporter User      @relation(fields: [reporterId], references: [id])
+  post     Post?     @relation(fields: [postId], references: [id])
+  comment  Comment?  @relation(fields: [commentId], references: [id])
+  question Question? @relation(fields: [questionId], references: [id])
+  answer   Answer?   @relation(fields: [answerId], references: [id])
+  document Document? @relation(fields: [documentId], references: [id])
+  product  Product?  @relation(fields: [productId], references: [id])
+
+  @@index([reporterId])
+  @@index([status])
+  @@index([postId])
+  @@index([commentId])
+  @@index([questionId])
+  @@index([answerId])
+  @@index([documentId])
+  @@index([productId])
+  @@map("reports")
+}
+
+model ModerationLog {
+  id          Int      @id @default(autoincrement())
+  moderatorId Int      @map("moderator_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    Int      @map("entity_id")
+  reason      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  moderator User @relation(fields: [moderatorId], references: [id])
+
+  @@index([moderatorId])
+  @@index([entityType, entityId])
+  @@map("moderation_logs")
+}
+
+model Notification {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  type          String
+  title         String
+  message       String
+  isRead        Boolean  @default(false) @map("is_read")
+  referenceId   Int?     @map("reference_id")
+  referenceType String?  @map("reference_type")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}

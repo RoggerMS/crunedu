@@ -1,0 +1,30 @@
+{
+  "name": "crunedu",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CrunEdu monorepo: red social educativa universitaria con marketplace básico.",
+  "scripts": {
+    "dev": "concurrently -n WEB,API -c blue,green npm:dev:web npm:dev:api",
+    "dev:web": "npm run dev -w @crunedu/web",
+    "dev:api": "npm run start:dev -w @crunedu/api",
+    "build": "npm run build -w @crunedu/shared && npm run build -w @crunedu/ui && npm run build -w @crunedu/database && npm run build -w @crunedu/web && npm run build -w @crunedu/api",
+    "lint": "npm run lint -ws --if-present",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,yml,yaml}\"",
+    "db:generate": "npm run prisma:generate -w @crunedu/database",
+    "db:migrate": "npm run prisma:migrate -w @crunedu/database",
+    "db:seed": "npm run prisma:seed -w @crunedu/database",
+    "db:studio": "npm run prisma:studio -w @crunedu/database"
+  },
+  "workspaces": [
+    "apps/web",
+    "apps/api",
+    "packages/database",
+    "packages/shared",
+    "packages/ui"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3"
+  }
+}

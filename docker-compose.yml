@@ -1,0 +1,111 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/node/Dockerfile.dev
+    container_name: crunedu_web
+    restart: unless-stopped
+    working_dir: /workspace
+    command: sh -c "npm install && npm run dev -w @crunedu/web"
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    volumes:
+      - .:/workspace
+      - crunedu_node_modules:/workspace/node_modules
+      - crunedu_next_cache:/workspace/apps/web/.next
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/node/Dockerfile.dev
+    container_name: crunedu_api
+    restart: unless-stopped
+    working_dir: /workspace
+    command: sh -c "npm install && npm run prisma:generate -w @crunedu/database && npm run start:dev -w @crunedu/api"
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: ${DATABASE_URL:-postgresql://crunedu:crunedu_password@postgres:5432/crunedu_db?schema=public}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET:-change_this_local_secret}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio}
+      MINIO_PORT: ${MINIO_PORT:-9000}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-crunedu_minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-crunedu_minio_password}
+      MINIO_BUCKET: ${MINIO_BUCKET:-crunedu-local}
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@crunedu.local}
+    ports:
+      - "${API_PORT:-4000}:4000"
+    volumes:
+      - .:/workspace
+      - crunedu_node_modules:/workspace/node_modules
+    depends_on:
+      - postgres
+      - redis
+      - minio
+      - mailhog
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: crunedu_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-crunedu}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crunedu_password}
+      POSTGRES_DB: ${POSTGRES_DB:-crunedu_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - crunedu_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crunedu} -d ${POSTGRES_DB:-crunedu_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: crunedu_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - crunedu_redis_data:/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: crunedu_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-crunedu_minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-crunedu_minio_password}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - crunedu_minio_data:/data
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: crunedu_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  crunedu_postgres_data:
+  crunedu_redis_data:
+  crunedu_minio_data:
+  crunedu_node_modules:
+  crunedu_next_cache:
