@@ -7,7 +7,8 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "build": "nest build",
-    "lint": "echo lint pending"
+    "lint": "echo lint pending",
+    "test:integration": "tsx src/tests/integration.smoke.ts"
   },
   "dependencies": {
     "@crunedu/database": "*",

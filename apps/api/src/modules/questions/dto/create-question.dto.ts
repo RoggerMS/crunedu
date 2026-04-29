@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsInt, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+import { IsInt, IsOptional, IsString, MaxLength, Min, MinLength } from "class-validator";
 
 export class CreateQuestionDto {
   @IsString()
@@ -15,5 +15,6 @@ export class CreateQuestionDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
+  @Min(1)
   communityId?: number;
 }
