@@ -1,7 +1,7 @@
 "use client";
 
 import type { Community, CreateFeedPostPayload, PostComment } from "@crunedu/shared";
-import { Loader2, MessageCircle, Package, Sparkles, UsersRound } from "lucide-react";
+import { FileText, Loader2, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { useCommunities } from "@/hooks/useCommunities";
@@ -62,6 +62,20 @@ export default function AppPage() {
   }, [accessToken]);
 
   const canSubmit = useMemo(() => content.trim() && communityId.trim() && isAuthenticated, [content, communityId, isAuthenticated]);
+
+  const userActivity = useMemo(() => {
+    const myPosts = authenticatedUserId
+      ? posts.filter((post) => post.author.id === authenticatedUserId)
+      : [];
+
+    const responsesCount = myPosts.reduce((total, post) => total + post.commentsCount, 0);
+
+    return {
+      postsCreated: myPosts.length,
+      responsesCount,
+      communitiesJoined: communities.length,
+    };
+  }, [authenticatedUserId, communities.length, posts]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -275,11 +289,25 @@ export default function AppPage() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-      <section>
-        <h1 className="text-3xl font-black tracking-tight">¿Qué está pasando en La Cantuta?</h1>
+    <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+      <section className="space-y-5">
+        <Card className="space-y-4">
+          <h1 className="text-2xl font-black tracking-tight sm:text-3xl">¿Qué quieres hacer hoy en CrunEdu?</h1>
+          <p className="text-sm text-slate-600">Prioriza acciones rápidas para mantenerte al día con tu comunidad.</p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <PrimaryButton type="button" onClick={() => document.getElementById("post-content")?.focus()} className="w-full justify-center">
+              Publicar
+            </PrimaryButton>
+            <SecondaryButton asChild className="w-full justify-center">
+              <Link href="/app/comunidades">Explorar comunidades</Link>
+            </SecondaryButton>
+            <SecondaryButton type="button" onClick={() => document.getElementById("actividad-reciente")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="w-full justify-center">
+              Ver actividad reciente
+            </SecondaryButton>
+          </div>
+        </Card>
 
-        <Card className="mt-5">
+        <Card>
         <form onSubmit={handleSubmit}>
           <h2 className="text-lg font-black">¿Qué quieres compartir?</h2>
 
@@ -337,10 +365,24 @@ export default function AppPage() {
         </form>
         </Card>
 
-        <div className="mt-6 space-y-4">
+        <div id="actividad-reciente" className="mt-6 space-y-4">
+          <h2 className="text-xl font-black">Actividad reciente relevante</h2>
           {loading ? <StatusMessage type="loading">Cargando publicaciones...</StatusMessage> : null}
           {error ? <StatusMessage type="error">Error: {error}</StatusMessage> : null}
-          {!loading && !error && posts.length === 0 ? <EmptyState title="No hay publicaciones aún" description="Sé la primera persona en compartir una duda o aporte para tu comunidad." action={<PrimaryButton onClick={() => document.getElementById("post-content")?.focus()}>Crear primera publicación</PrimaryButton>} /> : null}
+          {!loading && !error && posts.length === 0 ? (
+            <EmptyState
+              title="No hay publicaciones aún"
+              description="Comienza uniéndote a una comunidad o crea tu primera publicación para activar el feed."
+              action={(
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <PrimaryButton onClick={() => document.getElementById("post-content")?.focus()}>Crear primera publicación</PrimaryButton>
+                  <SecondaryButton asChild>
+                    <Link href="/app/comunidades">Únete a tu primera comunidad</Link>
+                  </SecondaryButton>
+                </div>
+              )}
+            />
+          ) : null}
 
           {!loading && !error
             ? posts.map((post) => (
@@ -418,19 +460,24 @@ export default function AppPage() {
 
       <aside className="space-y-4">
         <Card>
-          <Sparkles className="text-indigo-600" />
-          <h3 className="mt-3 font-black">Onboarding rápido</h3>
-          <p className="mt-2 text-sm text-slate-600">1) Elige tus comunidades de interés. 2) Publica tu primer aporte guiado en el feed.</p>
-          <div className="mt-3 flex flex-col gap-2">
-            <Link href="/app/comunidades" className="text-sm font-semibold text-indigo-600">
-              Elegir comunidades
-            </Link>
-            <p className="text-xs text-slate-500">Tip: empieza en Cachimbos o General.</p>
+          <FileText className="text-indigo-600" />
+          <h3 className="mt-3 font-black">Tu actividad</h3>
+          <div className="mt-3 space-y-2 text-sm text-slate-700">
+            <p className="flex items-center justify-between"><span>Posts creados</span><strong>{userActivity.postsCreated}</strong></p>
+            <p className="flex items-center justify-between"><span>Respuestas recibidas</span><strong>{userActivity.responsesCount}</strong></p>
+            <p className="flex items-center justify-between"><span>Comunidades unidas</span><strong>{userActivity.communitiesJoined}</strong></p>
           </div>
+          <p className="mt-3 text-xs text-slate-500">Mantén tu actividad al día participando en comunidades relevantes.</p>
         </Card>
-        <Card><UsersRound className="text-indigo-600" /><h3 className="mt-3 font-black">Comunidades iniciales</h3><p className="mt-2 text-sm text-slate-600">General, Trámites, Apuntes y Cachimbos.</p></Card>
-        <Card><Package className="text-indigo-600" /><h3 className="mt-3 font-black">Tienda básica</h3><p className="mt-2 text-sm text-slate-600">Productos destacados y consultas sin pagos automáticos.</p></Card>
-        <Card><MessageCircle className="text-indigo-600" /><h3 className="mt-3 font-black">Preguntas</h3><p className="mt-2 text-sm text-slate-600">Q&A con respuestas útiles.</p></Card>
+
+        <Card>
+          <UsersRound className="text-indigo-600" />
+          <h3 className="mt-3 font-black">Siguiente paso recomendado</h3>
+          <p className="mt-2 text-sm text-slate-600">Explora comunidades para encontrar preguntas y aportes que te ayuden hoy.</p>
+          <SecondaryButton asChild className="mt-3 w-full justify-center">
+            <Link href="/app/comunidades">Ir a comunidades</Link>
+          </SecondaryButton>
+        </Card>
       </aside>
     </div>
   );
