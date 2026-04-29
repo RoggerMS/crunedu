@@ -9,7 +9,7 @@ export function CommunityCard({ community }: CommunityCardProps) {
   const initial = community.name.charAt(0).toUpperCase();
 
   return (
-    <Link href={`/app/comunidades/${community.slug}`}>
+    <Link href={`/app/comunidades/${community.id}`}>
       <article className="flex h-full flex-col rounded-3xl border border-slate-200 bg-white p-5 shadow-soft transition-shadow hover:shadow-medium">
         <div className="flex items-start gap-4">
           {community.avatarUrl ? (
