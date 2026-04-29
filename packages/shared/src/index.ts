@@ -50,7 +50,6 @@ export interface Community {
   postsCount: number;
 }
 
-
 export interface FeedAuthor {
   id: number;
   email: string;
@@ -75,7 +74,7 @@ export interface FeedPost {
 }
 
 export interface CreateFeedPostPayload {
-  title: string;
+  title?: string;
   content: string;
   communityId: number;
 }

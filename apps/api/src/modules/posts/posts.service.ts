@@ -77,9 +77,11 @@ export class PostsService {
       throw new BadRequestException("La comunidad seleccionada no existe.");
     }
 
+    const title = dto.title?.trim() ?? "";
+
     const post = await this.prisma.post.create({
       data: {
-        title: dto.title,
+        title,
         content: dto.content,
         communityId: dto.communityId,
         userId,
