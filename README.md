@@ -86,6 +86,13 @@ Esta base ya separa ambas URLs:
 
 Si cambias variables en `.env`, mantén esa separación para evitar el error `P1001` en Docker.
 
+
+## Convención de naming funcional (UI)
+
+- En esta iteración, el término único en UI y producto es **Comunidades**.
+- El término **clubs** queda reservado para un experimento futuro y no debe mezclarse en textos visibles actuales.
+- Referencia operativa: `docs/NAMING_COMUNIDADES.md`.
+
 ## Qué NO incluye el MVP
 
 - Dominio.
