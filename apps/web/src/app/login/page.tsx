@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
+import { buildApiUrl, mapApiError } from "@/lib/api";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
 export default function LoginPage() {
   const { setAccessToken } = useAccessToken();
@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -21,7 +22,7 @@ export default function LoginPage() {
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/auth/login`, {
+      const response = await fetch(buildApiUrl("/auth/login"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -35,19 +36,16 @@ export default function LoginPage() {
       const data = await response.json().catch(() => null);
 
       if (!response.ok || !data?.accessToken) {
-        const message = data?.message ?? "No se pudo iniciar sesión.";
-        throw new Error(Array.isArray(message) ? message.join(" ") : message);
+        const message = data?.message;
+        const errorMessage = Array.isArray(message) ? message.join(" ") : message ?? "No se pudo iniciar sesión.";
+        throw new Error(errorMessage);
       }
 
       setAccessToken(data.accessToken);
       setSuccessMessage("Sesión iniciada. Ya puedes publicar.");
       setPassword("");
     } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Ocurrió un error inesperado.");
-      }
+      setError(mapApiError(err, "No se pudo iniciar sesión."));
     } finally {
       setSubmitting(false);
     }
@@ -59,7 +57,7 @@ export default function LoginPage() {
         <h1 className="text-2xl font-black">Iniciar sesión</h1>
         <p className="mt-2 text-sm text-slate-600">Ingresa con tu cuenta para poder publicar en el feed.</p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4" key={retryCount}>
           <label className="block text-sm font-semibold text-slate-700">
             Correo
             <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-1 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none ring-indigo-200 transition focus:ring" placeholder="tu-correo@ejemplo.com" required />
@@ -70,7 +68,7 @@ export default function LoginPage() {
             <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="mt-1 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none ring-indigo-200 transition focus:ring" placeholder="••••••••" minLength={8} required />
           </label>
 
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {error ? <div className="space-y-2"><p className="text-sm text-red-600">{error}</p><button type="button" onClick={() => setRetryCount((prev) => prev + 1)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">Reintentar</button></div> : null}
           {successMessage ? <p className="text-sm text-emerald-600">{successMessage}</p> : null}
 
           <button type="submit" disabled={submitting} className="w-full rounded-2xl bg-indigo-600 px-4 py-3 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300">

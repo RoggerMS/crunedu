@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FeedPost } from "@crunedu/shared";
+import { buildApiUrl, mapApiError } from "@/lib/api";
 
 interface UsePostsResult {
   posts: FeedPost[];
@@ -12,32 +13,21 @@ export function usePosts(): UsePostsResult {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
   async function fetchPosts(signal?: AbortSignal) {
     try {
       setError(null);
-      const response = await fetch(`${apiBaseUrl}/posts`, {
-        signal,
-      });
+      const response = await fetch(buildApiUrl("/posts"), { signal });
 
       if (!response.ok) {
-        throw new Error("Error al cargar las publicaciones");
+        throw new Error("No se pudieron cargar las publicaciones.");
       }
 
       const data = await response.json();
       setPosts(data);
     } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") {
-        return;
-      }
-
-      if (err instanceof Error) {
-        setError(err.message);
-        return;
-      }
-
-      setError("Error desconocido");
+      if (err instanceof Error && err.name === "AbortError") return;
+      setError(mapApiError(err, "No se pudieron cargar las publicaciones."));
     } finally {
       setLoading(false);
     }
@@ -46,11 +36,8 @@ export function usePosts(): UsePostsResult {
   useEffect(() => {
     const controller = new AbortController();
     fetchPosts(controller.signal);
-
-    return () => {
-      controller.abort();
-    };
-  }, [apiBaseUrl]);
+    return () => controller.abort();
+  }, []);
 
   return {
     posts,
