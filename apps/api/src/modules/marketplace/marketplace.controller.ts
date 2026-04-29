@@ -27,8 +27,12 @@ export class MarketplaceController {
   }
 
   @Get("products")
-  products(@Query("communityId") communityId?: string) {
-    return this.service.listCatalog(communityId ? Number(communityId) : undefined);
+  products(
+    @Query("categoryId") categoryId?: string,
+    @Query("faculty") faculty?: string,
+    @Query("career") career?: string,
+  ) {
+    return this.service.listCatalog(categoryId ? Number(categoryId) : undefined, { faculty, career });
   }
 
   @Get("products/:id")
