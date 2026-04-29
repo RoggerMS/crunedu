@@ -1,11 +1,17 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { HotReadCacheService } from "../cache/hot-read-cache.service";
+import { PAGINATION_LIMITS } from "../common/pagination.constants";
 
 @Injectable()
 export class CommunitiesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private readonly cache: HotReadCacheService) {}
 
   async index() {
+    const cacheKey = "hot:communities:popular";
+    const cached = this.cache.get<any[]>(cacheKey);
+    if (cached) return cached;
+
     const communities = await this.prisma.community.findMany({
       where: { status: "PUBLISHED" },
       select: {
@@ -23,11 +29,14 @@ export class CommunitiesService {
       orderBy: { createdAt: "desc" },
     });
 
-    return communities.map((community) => ({
+    const response = communities.map((community: any) => ({
       ...community,
       membersCount: community._count.members,
       postsCount: community._count.posts,
     }));
+
+    this.cache.set(cacheKey, response, 30_000);
+    return response;
   }
 
   async findOne(id: number) {
@@ -53,7 +62,7 @@ export class CommunitiesService {
   async communityPosts(communityId: number, page: number, pageSize: number) {
     await this.ensureCommunityExists(communityId);
     const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
-    const safePageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.min(Math.floor(pageSize), 50) : 10;
+    const safePageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.min(Math.floor(pageSize), PAGINATION_LIMITS.communityPosts.max) : PAGINATION_LIMITS.communityPosts.default;
     const skip = (safePage - 1) * safePageSize;
 
     const [total, posts] = await this.prisma.$transaction([
@@ -77,7 +86,7 @@ export class CommunitiesService {
       pageSize: safePageSize,
       total,
       totalPages: Math.ceil(total / safePageSize),
-      data: posts.map((post) => ({
+      data: posts.map((post: any) => ({
         id: post.id,
         title: post.title,
         content: post.content,
@@ -135,7 +144,7 @@ export class CommunitiesService {
       select: { id: true, name: true, slug: true, description: true, rules: true, _count: { select: { members: true, posts: true } } },
     });
 
-    return communities.map((community) => ({ ...community, membersCount: community._count.members, postsCount: community._count.posts }));
+    const response = communities.map((community: any) => ({ ...community, membersCount: community._count.members, postsCount: community._count.posts }));
   }
 
   async hidePost(communityId: number, postId: number, userId: number, reason?: string) {

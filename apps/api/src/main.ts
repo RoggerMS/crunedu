@@ -1,4 +1,7 @@
 import { ValidationPipe } from "@nestjs/common";
+import { ApiExceptionFilter } from "./modules/core/api-exception.filter";
+import { TimeoutInterceptor } from "./modules/core/timeout.interceptor";
+import { RateLimitGuard } from "./modules/core/rate-limit.guard";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
@@ -13,6 +16,10 @@ async function bootstrap() {
     origin: ["http://localhost:3000"],
     credentials: true,
   });
+  app.useGlobalGuards(new RateLimitGuard());
+  app.useGlobalInterceptors(new TimeoutInterceptor());
+  app.useGlobalFilters(new ApiExceptionFilter());
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

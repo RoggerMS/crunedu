@@ -2,6 +2,8 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AuthModule } from "./modules/auth/auth.module";
 import { CommunitiesModule } from "./modules/communities/communities.module";
+import { CacheModule } from "./modules/cache/cache.module";
+import { JobsModule } from "./modules/jobs/jobs.module";
 import { DocumentsModule } from "./modules/documents/documents.module";
 import { HealthModule } from "./modules/health/health.module";
 import { MarketplaceModule } from "./modules/marketplace/marketplace.module";
@@ -16,6 +18,8 @@ import { UsersModule } from "./modules/users/users.module";
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    CacheModule,
+    JobsModule,
     HealthModule,
     AuthModule,
     UsersModule,
