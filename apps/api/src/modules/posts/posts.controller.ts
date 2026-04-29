@@ -12,6 +12,7 @@ import {
 } from "@nestjs/common";
 import { Request } from "express";
 import { CreatePostDto } from "./dto/create-post.dto";
+import { CreatePostCommentDto } from "./dto/create-post-comment.dto";
 import { UpdatePostDto } from "./dto/update-post.dto";
 import { JwtAuthGuard, JwtPayload } from "./jwt-auth.guard";
 import { PostsService } from "./posts.service";
@@ -38,6 +39,21 @@ export class PostsController {
   @UseGuards(JwtAuthGuard)
   create(@Body() dto: CreatePostDto, @Req() request: AuthenticatedRequest) {
     return this.service.create(dto, request.user.sub);
+  }
+
+  @Get(":id/comments")
+  getComments(@Param("id", ParseIntPipe) id: number) {
+    return this.service.getComments(id);
+  }
+
+  @Post(":id/comments")
+  @UseGuards(JwtAuthGuard)
+  createComment(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: CreatePostCommentDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.service.createComment(id, dto, request.user.sub);
   }
 
   @Patch(":id")

@@ -73,6 +73,13 @@ export interface FeedPost {
   commentsCount: number;
 }
 
+export interface PostComment {
+  id: number;
+  content: string;
+  createdAt: string;
+  author: FeedAuthor;
+}
+
 export interface CreateFeedPostPayload {
   title?: string;
   content: string;

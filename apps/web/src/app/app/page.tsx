@@ -1,6 +1,6 @@
 "use client";
 
-import type { Community, CreateFeedPostPayload } from "@crunedu/shared";
+import type { Community, CreateFeedPostPayload, PostComment } from "@crunedu/shared";
 import { Loader2, MessageCircle, Package, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
@@ -47,6 +47,10 @@ export default function AppPage() {
   const [postActionLoadingId, setPostActionLoadingId] = useState<number | null>(null);
   const [postActionError, setPostActionError] = useState<string | null>(null);
   const [postActionSuccess, setPostActionSuccess] = useState<string | null>(null);
+  const [commentsByPost, setCommentsByPost] = useState<Record<number, PostComment[]>>({});
+  const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
+  const [commentLoadingByPost, setCommentLoadingByPost] = useState<Record<number, boolean>>({});
+  const [commentErrorByPost, setCommentErrorByPost] = useState<Record<number, string | null>>({});
 
   const authenticatedUserId = useMemo(() => {
     if (!accessToken) {
@@ -184,6 +188,67 @@ export default function AppPage() {
     }
   }
 
+  async function loadComments(postId: number) {
+    setCommentLoadingByPost((prev) => ({ ...prev, [postId]: true }));
+    setCommentErrorByPost((prev) => ({ ...prev, [postId]: null }));
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/posts/${postId}/comments`);
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const message = data?.message ?? "No se pudieron cargar los comentarios.";
+        throw new Error(Array.isArray(message) ? message.join(" ") : message);
+      }
+
+      const comments = (await response.json()) as PostComment[];
+      setCommentsByPost((prev) => ({ ...prev, [postId]: comments }));
+    } catch (err) {
+      setCommentErrorByPost((prev) => ({ ...prev, [postId]: err instanceof Error ? err.message : "Error inesperado al cargar comentarios." }));
+    } finally {
+      setCommentLoadingByPost((prev) => ({ ...prev, [postId]: false }));
+    }
+  }
+
+  async function handleCreateComment(postId: number) {
+    if (!isAuthenticated) {
+      setCommentErrorByPost((prev) => ({ ...prev, [postId]: "Inicia sesión para comentar." }));
+      return;
+    }
+
+    const contentValue = commentInputs[postId]?.trim() ?? "";
+    if (!contentValue) {
+      setCommentErrorByPost((prev) => ({ ...prev, [postId]: "Escribe un comentario antes de publicar." }));
+      return;
+    }
+
+    setCommentLoadingByPost((prev) => ({ ...prev, [postId]: true }));
+    setCommentErrorByPost((prev) => ({ ...prev, [postId]: null }));
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/posts/${postId}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ content: contentValue }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const message = data?.message ?? "No se pudo publicar el comentario.";
+        throw new Error(Array.isArray(message) ? message.join(" ") : message);
+      }
+
+      setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
+      await Promise.all([loadComments(postId), reload()]);
+    } catch (err) {
+      setCommentErrorByPost((prev) => ({ ...prev, [postId]: err instanceof Error ? err.message : "Ocurrió un error inesperado." }));
+    } finally {
+      setCommentLoadingByPost((prev) => ({ ...prev, [postId]: false }));
+    }
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <section>
@@ -263,6 +328,31 @@ export default function AppPage() {
                     <span>Autor: {buildAuthorName(post.author.firstName, post.author.lastName, post.author.email)}</span>
                     <span>•</span>
                     <span>{new Date(post.createdAt).toLocaleString("es-PE")}</span>
+                  </div>
+                  <div className="mt-4 rounded-2xl border border-slate-200 p-4">
+                    <h3 className="text-sm font-bold text-slate-700">Comentarios</h3>
+                    <div className="mt-3 space-y-3">
+                      <button type="button" onClick={() => loadComments(post.id)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">Ver comentarios</button>
+                      {commentLoadingByPost[post.id] ? <p className="text-sm text-slate-500">Cargando comentarios...</p> : null}
+                      {commentErrorByPost[post.id] ? <p className="text-sm text-red-600">{commentErrorByPost[post.id]}</p> : null}
+                      {(commentsByPost[post.id] ?? []).map((comment) => (
+                        <div key={comment.id} className="rounded-xl bg-slate-50 p-3">
+                          <p className="text-sm text-slate-700">{comment.content}</p>
+                          <p className="mt-1 text-xs text-slate-500">{buildAuthorName(comment.author.firstName, comment.author.lastName, comment.author.email)} · {new Date(comment.createdAt).toLocaleString("es-PE")}</p>
+                        </div>
+                      ))}
+
+                      <div className="space-y-2">
+                        <textarea
+                          rows={2}
+                          value={commentInputs[post.id] ?? ""}
+                          onChange={(event) => setCommentInputs((prev) => ({ ...prev, [post.id]: event.target.value }))}
+                          className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                          placeholder="Escribe un comentario"
+                        />
+                        <button type="button" onClick={() => handleCreateComment(post.id)} disabled={commentLoadingByPost[post.id]} className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-indigo-300">Comentar</button>
+                      </div>
+                    </div>
                   </div>
                   {isAuthenticated && authenticatedUserId === post.author.id ? (
                     <div className="mt-4 space-y-3">
