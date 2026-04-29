@@ -15,6 +15,20 @@ function buildAuthorName(firstName: string | null, lastName: string | null, emai
   return fullName.length > 0 ? fullName : email;
 }
 
+function parseJwtPayload(token: string): { sub?: number } | null {
+  try {
+    const [, payloadBase64] = token.split(".");
+    if (!payloadBase64) {
+      return null;
+    }
+
+    const payloadJson = atob(payloadBase64.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(payloadJson) as { sub?: number };
+  } catch {
+    return null;
+  }
+}
+
 export default function AppPage() {
   const { communities } = useCommunities();
   const { posts, loading, error, reload } = usePosts();
@@ -26,6 +40,21 @@ export default function AppPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [editingPostId, setEditingPostId] = useState<number | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [editingContent, setEditingContent] = useState("");
+  const [editingCommunityId, setEditingCommunityId] = useState("");
+  const [postActionLoadingId, setPostActionLoadingId] = useState<number | null>(null);
+  const [postActionError, setPostActionError] = useState<string | null>(null);
+  const [postActionSuccess, setPostActionSuccess] = useState<string | null>(null);
+
+  const authenticatedUserId = useMemo(() => {
+    if (!accessToken) {
+      return null;
+    }
+
+    return parseJwtPayload(accessToken)?.sub ?? null;
+  }, [accessToken]);
 
   const canSubmit = useMemo(() => content.trim() && communityId.trim() && isAuthenticated, [content, communityId, isAuthenticated]);
 
@@ -75,6 +104,83 @@ export default function AppPage() {
       }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  function startEditing(postId: number, initialTitle: string, initialContent: string, initialCommunityId: number | null) {
+    setEditingPostId(postId);
+    setEditingTitle(initialTitle);
+    setEditingContent(initialContent);
+    setEditingCommunityId(initialCommunityId ? String(initialCommunityId) : "");
+    setPostActionError(null);
+    setPostActionSuccess(null);
+  }
+
+  async function handleUpdatePost(postId: number) {
+    if (!isAuthenticated) {
+      setPostActionError("Inicia sesión para editar publicaciones.");
+      return;
+    }
+
+    setPostActionLoadingId(postId);
+    setPostActionError(null);
+    setPostActionSuccess(null);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/posts/${postId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          title: editingTitle.trim() || undefined,
+          content: editingContent.trim(),
+          communityId: Number(editingCommunityId),
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const message = data?.message ?? "No se pudo actualizar la publicación.";
+        throw new Error(Array.isArray(message) ? message.join(" ") : message);
+      }
+
+      setEditingPostId(null);
+      setPostActionSuccess("Publicación actualizada correctamente.");
+      await reload();
+    } catch (err) {
+      setPostActionError(err instanceof Error ? err.message : "Ocurrió un error inesperado.");
+    } finally {
+      setPostActionLoadingId(null);
+    }
+  }
+
+  async function handleDeletePost(postId: number) {
+    if (!isAuthenticated) {
+      setPostActionError("Inicia sesión para eliminar publicaciones.");
+      return;
+    }
+
+    setPostActionLoadingId(postId);
+    setPostActionError(null);
+    setPostActionSuccess(null);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/posts/${postId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const message = data?.message ?? "No se pudo eliminar la publicación.";
+        throw new Error(Array.isArray(message) ? message.join(" ") : message);
+      }
+
+      setPostActionSuccess("Publicación eliminada correctamente.");
+      await reload();
+    } catch (err) {
+      setPostActionError(err instanceof Error ? err.message : "Ocurrió un error inesperado.");
+    } finally {
+      setPostActionLoadingId(null);
     }
   }
 
@@ -158,9 +264,39 @@ export default function AppPage() {
                     <span>•</span>
                     <span>{new Date(post.createdAt).toLocaleString("es-PE")}</span>
                   </div>
+                  {isAuthenticated && authenticatedUserId === post.author.id ? (
+                    <div className="mt-4 space-y-3">
+                      {editingPostId === post.id ? (
+                        <div className="space-y-3 rounded-2xl border border-slate-200 p-4">
+                          <input value={editingTitle} onChange={(event) => setEditingTitle(event.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2" placeholder="Título (opcional)" />
+                          <textarea value={editingContent} onChange={(event) => setEditingContent(event.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2" rows={4} />
+                          <select value={editingCommunityId} onChange={(event) => setEditingCommunityId(event.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2">
+                            <option value="">Selecciona una comunidad</option>
+                            {communities.map((community: Community) => (
+                              <option key={community.id} value={community.id}>
+                                {community.name}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => handleUpdatePost(post.id)} disabled={postActionLoadingId === post.id} className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-indigo-300">Guardar</button>
+                            <button type="button" onClick={() => setEditingPostId(null)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Cancelar</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => startEditing(post.id, post.title, post.content, post.community?.id ?? null)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Editar</button>
+                          <button type="button" onClick={() => handleDeletePost(post.id)} disabled={postActionLoadingId === post.id} className="rounded-xl border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-60">Eliminar</button>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </article>
               ))
             : null}
+          {postActionLoadingId ? <p className="text-sm text-slate-500">Procesando acción...</p> : null}
+          {postActionSuccess ? <p className="text-sm text-emerald-600">{postActionSuccess}</p> : null}
+          {postActionError ? <p className="text-sm text-red-600">{postActionError}</p> : null}
         </div>
       </section>
 
