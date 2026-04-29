@@ -1,5 +1,8 @@
 import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { HotReadCacheService } from "../cache/hot-read-cache.service";
+import { JobsService } from "../jobs/jobs.service";
+import { PAGINATION_LIMITS } from "../common/pagination.constants";
 import { CreatePostDto } from "./dto/create-post.dto";
 import { CreatePostCommentDto } from "./dto/create-post-comment.dto";
 import { PostResponseDto } from "./dto/post-response.dto";
@@ -25,7 +28,7 @@ type PostWithRelations = {
 
 @Injectable()
 export class PostsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly cache: HotReadCacheService, private readonly jobs: JobsService) {}
 
   private readonly postRateLimit = new Map<number, number[]>();
   private readonly commentRateLimit = new Map<number, number[]>();
@@ -81,8 +84,15 @@ export class PostsService {
 
   async index(query: GetPostsQueryDto, userId?: number): Promise<{ items: PostResponseDto[]; nextCursor: number | null; mode: "recent" | "relevant" }> {
     const mode = query.mode ?? "recent";
-    const limit = query.limit ?? 10;
-    const take = mode === "relevant" ? 100 : limit + 1;
+    const limit = query.limit ?? PAGINATION_LIMITS.postsFeed.default;
+    const safeLimit = Math.min(limit, PAGINATION_LIMITS.postsFeed.max);
+    const take = mode === "relevant" ? 100 : safeLimit + 1;
+
+    const cacheKey = !query.cursor && mode === "recent" ? `hot:feed:initial:${safeLimit}` : null;
+    if (cacheKey) {
+      const cached = this.cache.get<{ items: PostResponseDto[]; nextCursor: number | null; mode: "recent" | "relevant" }>(cacheKey);
+      if (cached) return cached;
+    }
 
     const posts = await this.prisma.post.findMany({
       where: { status: "PUBLISHED" },
@@ -93,12 +103,14 @@ export class PostsService {
     });
 
     const rankedPosts = mode === "relevant" ? await this.rankRelevant(posts, userId) : posts;
-    const paginated = rankedPosts.slice(0, limit);
-    const nextCursor = rankedPosts.length > limit ? rankedPosts[limit].id : null;
+    const paginated = rankedPosts.slice(0, safeLimit);
+    const nextCursor = rankedPosts.length > safeLimit ? rankedPosts[safeLimit].id : null;
 
     this.registerFeedEvent("impression", userId, { mode });
 
-    return { items: paginated.map((post: PostWithRelations) => this.mapPostResponse(post)), nextCursor, mode };
+    const response = { items: paginated.map((post: PostWithRelations) => this.mapPostResponse(post)), nextCursor, mode };
+    if (cacheKey) this.cache.set(cacheKey, response, 20_000);
+    return response;
   }
 
   async create(dto: CreatePostDto, userId: number): Promise<PostResponseDto> {
@@ -111,6 +123,9 @@ export class PostsService {
     const title = dto.title?.trim() ?? "";
 
     const post = await this.prisma.post.create({ data: { title, content: dto.content.trim(), communityId: dto.communityId, userId }, select: this.postSelect });
+    this.cache.invalidate("hot:feed:initial");
+    await this.jobs.enqueueNotification({ type: "POST_CREATED", userId, postId: post.id, communityId: dto.communityId });
+    await this.jobs.enqueueRankingRecalculation({ trigger: "POST_CREATED", postId: post.id });
     this.registerFeedEvent("create_post", userId, { postId: post.id });
     return this.mapPostResponse(post);
   }
