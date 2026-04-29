@@ -1,10 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { UpdateMeDto } from "./dto/update-me.dto";
+import { ObservabilityService } from "../observability/observability.service";
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly observability: ObservabilityService,
+  ) {}
 
   async getMe(userId: number) {
     const user = await this.prisma.user.findUnique({
@@ -75,11 +79,13 @@ export class UsersService {
       update: {},
     });
 
+    this.observability.recordFollow(currentUserId, targetUserId);
     return this.getRelationship(currentUserId, targetUserId);
   }
 
   async unfollowUser(currentUserId: number, targetUserId: number) {
     await this.prisma.follow.deleteMany({ where: { followerId: currentUserId, followingId: targetUserId } });
+    this.observability.recordUnfollow(currentUserId, targetUserId);
     return this.getRelationship(currentUserId, targetUserId);
   }
 

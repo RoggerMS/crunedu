@@ -127,7 +127,7 @@ export class PostsService {
     this.cache.invalidate("hot:feed:initial");
     await this.jobs.enqueueNotification({ type: "POST_CREATED", userId, postId: post.id, communityId: dto.communityId });
     await this.jobs.enqueueRankingRecalculation({ trigger: "POST_CREATED", postId: post.id });
-    this.observability.recordPostCreated(userId);
+    this.observability.recordPostCreated(userId, post.id);
     this.registerFeedEvent("create_post", userId, { postId: post.id });
     return this.mapPostResponse(post);
   }
@@ -150,7 +150,7 @@ export class PostsService {
     this.checkRateLimit(this.commentRateLimit, userId, 8, 60_000, "Estás comentando demasiado rápido. Intenta de nuevo en un minuto.");
     this.validateUsefulContent(dto.content, 12, "El comentario es muy corto. Agrega más detalle útil.");
     const comment = await this.prisma.comment.create({ data: { postId, userId, content: dto.content.trim() }, select: this.commentSelect });
-    this.observability.recordCommentCreated(userId);
+    this.observability.recordCommentCreated(userId, comment.id, postId);
     return this.mapCommentResponse(comment);
   }
 

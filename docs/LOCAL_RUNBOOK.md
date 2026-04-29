@@ -134,3 +134,90 @@ docker compose up -d --build api
 - Este runbook **no** incluye comandos destructivos.
 - No usar eliminación de volúmenes.
 - No resetear base de datos para incidentes comunes de arranque.
+
+## Observabilidad operativa (logs, métricas, dashboard y alertas)
+
+### 1) Logs estructurados de requests
+Cada request HTTP en API emite un log JSON con:
+- `requestId`
+- `userId` (si existe JWT)
+- `endpoint`
+- `statusCode`
+- `latencyMs`
+- `timestamp`
+
+Para ver logs recientes del API:
+
+```powershell
+docker compose logs api --tail=120
+```
+
+Para correlacionar incidentes:
+1. Busca un `requestId` reportado por frontend o por cliente.
+2. Filtra en logs por ese `requestId`.
+3. Revisa `statusCode`, `latencyMs` y `endpoint` para identificar el fallo.
+
+### 2) Métricas mínimas
+Endpoint de métricas:
+
+```powershell
+Invoke-RestMethod http://localhost:4000/api/observability/metrics
+```
+
+Campos clave por endpoint:
+- `p95LatencyMs`
+- `errorRate`
+- `throughput`
+
+Interpretación rápida:
+- `p95LatencyMs` alto = degradación de performance.
+- `errorRate` alto = errores funcionales o dependencia caída.
+- `throughput` = volumen de tráfico que recibe cada endpoint.
+
+### 3) Eventos de producto instrumentados
+Se registran eventos JSON (`message: product_event`) para:
+- `login_success`
+- `post_created`
+- `comment_created`
+- `follow`
+- `unfollow`
+
+Diagnóstico:
+- Si hay tráfico técnico pero no eventos de producto, revisar auth/UI y flujo de usuario.
+- Si hay muchos `follow/unfollow` con errores, revisar permisos y estado del endpoint users.
+
+### 4) Dashboard operativo y alertas
+Dashboard operativo:
+
+```powershell
+Invoke-RestMethod http://localhost:4000/api/observability/dashboard
+```
+
+Incluye:
+- Resumen global (`throughputTotal`, `errorRateGlobal`, `activeAlerts`).
+- Métricas por endpoint (p95/errorRate/throughput).
+- Métricas de producto (logins, posts, comments, follows).
+- Alertas activas.
+
+Umbrales base:
+- Alerta de latencia: `p95LatencyMs > 800` con throughput mínimo.
+- Alerta de error endpoint: `errorRate > 5%` con throughput mínimo.
+- Alerta global crítica: `errorRateGlobal > 8%`.
+
+### 5) Protocolo corto de incidente
+1. Confirmar salud base:
+
+```powershell
+Invoke-RestMethod http://localhost:4000/api/health
+```
+
+2. Verificar alertas activas:
+
+```powershell
+Invoke-RestMethod http://localhost:4000/api/observability/dashboard
+```
+
+3. Identificar endpoint degradado (p95/errorRate).
+4. Correlacionar con logs estructurados por `requestId`.
+5. Revisar si el incidente afecta eventos de producto (login/post/comment/follow).
+6. Mitigar primero el endpoint con mayor impacto (error rate y throughput).

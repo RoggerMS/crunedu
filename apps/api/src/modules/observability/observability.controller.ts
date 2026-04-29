@@ -9,4 +9,9 @@ export class ObservabilityController {
   metrics() {
     return this.observability.snapshot();
   }
+
+  @Get("dashboard")
+  dashboard() {
+    return this.observability.dashboard();
+  }
 }
