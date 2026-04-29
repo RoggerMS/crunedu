@@ -188,6 +188,30 @@ export default function AppPage() {
     }
   }
 
+
+  async function handleReport(targetType: "POST" | "COMMENT", targetId: number) {
+    if (!isAuthenticated) {
+      setPostActionError("Inicia sesión para reportar contenido.");
+      return;
+    }
+
+    setPostActionLoadingId(targetId);
+    setPostActionError(null);
+    try {
+      const response = await fetch(`${apiBaseUrl}/reports`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ targetType, targetId, reason: "Contenido inapropiado" }),
+      });
+      if (!response.ok) throw new Error("No se pudo reportar el contenido.");
+      setPostActionSuccess("Reporte enviado correctamente.");
+    } catch (err) {
+      setPostActionError(err instanceof Error ? err.message : "Ocurrió un error inesperado.");
+    } finally {
+      setPostActionLoadingId(null);
+    }
+  }
+
   async function loadComments(postId: number) {
     setCommentLoadingByPost((prev) => ({ ...prev, [postId]: true }));
     setCommentErrorByPost((prev) => ({ ...prev, [postId]: null }));
@@ -329,6 +353,7 @@ export default function AppPage() {
                     <span>•</span>
                     <span>{new Date(post.createdAt).toLocaleString("es-PE")}</span>
                   </div>
+                  <button type="button" onClick={() => handleReport("POST", post.id)} className="mt-3 rounded-xl border border-amber-300 px-3 py-2 text-sm font-semibold text-amber-700">Reportar</button>
                   <div className="mt-4 rounded-2xl border border-slate-200 p-4">
                     <h3 className="text-sm font-bold text-slate-700">Comentarios</h3>
                     <div className="mt-3 space-y-3">
@@ -339,6 +364,7 @@ export default function AppPage() {
                         <div key={comment.id} className="rounded-xl bg-slate-50 p-3">
                           <p className="text-sm text-slate-700">{comment.content}</p>
                           <p className="mt-1 text-xs text-slate-500">{buildAuthorName(comment.author.firstName, comment.author.lastName, comment.author.email)} · {new Date(comment.createdAt).toLocaleString("es-PE")}</p>
+                          <button type="button" onClick={() => handleReport("COMMENT", comment.id)} className="mt-2 rounded-lg border border-amber-300 px-2 py-1 text-xs font-semibold text-amber-700">Reportar</button>
                         </div>
                       ))}
 
