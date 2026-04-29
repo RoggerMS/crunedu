@@ -6,6 +6,11 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 
+type CatalogContext = {
+  faculty?: string;
+  career?: string;
+};
+
 @Injectable()
 export class MarketplaceService {
   constructor(private readonly prisma: PrismaService) {}
@@ -14,15 +19,56 @@ export class MarketplaceService {
     return this.prisma.productCategory.findMany({ orderBy: { name: "asc" } });
   }
 
-  async listCatalog(communityId?: number) {
-    return this.prisma.product.findMany({
+  private buildContextFilters(context?: CatalogContext) {
+    const normalizedFilters = [context?.career, context?.faculty]
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value));
+
+    if (normalizedFilters.length === 0) {
+      return [];
+    }
+
+    return normalizedFilters.map((value) => ({
+      OR: [
+        { title: { contains: value, mode: "insensitive" as const } },
+        { description: { contains: value, mode: "insensitive" as const } },
+        { category: { name: { contains: value, mode: "insensitive" as const } } },
+      ],
+    }));
+  }
+
+  async listCatalog(categoryId?: number, context?: CatalogContext) {
+    const contextFilters = this.buildContextFilters(context);
+
+    const products = await this.prisma.product.findMany({
       where: {
         status: "ACTIVE",
-        ...(communityId ? { categoryId: communityId } : {}),
+        ...(categoryId ? { categoryId } : {}),
       },
       orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
       include: { category: true },
     });
+
+    const featuredProducts = await this.prisma.product.findMany({
+      where: {
+        status: "ACTIVE",
+        isFeatured: true,
+        ...(categoryId ? { categoryId } : {}),
+        ...(contextFilters.length > 0 ? { AND: contextFilters } : {}),
+      },
+      orderBy: [{ createdAt: "desc" }],
+      include: { category: true },
+      take: 6,
+    });
+
+    return {
+      products,
+      featuredProducts,
+      context: {
+        faculty: context?.faculty?.trim() ?? "",
+        career: context?.career?.trim() ?? "",
+      },
+    };
   }
 
   async getProductDetail(id: number) {
