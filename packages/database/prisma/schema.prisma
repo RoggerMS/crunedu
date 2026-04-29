@@ -124,6 +124,7 @@ model User {
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
   moderationLogs          ModerationLog[]
+  moderatedReports        Report[] @relation("ReportModerator")
 
   @@index([role])
   @@index([createdAt])
@@ -530,9 +531,13 @@ model Report {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  reporter User      @relation(fields: [reporterId], references: [id])
-  post     Post?     @relation(fields: [postId], references: [id])
-  comment  Comment?  @relation(fields: [commentId], references: [id])
+  moderatedAt  DateTime? @map("moderated_at")
+  moderatedById Int?     @map("moderated_by_id")
+
+  reporter  User   @relation(fields: [reporterId], references: [id])
+  moderator User?  @relation("ReportModerator", fields: [moderatedById], references: [id])
+  post      Post?  @relation(fields: [postId], references: [id])
+  comment   Comment? @relation(fields: [commentId], references: [id])
   question Question? @relation(fields: [questionId], references: [id])
   answer   Answer?   @relation(fields: [answerId], references: [id])
   document Document? @relation(fields: [documentId], references: [id])
@@ -546,6 +551,7 @@ model Report {
   @@index([answerId])
   @@index([documentId])
   @@index([productId])
+  @@index([moderatedById])
   @@map("reports")
 }
 
