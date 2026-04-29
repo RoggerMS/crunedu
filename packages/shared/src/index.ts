@@ -31,6 +31,7 @@ export const MAIN_NAVIGATION = [
   { label: "Trámites", href: "/app/tramites" },
   { label: "Momentos", href: "/app/momentos" },
   { label: "Tienda", href: "/app/tienda" },
+  { label: "Perfil", href: "/app/perfil" },
 ] as const;
 
 export type UserRole = "USER" | "MODERATOR" | "ADMIN";
