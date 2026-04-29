@@ -4,6 +4,7 @@
 
 :root {
   color-scheme: light;
+  --font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
 html {
@@ -13,6 +14,7 @@ html {
 body {
   background: #f8fafc;
   color: #0f172a;
+  font-family: var(--font-sans);
 }
 
 * {

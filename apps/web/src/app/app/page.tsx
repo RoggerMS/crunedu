@@ -1,12 +1,13 @@
 "use client";
 
 import type { Community, CreateFeedPostPayload, PostComment } from "@crunedu/shared";
-import { Loader2, MessageCircle, Package, UsersRound } from "lucide-react";
+import { Loader2, MessageCircle, Package, Sparkles, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { useCommunities } from "@/hooks/useCommunities";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { usePosts } from "@/hooks/usePosts";
+import { Card, EmptyState, FormField, Input, PrimaryButton, SecondaryButton, Select, StatusMessage, TextArea } from "@/components/ui";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
@@ -278,11 +279,13 @@ export default function AppPage() {
       <section>
         <h1 className="text-3xl font-black tracking-tight">¿Qué está pasando en La Cantuta?</h1>
 
-        <form onSubmit={handleSubmit} className="mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-soft">
+        <Card className="mt-5">
+        <form onSubmit={handleSubmit}>
           <h2 className="text-lg font-black">¿Qué quieres compartir?</h2>
 
           <div className="mt-4 space-y-4">
-            <textarea
+            <FormField><p className="text-sm font-semibold text-slate-700">Contenido de la publicación</p><TextArea
+              id="post-content"
               value={content}
               onChange={(event) => setContent(event.target.value)}
               maxLength={5000}
@@ -290,17 +293,17 @@ export default function AppPage() {
               className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none ring-indigo-200 transition focus:ring"
               placeholder="Comparte tu duda, experiencia o aporte"
               required
-            />
+            /></FormField>
 
-            <input
+            <FormField><p className="text-sm font-semibold text-slate-700">Título (opcional)</p><Input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               maxLength={120}
               className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none ring-indigo-200 transition focus:ring"
               placeholder="Título (opcional)"
-            />
+            /></FormField>
 
-            <select
+            <FormField><p className="text-sm font-semibold text-slate-700">Selecciona una comunidad</p><Select
               value={communityId}
               onChange={(event) => setCommunityId(event.target.value)}
               className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none ring-indigo-200 transition focus:ring"
@@ -312,7 +315,7 @@ export default function AppPage() {
                   {community.name}
                 </option>
               ))}
-            </select>
+            </Select></FormField>
 
             {!isAuthenticated ? (
               <p className="text-sm text-slate-600">
@@ -323,24 +326,21 @@ export default function AppPage() {
               </p>
             ) : null}
 
-            {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
-            {successMessage ? <p className="text-sm text-emerald-600">{successMessage}</p> : null}
+            {formError ? <StatusMessage type="error">{formError}</StatusMessage> : null}
+            {successMessage ? <StatusMessage type="success">{successMessage}</StatusMessage> : null}
 
-            <button
-              type="submit"
-              disabled={!canSubmit || submitting}
-              className="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300"
-            >
+            <PrimaryButton type="submit" className="w-full sm:w-auto" disabled={!canSubmit || submitting}>
               {submitting ? <Loader2 className="animate-spin" size={16} /> : null}
               Publicar
-            </button>
+            </PrimaryButton>
           </div>
         </form>
+        </Card>
 
         <div className="mt-6 space-y-4">
-          {loading ? <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft"><p className="text-slate-500">Cargando publicaciones...</p></div> : null}
-          {error ? <div className="rounded-3xl border border-red-200 bg-red-50 p-5 text-red-700">Error: {error}</div> : null}
-          {!loading && !error && posts.length === 0 ? <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft"><p className="text-slate-700">No hay publicaciones aún.</p></div> : null}
+          {loading ? <StatusMessage type="loading">Cargando publicaciones...</StatusMessage> : null}
+          {error ? <StatusMessage type="error">Error: {error}</StatusMessage> : null}
+          {!loading && !error && posts.length === 0 ? <EmptyState title="No hay publicaciones aún" description="Sé la primera persona en compartir una duda o aporte para tu comunidad." action={<PrimaryButton onClick={() => document.getElementById("post-content")?.focus()}>Crear primera publicación</PrimaryButton>} /> : null}
 
           {!loading && !error
             ? posts.map((post) => (
@@ -417,9 +417,20 @@ export default function AppPage() {
       </section>
 
       <aside className="space-y-4">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft"><UsersRound className="text-indigo-600" /><h3 className="mt-3 font-black">Comunidades iniciales</h3><p className="mt-2 text-sm text-slate-600">General, Trámites, Apuntes y Cachimbos.</p></div>
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft"><Package className="text-indigo-600" /><h3 className="mt-3 font-black">Tienda básica</h3><p className="mt-2 text-sm text-slate-600">Productos destacados y consultas sin pagos automáticos.</p></div>
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft"><MessageCircle className="text-indigo-600" /><h3 className="mt-3 font-black">Preguntas</h3><p className="mt-2 text-sm text-slate-600">Q&A con respuestas útiles.</p></div>
+        <Card>
+          <Sparkles className="text-indigo-600" />
+          <h3 className="mt-3 font-black">Onboarding rápido</h3>
+          <p className="mt-2 text-sm text-slate-600">1) Elige tus comunidades de interés. 2) Publica tu primer aporte guiado en el feed.</p>
+          <div className="mt-3 flex flex-col gap-2">
+            <Link href="/app/comunidades" className="text-sm font-semibold text-indigo-600">
+              Elegir comunidades
+            </Link>
+            <p className="text-xs text-slate-500">Tip: empieza en Cachimbos o General.</p>
+          </div>
+        </Card>
+        <Card><UsersRound className="text-indigo-600" /><h3 className="mt-3 font-black">Comunidades iniciales</h3><p className="mt-2 text-sm text-slate-600">General, Trámites, Apuntes y Cachimbos.</p></Card>
+        <Card><Package className="text-indigo-600" /><h3 className="mt-3 font-black">Tienda básica</h3><p className="mt-2 text-sm text-slate-600">Productos destacados y consultas sin pagos automáticos.</p></Card>
+        <Card><MessageCircle className="text-indigo-600" /><h3 className="mt-3 font-black">Preguntas</h3><p className="mt-2 text-sm text-slate-600">Q&A con respuestas útiles.</p></Card>
       </aside>
     </div>
   );
