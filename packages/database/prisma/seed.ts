@@ -55,10 +55,10 @@ async function main() {
   });
 
   const communities = [
-    { name: "General", slug: "general", description: "Conversación general de la comunidad." },
-    { name: "Trámites", slug: "tramites", description: "Carnet, matrícula, comedor, constancias y procesos universitarios." },
-    { name: "Apuntes", slug: "apuntes", description: "Materiales propios, resúmenes y documentos permitidos." },
-    { name: "Cachimbos", slug: "cachimbos", description: "Guía para estudiantes nuevos." },
+    { name: "General", slug: "general", description: "Conversación general de la comunidad.", rules: "Respeta a los demás y evita spam." },
+    { name: "Trámites", slug: "tramites", description: "Carnet, matrícula, comedor, constancias y procesos universitarios.", rules: "Comparte información verificada y actualizada." },
+    { name: "Apuntes", slug: "apuntes", description: "Materiales propios, resúmenes y documentos permitidos.", rules: "Publica solo material permitido por la universidad." },
+    { name: "Cachimbos", slug: "cachimbos", description: "Guía para estudiantes nuevos.", rules: "Responde dudas básicas con respeto." },
   ];
 
   for (const community of communities) {

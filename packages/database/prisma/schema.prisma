@@ -191,6 +191,7 @@ model Community {
   name        String
   slug        String        @unique
   description String?
+  rules       String?
   avatarUrl   String?       @map("avatar_url")
   coverUrl    String?       @map("cover_url")
   createdBy   Int           @map("created_by")

@@ -44,6 +44,7 @@ export interface Community {
   name: string;
   slug: string;
   description: string | null;
+  rules?: string | null;
   avatarUrl: string | null;
   coverUrl: string | null;
   status: string;
