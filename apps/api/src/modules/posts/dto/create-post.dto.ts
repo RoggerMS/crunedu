@@ -1,15 +1,14 @@
 import { Type } from "class-transformer";
-import { IsInt, IsNotEmpty, IsString, MaxLength, MinLength } from "class-validator";
+import { IsInt, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
 export class CreatePostDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MinLength(3)
   @MaxLength(120)
-  title: string;
+  title?: string;
 
   @IsString()
-  @IsNotEmpty()
   @MinLength(5)
   @MaxLength(5000)
   content: string;
