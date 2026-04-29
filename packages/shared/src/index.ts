@@ -107,3 +107,33 @@ export interface FeedQuestion {
   answersCount: number;
   answers: QuestionAnswer[];
 }
+
+export interface SearchPostResult {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  community: FeedCommunity | null;
+}
+
+export interface SearchQuestionResult {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  community: FeedCommunity | null;
+}
+
+export interface SearchCommunityResult {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+}
+
+export interface SearchResults {
+  query: string;
+  posts: SearchPostResult[];
+  questions: SearchQuestionResult[];
+  communities: SearchCommunityResult[];
+}
