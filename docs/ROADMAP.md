@@ -1,7 +1,6 @@
-# Roadmap de desarrollo
+# Roadmap de desarrollo (estado real al 29 de abril de 2026)
 
-## Fase 1: Base local
-
+## Fase 1: Base local ✅ Completada
 - Estructura de carpetas.
 - Docker Compose.
 - Next.js.
@@ -12,78 +11,42 @@
 - MinIO.
 - Mailhog.
 
-## Fase 2: Auth
+## Fase 2: Auth 🟡 Parcial
+- ✅ Registro.
+- ✅ Login.
+- ⏳ Logout.
+- ⏳ Verificación de correo.
+- ⏳ Recuperación de contraseña.
 
-- Registro.
-- Login.
-- Logout.
-- Verificación de correo normal.
-- Recuperación de contraseña.
+## Fase 3: Perfil ⏳ Pendiente
+- ⏳ Crear perfil.
+- ⏳ Editar perfil.
+- ⏳ Avatar con MinIO.
+- ⏳ Universidad, facultad, carrera y ciclo.
 
-## Fase 3: Perfil
+## Fase 4: Feed 🟡 Parcial
+- ✅ Crear publicación.
+- ✅ Listar publicaciones.
+- ✅ Comentar.
+- ⏳ Ver publicación (detalle frontend completo).
+- ⏳ Reaccionar.
+- ⏳ Guardar.
 
-- Crear perfil.
-- Editar perfil.
-- Avatar con MinIO.
-- Universidad, facultad, carrera y ciclo.
+## Fase 5: Comunidades 🟡 Parcial
+- ✅ Listado funcional (`GET /api/communities`).
+- ✅ Frontend `/app/comunidades` conectado a datos reales.
+- ⏳ Crear comunidad.
+- ⏳ Unirse.
+- ⏳ Moderadores de comunidad.
 
-## Fase 4: Feed
+## Fase 6: Preguntas y respuestas 🟡 Parcial
+- ✅ Crear pregunta.
+- ✅ Responder.
+- ⏳ Marcar respuesta útil.
+- ⏳ Etiquetas.
 
-- Crear publicación.
-- Listar publicaciones.
-- Ver publicación.
-- Comentar.
-- Reaccionar.
-- Guardar.
-
-## Fase 5: Comunidades
-
-- Crear comunidad.
-- Unirse.
-- Publicar dentro de comunidad.
-- Moderadores de comunidad.
-
-## Fase 6: Preguntas y respuestas
-
-- Crear pregunta.
-- Responder.
-- Marcar respuesta útil.
-- Etiquetas.
-
-## Fase 7: Documentos
-
-- Subida segura.
-- Validación de formato y peso.
-- Listado.
-- Reporte.
-
-## Fase 8: Tienda básica
-
-- Categorías.
-- Productos.
-- Imágenes.
-- Favoritos.
-- `product_inquiries`.
-- Panel administrador.
-
-## Fase 9: Buscador básico
-
-- Publicaciones.
-- Preguntas.
-- Comunidades.
-- Productos.
-
-## Fase 10: Reportes y moderación
-
-- Crear reportes.
-- Revisión prioritaria.
-- Ocultar/restaurar/eliminar.
-- Logs de moderación.
-
-## Fase 11: Legal y piloto
-
-- Términos.
-- Privacidad.
-- Normas de comunidad.
-- Términos de compra.
-- Pruebas con usuarios.
+## Fase 7: Documentos ⏳ Pendiente
+## Fase 8: Tienda básica ⏳ Pendiente
+## Fase 9: Buscador básico ⏳ Pendiente
+## Fase 10: Reportes y moderación ⏳ Pendiente
+## Fase 11: Legal y piloto ⏳ Pendiente
