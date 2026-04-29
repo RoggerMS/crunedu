@@ -1,15 +1,25 @@
+import Link from "next/link";
+
+const procedures = ["Carné universitario", "Matrícula", "Comedor", "Constancias"];
+
 export default function Page() {
   return (
-    <section>
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
-        <h1 className="text-3xl font-black tracking-tight">Trámites</h1>
-        <p className="mt-2 text-slate-600">Información colaborativa sobre procesos universitarios.</p>
-      </div>
-      <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft"><h2 className="text-lg font-bold">Carnet</h2><p className="mt-2 text-sm text-slate-600">Pendiente de conectar con API.</p></div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft"><h2 className="text-lg font-bold">Matrícula</h2><p className="mt-2 text-sm text-slate-600">Pendiente de conectar con API.</p></div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft"><h2 className="text-lg font-bold">Comedor</h2><p className="mt-2 text-sm text-slate-600">Pendiente de conectar con API.</p></div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft"><h2 className="text-lg font-bold">Constancias</h2><p className="mt-2 text-sm text-slate-600">Pendiente de conectar con API.</p></div>
+    <section className="space-y-6">
+      <header className="rounded-2xl border border-slate-200 bg-white p-5">
+        <h1 className="text-2xl font-black tracking-tight">Trámites</h1>
+        <p className="mt-1 text-sm text-slate-600">Resuelve trámites con ayuda de experiencias reales de estudiantes.</p>
+      </header>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <h2 className="text-lg font-bold">Qué puedes hacer ahora</h2>
+        <div className="mt-4 space-y-3">
+          {procedures.map((procedure) => (
+            <div key={procedure} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+              <p className="text-sm font-semibold">{procedure}</p>
+              <Link href="/app/preguntas" className="text-sm text-indigo-700 hover:underline">Hacer pregunta</Link>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

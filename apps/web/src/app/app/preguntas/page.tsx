@@ -61,13 +61,13 @@ export default function QuestionsPage() {
   }
 
   return (
-    <section>
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
-        <h1 className="text-3xl font-black tracking-tight">Preguntas y respuestas</h1>
+    <section className="space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <h1 className="text-2xl font-black tracking-tight">Preguntas y respuestas</h1>
         <p className="mt-2 text-slate-600">Comparte tus dudas y ayuda a otros estudiantes.</p>
       </div>
 
-      <form onSubmit={handleCreateQuestion} className="mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-soft space-y-3">
+      <form onSubmit={handleCreateQuestion} className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
         <h2 className="text-lg font-black">Publicar una pregunta</h2>
         <input className="w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Título de la pregunta" value={title} onChange={(e) => setTitle(e.target.value)} />
         <textarea className="min-h-24 w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Describe tu duda" value={content} onChange={(e) => setContent(e.target.value)} />
@@ -79,12 +79,12 @@ export default function QuestionsPage() {
         <button disabled={submitting} className="rounded-2xl bg-brand-600 px-5 py-2 font-semibold text-white disabled:opacity-70">{submitting ? "Publicando..." : "Publicar pregunta"}</button>
       </form>
 
-      {loading ? <div className="mt-6 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-brand-600" /></div> : null}
-      {error ? <p className="mt-6 text-sm text-red-600">{error}</p> : null}
+      {loading ? <div className="flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-brand-600" /></div> : null}
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-      <div className="mt-6 space-y-4">
+      <div className="space-y-4">
         {questions.map((question) => (
-          <article key={question.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft">
+          <article key={question.id} className="rounded-2xl border border-slate-200 bg-white p-5">
             <h3 className="text-lg font-bold">{question.title}</h3>
             <p className="mt-2 text-slate-700">{question.content}</p>
             <p className="mt-2 text-xs text-slate-500">Por {buildAuthorName(question.author.firstName, question.author.lastName, question.author.email)} · {new Date(question.createdAt).toLocaleString("es-PE")}</p>
@@ -98,6 +98,12 @@ export default function QuestionsPage() {
           </article>
         ))}
       </div>
+
+      {!loading && !error && questions.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <p className="text-sm text-slate-600">No hay preguntas aún. Publica la primera pregunta para iniciar la conversación.</p>
+        </div>
+      ) : null}
     </section>
   );
 }
