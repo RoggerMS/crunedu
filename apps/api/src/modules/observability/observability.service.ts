@@ -6,6 +6,8 @@ interface EndpointMetric {
   durationsMs: number[];
 }
 
+type ProductEventName = "login_success" | "post_created" | "comment_created" | "follow" | "unfollow";
+
 @Injectable()
 export class ObservabilityService {
   private readonly endpointMetrics = new Map<string, EndpointMetric>();
@@ -13,6 +15,9 @@ export class ObservabilityService {
   private readonly productCounters = {
     postsCreated: 0,
     commentsCreated: 0,
+    loginsSuccessful: 0,
+    follows: 0,
+    unfollows: 0,
   };
   private readonly signupCohorts = new Map<string, Set<number>>();
   private readonly retainedUsersByCohort = new Map<string, Set<number>>();
@@ -31,14 +36,34 @@ export class ObservabilityService {
     this.activeSessions.set(userId, Date.now());
   }
 
-  recordPostCreated(userId: number): void {
-    this.productCounters.postsCreated += 1;
-    this.markRetentionActivity(userId);
+  recordLoginSuccessful(userId: number): void {
+    this.productCounters.loginsSuccessful += 1;
+    this.registerActiveSession(userId);
+    this.logProductEvent("login_success", userId);
   }
 
-  recordCommentCreated(userId: number): void {
+  recordPostCreated(userId: number, postId?: number): void {
+    this.productCounters.postsCreated += 1;
+    this.markRetentionActivity(userId);
+    this.logProductEvent("post_created", userId, { postId });
+  }
+
+  recordCommentCreated(userId: number, commentId?: number, postId?: number): void {
     this.productCounters.commentsCreated += 1;
     this.markRetentionActivity(userId);
+    this.logProductEvent("comment_created", userId, { commentId, postId });
+  }
+
+  recordFollow(userId: number, targetUserId: number): void {
+    this.productCounters.follows += 1;
+    this.markRetentionActivity(userId);
+    this.logProductEvent("follow", userId, { targetUserId });
+  }
+
+  recordUnfollow(userId: number, targetUserId: number): void {
+    this.productCounters.unfollows += 1;
+    this.markRetentionActivity(userId);
+    this.logProductEvent("unfollow", userId, { targetUserId });
   }
 
   registerUserInCohort(userId: number, createdAt: Date): void {
@@ -49,26 +74,112 @@ export class ObservabilityService {
   }
 
   snapshot() {
-    const endpointMetrics = Array.from(this.endpointMetrics.entries()).map(([endpoint, value]) => {
-      const p95LatencyMs = this.calculatePercentile(value.durationsMs, 95);
-      return {
-        endpoint,
-        throughput: value.total,
-        errorRate: value.total ? Number((value.errors / value.total).toFixed(4)) : 0,
-        p95LatencyMs,
-      };
-    });
+    const endpointMetrics = this.getEndpointMetrics();
 
     return {
       technical: endpointMetrics,
       product: {
         postsCreated: this.productCounters.postsCreated,
         commentsCreated: this.productCounters.commentsCreated,
+        loginsSuccessful: this.productCounters.loginsSuccessful,
+        follows: this.productCounters.follows,
+        unfollows: this.productCounters.unfollows,
         activeSessions: this.getActiveSessionsCount(),
         retentionByCohort: this.getRetentionByCohort(),
       },
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  dashboard() {
+    const endpoints = this.getEndpointMetrics();
+    const global = endpoints.reduce(
+      (acc, endpoint) => ({
+        throughput: acc.throughput + endpoint.throughput,
+        errors: acc.errors + endpoint.errors,
+      }),
+      { throughput: 0, errors: 0 },
+    );
+
+    const globalErrorRate = global.throughput ? Number((global.errors / global.throughput).toFixed(4)) : 0;
+    const alerts = this.evaluateAlerts(endpoints, globalErrorRate);
+
+    return {
+      title: "CrunEdu API - Dashboard operativo básico",
+      generatedAt: new Date().toISOString(),
+      summary: {
+        throughputTotal: global.throughput,
+        errorRateGlobal: globalErrorRate,
+        activeAlerts: alerts.length,
+      },
+      endpoints,
+      product: this.snapshot().product,
+      alerts,
+      thresholds: {
+        endpointP95LatencyMs: 800,
+        endpointErrorRate: 0.05,
+        minimumThroughputPerEndpoint: 20,
+      },
+    };
+  }
+
+  private getEndpointMetrics() {
+    return Array.from(this.endpointMetrics.entries()).map(([endpoint, value]) => {
+      const p95LatencyMs = this.calculatePercentile(value.durationsMs, 95);
+      return {
+        endpoint,
+        throughput: value.total,
+        errors: value.errors,
+        errorRate: value.total ? Number((value.errors / value.total).toFixed(4)) : 0,
+        p95LatencyMs,
+      };
+    });
+  }
+
+  private evaluateAlerts(
+    endpoints: Array<{ endpoint: string; throughput: number; errorRate: number; p95LatencyMs: number }>,
+    globalErrorRate: number,
+  ): Array<{ severity: "warning" | "critical"; metric: string; endpoint?: string; value: number; threshold: number; message: string }> {
+    const alerts: Array<{ severity: "warning" | "critical"; metric: string; endpoint?: string; value: number; threshold: number; message: string }> = [];
+
+    for (const endpoint of endpoints) {
+      if (endpoint.throughput >= 20 && endpoint.p95LatencyMs > 800) {
+        alerts.push({
+          severity: "warning",
+          metric: "p95_latency",
+          endpoint: endpoint.endpoint,
+          value: endpoint.p95LatencyMs,
+          threshold: 800,
+          message: `Latencia p95 elevada en ${endpoint.endpoint}`,
+        });
+      }
+      if (endpoint.throughput >= 20 && endpoint.errorRate > 0.05) {
+        alerts.push({
+          severity: "critical",
+          metric: "error_rate",
+          endpoint: endpoint.endpoint,
+          value: endpoint.errorRate,
+          threshold: 0.05,
+          message: `Tasa de error alta en ${endpoint.endpoint}`,
+        });
+      }
+    }
+
+    if (globalErrorRate > 0.08) {
+      alerts.push({
+        severity: "critical",
+        metric: "global_error_rate",
+        value: globalErrorRate,
+        threshold: 0.08,
+        message: "Tasa de error global crítica en la API.",
+      });
+    }
+
+    return alerts;
+  }
+
+  private logProductEvent(event: ProductEventName, userId: number, payload?: Record<string, number | undefined>): void {
+    console.log(JSON.stringify({ level: "info", message: "product_event", event, userId, payload: payload ?? {}, timestamp: new Date().toISOString() }));
   }
 
   private markRetentionActivity(userId: number): void {

@@ -91,6 +91,8 @@ export class AuthService {
       role: user.role,
     });
 
+    this.observability.recordLoginSuccessful(user.id);
+
     return {
       accessToken,
       user: this.safeUser(user),
