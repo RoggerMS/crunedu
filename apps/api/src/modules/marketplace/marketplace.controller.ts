@@ -31,8 +31,10 @@ export class MarketplaceController {
     @Query("categoryId") categoryId?: string,
     @Query("faculty") faculty?: string,
     @Query("career") career?: string,
+    @Query("cursor") cursor?: string,
+    @Query("limit") limit?: string,
   ) {
-    return this.service.listCatalog(categoryId ? Number(categoryId) : undefined, { faculty, career });
+    return this.service.listCatalog(categoryId ? Number(categoryId) : undefined, { faculty, career }, cursor ? Number(cursor) : undefined, limit ? Number(limit) : undefined);
   }
 
   @Get("products/:id")
@@ -58,8 +60,8 @@ export class MarketplaceController {
 
   @UseGuards(JwtAuthGuard)
   @Get("admin/inquiries")
-  adminInquiries() {
-    return this.service.adminListInquiries();
+  adminInquiries(@Query("cursor") cursor?: string, @Query("limit") limit?: string) {
+    return this.service.adminListInquiries(cursor ? Number(cursor) : undefined, limit ? Number(limit) : undefined);
   }
 
   @UseGuards(JwtAuthGuard)

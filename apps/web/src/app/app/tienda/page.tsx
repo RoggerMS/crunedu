@@ -16,8 +16,9 @@ type Product = {
 };
 
 type CatalogResponse = {
-  products: Product[];
+  items: Product[];
   featuredProducts: Product[];
+  nextCursor: number | null;
 };
 
 export default function TiendaPage() {
@@ -37,7 +38,7 @@ export default function TiendaPage() {
     fetch(`${API_URL}/marketplace/products?${params.toString()}`)
       .then((res) => res.json())
       .then((data: CatalogResponse) => {
-        setProducts(Array.isArray(data?.products) ? data.products : []);
+        setProducts(Array.isArray(data?.items) ? data.items : []);
         setFeaturedProducts(Array.isArray(data?.featuredProducts) ? data.featuredProducts : []);
       })
       .catch(() => {
