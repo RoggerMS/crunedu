@@ -33,6 +33,8 @@ export class PostsService {
 
   private readonly postRateLimit = new Map<number, number[]>();
   private readonly commentRateLimit = new Map<number, number[]>();
+  private readonly MAX_POST_LENGTH = 5000;
+  private readonly MAX_COMMENT_LENGTH = 1000;
 
   private readonly postSelect = {
     id: true,
@@ -121,6 +123,8 @@ export class PostsService {
     if (!community) throw new BadRequestException("La comunidad seleccionada no existe.");
 
     this.validateUsefulContent(dto.content, 20, "El contenido de la publicación debe aportar más contexto útil.");
+    this.validateExtremeSize(dto.content, this.MAX_POST_LENGTH, "La publicación es demasiado extensa para el MVP.");
+    await this.preventRepeatedPostContent(userId, dto.content);
     const title = dto.title?.trim() ?? "";
 
     const post = await this.prisma.post.create({ data: { title, content: dto.content.trim(), communityId: dto.communityId, userId }, select: this.postSelect });
@@ -149,6 +153,8 @@ export class PostsService {
     await this.ensurePublishedPost(postId);
     this.checkRateLimit(this.commentRateLimit, userId, 8, 60_000, "Estás comentando demasiado rápido. Intenta de nuevo en un minuto.");
     this.validateUsefulContent(dto.content, 12, "El comentario es muy corto. Agrega más detalle útil.");
+    this.validateExtremeSize(dto.content, this.MAX_COMMENT_LENGTH, "El comentario es demasiado extenso.");
+    await this.preventRepeatedCommentContent(userId, postId, dto.content);
     const comment = await this.prisma.comment.create({ data: { postId, userId, content: dto.content.trim() }, select: this.commentSelect });
     this.observability.recordCommentCreated(userId, comment.id, postId);
     return this.mapCommentResponse(comment);
@@ -173,6 +179,44 @@ export class PostsService {
     if (normalizedContent.length < minCharacters || usefulWords.length < 3) throw new BadRequestException(message);
   }
 
+
+  private validateExtremeSize(content: string, maxLength: number, message: string): void {
+    if (content.trim().length > maxLength) throw new BadRequestException(message);
+  }
+
+  private async preventRepeatedPostContent(userId: number, content: string): Promise<void> {
+    const normalized = content.trim().toLowerCase();
+    const recentPost = await this.prisma.post.findFirst({
+      where: { userId, status: "PUBLISHED" },
+      orderBy: { createdAt: "desc" },
+      select: { content: true, createdAt: true },
+    });
+
+    if (!recentPost) return;
+    const isDuplicate = recentPost.content.trim().toLowerCase() === normalized;
+    const createdWithinTwoMinutes = Date.now() - recentPost.createdAt.getTime() <= 120_000;
+    if (isDuplicate && createdWithinTwoMinutes) {
+      console.warn(JSON.stringify({ level: "warn", message: "spam_blocked", type: "duplicate_post", userId, timestamp: new Date().toISOString() }));
+      throw new BadRequestException("No publiques contenido repetido en tan poco tiempo.");
+    }
+  }
+
+  private async preventRepeatedCommentContent(userId: number, postId: number, content: string): Promise<void> {
+    const normalized = content.trim().toLowerCase();
+    const recentComment = await this.prisma.comment.findFirst({
+      where: { userId, postId, status: "PUBLISHED" },
+      orderBy: { createdAt: "desc" },
+      select: { content: true, createdAt: true },
+    });
+
+    if (!recentComment) return;
+    const isDuplicate = recentComment.content.trim().toLowerCase() === normalized;
+    const createdWithinTwoMinutes = Date.now() - recentComment.createdAt.getTime() <= 120_000;
+    if (isDuplicate && createdWithinTwoMinutes) {
+      console.warn(JSON.stringify({ level: "warn", message: "spam_blocked", type: "duplicate_comment", userId, postId, timestamp: new Date().toISOString() }));
+      throw new BadRequestException("No repitas el mismo comentario en tan poco tiempo.");
+    }
+  }
   private async rankRelevant(posts: PostWithRelations[], userId?: number): Promise<PostWithRelations[]> {
     const affinityByCommunity = await this.getCommunityAffinity(userId);
     const now = Date.now();

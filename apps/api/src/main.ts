@@ -18,7 +18,7 @@ async function bootstrap() {
     origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
     credentials: true,
   });
-  app.useGlobalGuards(new RateLimitGuard());
+  app.useGlobalGuards(app.get(RateLimitGuard));
   app.useGlobalInterceptors(new TimeoutInterceptor());
   app.useGlobalInterceptors(new ObservabilityInterceptor(app.get(ObservabilityService)));
   app.useGlobalFilters(new ApiExceptionFilter());

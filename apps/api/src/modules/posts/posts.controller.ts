@@ -6,6 +6,7 @@ import { CreatePostCommentDto } from "./dto/create-post-comment.dto";
 import { UpdatePostDto } from "./dto/update-post.dto";
 import { JwtAuthGuard, JwtPayload } from "./jwt-auth.guard";
 import { PostsService } from "./posts.service";
+import { RateLimit } from "../core/rate-limit.decorator";
 import { GetPostsQueryDto } from "./dto/get-posts-query.dto";
 
 interface AuthenticatedRequest extends Request { user: JwtPayload }
@@ -26,6 +27,7 @@ export class PostsController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
+  @RateLimit({ windowMs: 60_000, maxPerIp: 10, maxPerUser: 3, message: "Límite alcanzado para publicar. Espera 1 minuto e inténtalo de nuevo." })
   create(@Body() dto: CreatePostDto, @Req() request: AuthenticatedRequest) { return this.service.create(dto, request.user.sub); }
 
   @Get(":id/comments")
@@ -33,6 +35,7 @@ export class PostsController {
 
   @Post(":id/comments")
   @UseGuards(JwtAuthGuard)
+  @RateLimit({ windowMs: 60_000, maxPerIp: 20, maxPerUser: 8, message: "Límite alcanzado para comentar. Espera 1 minuto e inténtalo de nuevo." })
   createComment(@Param("id", ParseIntPipe) id: number, @Body() dto: CreatePostCommentDto, @Req() request: AuthenticatedRequest) { return this.service.createComment(id, dto, request.user.sub); }
 
   @Patch(":id")
