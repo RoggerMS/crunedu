@@ -1,4 +1,4 @@
-import { NotFoundException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { UpdateMeDto } from "./dto/update-me.dto";
 
@@ -25,9 +25,7 @@ export class UsersService {
       },
     });
 
-    if (!user) {
-      throw new NotFoundException("Usuario no encontrado.");
-    }
+    if (!user) throw new NotFoundException("Usuario no encontrado.");
 
     return {
       id: user.id,
@@ -39,6 +37,87 @@ export class UsersService {
       career: user.profile?.career?.name ?? "",
       cycle: user.profile?.cycle ?? "",
     };
+  }
+
+  async getUserProfile(targetUserId: number, viewerUserId?: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        profile: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    if (!user) throw new NotFoundException("Usuario no encontrado.");
+
+    const [isFollowing, isFriend] = viewerUserId
+      ? await Promise.all([
+          this.prisma.follow.findUnique({ where: { followerId_followingId: { followerId: viewerUserId, followingId: targetUserId } } }),
+          this.prisma.follow.findFirst({ where: { followerId: viewerUserId, followingId: targetUserId, following: { followers: { some: { followerId: targetUserId, followingId: viewerUserId } } } } }),
+        ])
+      : [null, null];
+
+    return {
+      id: user.id,
+      fullName: `${user.profile?.firstName ?? ""} ${user.profile?.lastName ?? ""}`.trim() || "Estudiante",
+      isFollowing: Boolean(isFollowing),
+      isFriend: Boolean(isFriend),
+    };
+  }
+
+  async followUser(currentUserId: number, targetUserId: number) {
+    if (currentUserId === targetUserId) throw new BadRequestException("No puedes seguirte a ti mismo.");
+
+    await this.ensureUserExists(targetUserId);
+    await this.prisma.follow.upsert({
+      where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } },
+      create: { followerId: currentUserId, followingId: targetUserId },
+      update: {},
+    });
+
+    return this.getRelationship(currentUserId, targetUserId);
+  }
+
+  async unfollowUser(currentUserId: number, targetUserId: number) {
+    await this.prisma.follow.deleteMany({ where: { followerId: currentUserId, followingId: targetUserId } });
+    return this.getRelationship(currentUserId, targetUserId);
+  }
+
+  async getFollowers(userId: number, viewerUserId?: number) {
+    await this.ensureUserExists(userId);
+    const followers = await this.prisma.follow.findMany({
+      where: { followingId: userId },
+      select: { follower: { select: { id: true, profile: { select: { firstName: true, lastName: true } } } } },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return Promise.all(followers.map(async (item) => ({ ...(await this.getRelationship(viewerUserId ?? 0, item.follower.id, viewerUserId !== undefined)), id: item.follower.id, fullName: `${item.follower.profile?.firstName ?? ""} ${item.follower.profile?.lastName ?? ""}`.trim() || "Estudiante" })));
+  }
+
+  async getFollowing(userId: number, viewerUserId?: number) {
+    await this.ensureUserExists(userId);
+    const following = await this.prisma.follow.findMany({
+      where: { followerId: userId },
+      select: { following: { select: { id: true, profile: { select: { firstName: true, lastName: true } } } } },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return Promise.all(following.map(async (item) => ({ ...(await this.getRelationship(viewerUserId ?? 0, item.following.id, viewerUserId !== undefined)), id: item.following.id, fullName: `${item.following.profile?.firstName ?? ""} ${item.following.profile?.lastName ?? ""}`.trim() || "Estudiante" })));
+  }
+
+  private async getRelationship(currentUserId: number, targetUserId: number, hasViewer = true) {
+    if (!hasViewer || !currentUserId) return { isFollowing: false, isFriend: false };
+    const [isFollowing, reverse] = await Promise.all([
+      this.prisma.follow.findUnique({ where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } } }),
+      this.prisma.follow.findUnique({ where: { followerId_followingId: { followerId: targetUserId, followingId: currentUserId } } }),
+    ]);
+
+    return { isFollowing: Boolean(isFollowing), isFriend: Boolean(isFollowing && reverse) };
+  }
+
+  private async ensureUserExists(userId: number) {
+    const exists = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+    if (!exists) throw new NotFoundException("Usuario no encontrado.");
   }
 
   async updateMe(userId: number, dto: UpdateMeDto) {
