@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { PAGINATION_LIMITS } from "../common/pagination.constants";
 
 type CatalogContext = {
   faculty?: string;
@@ -37,7 +38,8 @@ export class MarketplaceService {
     }));
   }
 
-  async listCatalog(categoryId?: number, context?: CatalogContext) {
+  async listCatalog(categoryId?: number, context?: CatalogContext, cursor?: number, limit?: number) {
+    const safeLimit = Number.isFinite(limit) && (limit as number) > 0 ? Math.min(Math.floor(limit as number), PAGINATION_LIMITS.marketplaceProducts.max) : PAGINATION_LIMITS.marketplaceProducts.default;
     const contextFilters = this.buildContextFilters(context);
 
     const products = await this.prisma.product.findMany({
@@ -45,8 +47,10 @@ export class MarketplaceService {
         status: "ACTIVE",
         ...(categoryId ? { categoryId } : {}),
       },
-      orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+      orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: { category: true },
+      take: safeLimit + 1,
     });
 
     const featuredProducts = await this.prisma.product.findMany({
@@ -56,14 +60,16 @@ export class MarketplaceService {
         ...(categoryId ? { categoryId } : {}),
         ...(contextFilters.length > 0 ? { AND: contextFilters } : {}),
       },
-      orderBy: [{ createdAt: "desc" }],
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       include: { category: true },
-      take: 6,
+      take: PAGINATION_LIMITS.marketplaceFeaturedProducts.default,
     });
+    const nextCursor = products.length > safeLimit ? products[safeLimit].id : null;
 
     return {
-      products,
+      items: products.slice(0, safeLimit),
       featuredProducts,
+      nextCursor,
       context: {
         faculty: context?.faculty?.trim() ?? "",
         career: context?.career?.trim() ?? "",
@@ -108,14 +114,19 @@ export class MarketplaceService {
     });
   }
 
-  async adminListInquiries() {
-    return this.prisma.productInquiry.findMany({
-      orderBy: { createdAt: "desc" },
+  async adminListInquiries(cursor?: number, limit?: number) {
+    const safeLimit = Number.isFinite(limit) && (limit as number) > 0 ? Math.min(Math.floor(limit as number), PAGINATION_LIMITS.marketplaceInquiries.max) : PAGINATION_LIMITS.marketplaceInquiries.default;
+    const items = await this.prisma.productInquiry.findMany({
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      take: safeLimit + 1,
       include: {
         product: { select: { id: true, title: true } },
         user: { select: { id: true, email: true } },
       },
     });
+    const nextCursor = items.length > safeLimit ? items[safeLimit].id : null;
+    return { items: items.slice(0, safeLimit), nextCursor };
   }
 
   async adminUpsertProduct(user: { sub: number; role: string }, payload: any) {

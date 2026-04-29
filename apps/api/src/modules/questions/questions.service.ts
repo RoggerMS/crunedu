@@ -2,6 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateAnswerDto } from "./dto/create-answer.dto";
 import { CreateQuestionDto } from "./dto/create-question.dto";
+import { GetQuestionsQueryDto } from "./dto/get-questions-query.dto";
+import { PAGINATION_LIMITS } from "../common/pagination.constants";
 
 @Injectable()
 export class QuestionsService {
@@ -75,14 +77,22 @@ export class QuestionsService {
     };
   }
 
-  async index() {
+  async index(query: GetQuestionsQueryDto) {
+    const limit = query.limit ?? PAGINATION_LIMITS.questions.default;
+    const safeLimit = Math.min(limit, PAGINATION_LIMITS.questions.max);
     const questions = await this.prisma.question.findMany({
       where: { status: "PUBLISHED" },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+      take: safeLimit + 1,
       select: this.questionSelect,
     });
 
-    return questions.map((question: (typeof questions)[number]) => this.mapQuestion(question));
+    const nextCursor = questions.length > safeLimit ? questions[safeLimit].id : null;
+    return {
+      items: questions.slice(0, safeLimit).map((question: (typeof questions)[number]) => this.mapQuestion(question)),
+      nextCursor,
+    };
   }
 
   async create(dto: CreateQuestionDto, userId: number) {

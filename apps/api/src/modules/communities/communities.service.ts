@@ -59,34 +59,25 @@ export class CommunitiesService {
     return { ...community, membersCount: community._count.members, postsCount: community._count.posts };
   }
 
-  async communityPosts(communityId: number, page: number, pageSize: number) {
+  async communityPosts(communityId: number, cursor?: number, limit?: number) {
     await this.ensureCommunityExists(communityId);
-    const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
-    const safePageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.min(Math.floor(pageSize), PAGINATION_LIMITS.communityPosts.max) : PAGINATION_LIMITS.communityPosts.default;
-    const skip = (safePage - 1) * safePageSize;
-
-    const [total, posts] = await this.prisma.$transaction([
-      this.prisma.post.count({ where: { communityId, status: "PUBLISHED" } }),
-      this.prisma.post.findMany({
-        where: { communityId, status: "PUBLISHED" },
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: safePageSize,
-        select: {
-          id: true, title: true, content: true, createdAt: true,
-          user: { select: { id: true, email: true, profile: { select: { firstName: true, lastName: true } } } },
-          community: { select: { id: true, name: true, slug: true } },
-          _count: { select: { comments: true } },
-        },
-      }),
-    ]);
+    const safeLimit = Number.isFinite(limit) && (limit as number) > 0 ? Math.min(Math.floor(limit as number), PAGINATION_LIMITS.communityPosts.max) : PAGINATION_LIMITS.communityPosts.default;
+    const posts = await this.prisma.post.findMany({
+      where: { communityId, status: "PUBLISHED" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      take: safeLimit + 1,
+      select: {
+        id: true, title: true, content: true, createdAt: true,
+        user: { select: { id: true, email: true, profile: { select: { firstName: true, lastName: true } } } },
+        community: { select: { id: true, name: true, slug: true } },
+        _count: { select: { comments: true } },
+      },
+    });
+    const nextCursor = posts.length > safeLimit ? posts[safeLimit].id : null;
 
     return {
-      page: safePage,
-      pageSize: safePageSize,
-      total,
-      totalPages: Math.ceil(total / safePageSize),
-      data: posts.map((post: any) => ({
+      items: posts.slice(0, safeLimit).map((post: any) => ({
         id: post.id,
         title: post.title,
         content: post.content,
@@ -100,6 +91,7 @@ export class CommunitiesService {
         community: post.community,
         commentsCount: post._count.comments,
       })),
+      nextCursor,
     };
   }
 

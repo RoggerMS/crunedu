@@ -38,6 +38,23 @@ Response `200`:
 }
 ```
 
+## Contrato común de paginación (cursor-based)
+
+Todos los listados paginados usan:
+
+- `cursor`: id numérico del último elemento recibido.
+- `limit`: cantidad solicitada (`max` por endpoint).
+- `nextCursor`: id para la siguiente página o `null` si no hay más.
+
+Respuesta estándar:
+
+```json
+{
+  "items": [],
+  "nextCursor": 123
+}
+```
+
 ## Posts (feed)
 
 ### GET `/posts`
@@ -45,7 +62,8 @@ Response `200`:
 Response `200`:
 
 ```json
-[
+{
+  "items": [
   {
     "id": 7,
     "title": "Post integración",
@@ -64,7 +82,9 @@ Response `200`:
     },
     "commentsCount": 1
   }
-]
+  ],
+  "nextCursor": null
+}
 ```
 
 ### POST `/posts` (JWT)
@@ -109,7 +129,8 @@ Response `201`:
 Response `200`:
 
 ```json
-[
+{
+  "items": [
   {
     "id": 3,
     "content": "Comentario de integración",
@@ -157,7 +178,8 @@ Response `201`:
 Response `200`:
 
 ```json
-[
+{
+  "items": [
   {
     "id": 2,
     "title": "Pregunta integración",
@@ -178,7 +200,9 @@ Response `200`:
     "answersCount": 0,
     "answers": []
   }
-]
+  ],
+  "nextCursor": null
+}
 ```
 
 ### POST `/questions` (JWT)
@@ -219,3 +243,63 @@ Response `201`:
 ```
 
 > Nota: Los IDs, timestamps y correo de pruebas cambian por ejecución.
+
+## Communities
+
+### GET `/communities/:id/posts`
+
+Query params:
+
+- `cursor` (opcional)
+- `limit` (opcional, máximo 50)
+
+Response `200`:
+
+```json
+{
+  "items": [],
+  "nextCursor": null
+}
+```
+
+## Marketplace
+
+### GET `/marketplace/products`
+
+Query params:
+
+- `cursor` (opcional)
+- `limit` (opcional, máximo 40)
+- `categoryId` (opcional)
+- `faculty` (opcional)
+- `career` (opcional)
+
+Response `200`:
+
+```json
+{
+  "items": [],
+  "featuredProducts": [],
+  "nextCursor": null,
+  "context": {
+    "faculty": "",
+    "career": ""
+  }
+}
+```
+
+### GET `/marketplace/admin/inquiries` (JWT)
+
+Query params:
+
+- `cursor` (opcional)
+- `limit` (opcional, máximo 50)
+
+Response `200`:
+
+```json
+{
+  "items": [],
+  "nextCursor": null
+}
+```

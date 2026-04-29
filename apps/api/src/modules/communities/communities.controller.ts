@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  ParseIntPipe,
-  Post,
-  Req,
-  UseGuards,
-} from "@nestjs/common";
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { Request } from "express";
 import { JwtAuthGuard, JwtPayload } from "../posts/jwt-auth.guard";
 import { CommunitiesService } from "./communities.service";
@@ -39,12 +30,10 @@ export class CommunitiesController {
   @Get(":id/posts")
   communityPosts(
     @Param("id", ParseIntPipe) id: number,
-    @Req() request: Request,
+    @Query("cursor") cursor?: string,
+    @Query("limit") limit?: string,
   ) {
-    const page = Number(request.query.page ?? 1);
-    const pageSize = Number(request.query.pageSize ?? 10);
-
-    return this.service.communityPosts(id, page, pageSize);
+    return this.service.communityPosts(id, cursor ? Number(cursor) : undefined, limit ? Number(limit) : undefined);
   }
 
   @Post(":id/join")

@@ -14,7 +14,7 @@ function buildAuthorName(firstName: string | null, lastName: string | null, emai
 }
 
 export default function QuestionsPage() {
-  const { questions, loading, error, reload } = useQuestions();
+  const { questions, loading, loadingMore, hasMore, error, reload, loadMore } = useQuestions();
   const { communities } = useCommunities();
   const { accessToken, isAuthenticated } = useAccessToken();
   const [title, setTitle] = useState("");
@@ -102,6 +102,13 @@ export default function QuestionsPage() {
       {!loading && !error && questions.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <p className="text-sm text-slate-600">No hay preguntas aún. Publica la primera pregunta para iniciar la conversación.</p>
+        </div>
+      ) : null}
+      {hasMore ? (
+        <div className="flex justify-center">
+          <button onClick={() => loadMore()} disabled={loadingMore} className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-60">
+            {loadingMore ? "Cargando..." : "Cargar más"}
+          </button>
         </div>
       ) : null}
     </section>
