@@ -70,6 +70,7 @@ export class UsersService {
   }
 
   async followUser(currentUserId: number, targetUserId: number) {
+    await this.preventFollowSpam(currentUserId, targetUserId);
     if (currentUserId === targetUserId) throw new BadRequestException("No puedes seguirte a ti mismo.");
 
     await this.ensureUserExists(targetUserId);
@@ -109,6 +110,22 @@ export class UsersService {
     });
 
     return Promise.all(following.map(async (item) => ({ ...(await this.getRelationship(viewerUserId ?? 0, item.following.id, viewerUserId !== undefined)), id: item.following.id, fullName: `${item.following.profile?.firstName ?? ""} ${item.following.profile?.lastName ?? ""}`.trim() || "Estudiante" })));
+  }
+
+
+  private async preventFollowSpam(currentUserId: number, targetUserId: number): Promise<void> {
+    const recentFollow = await this.prisma.follow.findFirst({
+      where: { followerId: currentUserId, followingId: targetUserId },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+
+    if (!recentFollow) return;
+    const createdWithinThirtySeconds = Date.now() - recentFollow.createdAt.getTime() <= 30_000;
+    if (createdWithinThirtySeconds) {
+      console.warn(JSON.stringify({ level: "warn", message: "spam_blocked", type: "duplicate_follow", userId: currentUserId, targetUserId, timestamp: new Date().toISOString() }));
+      throw new BadRequestException("Espera unos segundos antes de repetir esta acción.");
+    }
   }
 
   private async getRelationship(currentUserId: number, targetUserId: number, hasViewer = true) {

@@ -3,6 +3,7 @@ import { Request } from "express";
 import { JwtAuthGuard, JwtPayload } from "../posts/jwt-auth.guard";
 import { UpdateMeDto } from "./dto/update-me.dto";
 import { UsersService } from "./users.service";
+import { RateLimit } from "../core/rate-limit.decorator";
 
 interface AuthenticatedRequest extends Request {
   user?: JwtPayload;
@@ -31,6 +32,7 @@ export class UsersController {
 
   @Post("follows/:userId")
   @UseGuards(JwtAuthGuard)
+  @RateLimit({ windowMs: 60_000, maxPerIp: 20, maxPerUser: 12, message: "Estás siguiendo cuentas demasiado rápido. Espera 1 minuto." })
   follow(@Param("userId", ParseIntPipe) userId: number, @Req() request: AuthenticatedRequest) {
     return this.service.followUser(request.user!.sub, userId);
   }
