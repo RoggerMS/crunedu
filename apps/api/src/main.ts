@@ -5,6 +5,8 @@ import { RateLimitGuard } from "./modules/core/rate-limit.guard";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
+import { ObservabilityInterceptor } from "./modules/observability/observability.interceptor";
+import { ObservabilityService } from "./modules/observability/observability.service";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -18,6 +20,7 @@ async function bootstrap() {
   });
   app.useGlobalGuards(new RateLimitGuard());
   app.useGlobalInterceptors(new TimeoutInterceptor());
+  app.useGlobalInterceptors(new ObservabilityInterceptor(app.get(ObservabilityService)));
   app.useGlobalFilters(new ApiExceptionFilter());
 
   app.useGlobalPipes(

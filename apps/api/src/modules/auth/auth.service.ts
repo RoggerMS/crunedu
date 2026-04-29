@@ -9,12 +9,14 @@ import { randomBytes } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
+import { ObservabilityService } from "../observability/observability.service";
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly observability: ObservabilityService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -53,6 +55,7 @@ export class AuthService {
         profile: true,
       },
     });
+    this.observability.registerUserInCohort(user.id, user.createdAt);
 
     return {
       message:
