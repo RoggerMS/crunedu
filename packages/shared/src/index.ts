@@ -85,3 +85,23 @@ export interface CreateFeedPostPayload {
   content: string;
   communityId: number;
 }
+
+
+export interface QuestionAnswer {
+  id: number;
+  content: string;
+  createdAt: string;
+  author: FeedAuthor;
+}
+
+export interface FeedQuestion {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  isResolved: boolean;
+  author: FeedAuthor;
+  community: FeedCommunity | null;
+  answersCount: number;
+  answers: QuestionAnswer[];
+}
