@@ -9,6 +9,7 @@ import { PostResponseDto } from "./dto/post-response.dto";
 import { PostCommentResponseDto } from "./dto/post-comment-response.dto";
 import { UpdatePostDto } from "./dto/update-post.dto";
 import { GetPostsQueryDto } from "./dto/get-posts-query.dto";
+import { ObservabilityService } from "../observability/observability.service";
 
 interface FeedEventPayload {
   postId?: number;
@@ -28,7 +29,7 @@ type PostWithRelations = {
 
 @Injectable()
 export class PostsService {
-  constructor(private readonly prisma: PrismaService, private readonly cache: HotReadCacheService, private readonly jobs: JobsService) {}
+  constructor(private readonly prisma: PrismaService, private readonly cache: HotReadCacheService, private readonly jobs: JobsService, private readonly observability: ObservabilityService) {}
 
   private readonly postRateLimit = new Map<number, number[]>();
   private readonly commentRateLimit = new Map<number, number[]>();
@@ -126,6 +127,7 @@ export class PostsService {
     this.cache.invalidate("hot:feed:initial");
     await this.jobs.enqueueNotification({ type: "POST_CREATED", userId, postId: post.id, communityId: dto.communityId });
     await this.jobs.enqueueRankingRecalculation({ trigger: "POST_CREATED", postId: post.id });
+    this.observability.recordPostCreated(userId);
     this.registerFeedEvent("create_post", userId, { postId: post.id });
     return this.mapPostResponse(post);
   }
@@ -148,6 +150,7 @@ export class PostsService {
     this.checkRateLimit(this.commentRateLimit, userId, 8, 60_000, "Estás comentando demasiado rápido. Intenta de nuevo en un minuto.");
     this.validateUsefulContent(dto.content, 12, "El comentario es muy corto. Agrega más detalle útil.");
     const comment = await this.prisma.comment.create({ data: { postId, userId, content: dto.content.trim() }, select: this.commentSelect });
+    this.observability.recordCommentCreated(userId);
     return this.mapCommentResponse(comment);
   }
 
