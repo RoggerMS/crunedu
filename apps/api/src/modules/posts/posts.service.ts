@@ -1,7 +1,9 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreatePostDto } from "./dto/create-post.dto";
+import { CreatePostCommentDto } from "./dto/create-post-comment.dto";
 import { PostResponseDto } from "./dto/post-response.dto";
+import { PostCommentResponseDto } from "./dto/post-comment-response.dto";
 import { UpdatePostDto } from "./dto/update-post.dto";
 
 @Injectable()
@@ -39,6 +41,24 @@ export class PostsService {
     },
   } as const;
 
+  private readonly commentSelect = {
+    id: true,
+    content: true,
+    createdAt: true,
+    user: {
+      select: {
+        id: true,
+        email: true,
+        profile: {
+          select: {
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    },
+  } as const;
+
   private mapPostResponse(post: {
     id: number;
     title: string;
@@ -61,6 +81,25 @@ export class PostsService {
       },
       community: post.community,
       commentsCount: post._count?.comments ?? 0,
+    };
+  }
+
+  private mapCommentResponse(comment: {
+    id: number;
+    content: string;
+    createdAt: Date;
+    user: { id: number; email: string; profile: { firstName: string | null; lastName: string | null } | null };
+  }): PostCommentResponseDto {
+    return {
+      id: comment.id,
+      content: comment.content,
+      createdAt: comment.createdAt,
+      author: {
+        id: comment.user.id,
+        email: comment.user.email,
+        firstName: comment.user.profile?.firstName ?? null,
+        lastName: comment.user.profile?.lastName ?? null,
+      },
     };
   }
 
@@ -181,5 +220,43 @@ export class PostsService {
     });
 
     return { message: "Publicación eliminada correctamente." };
+  }
+
+  async getComments(postId: number): Promise<PostCommentResponseDto[]> {
+    await this.ensurePublishedPost(postId);
+
+    const comments = await this.prisma.comment.findMany({
+      where: { postId, status: "PUBLISHED" },
+      orderBy: { createdAt: "asc" },
+      select: this.commentSelect,
+    });
+
+    return comments.map((comment: (typeof comments)[number]) => this.mapCommentResponse(comment));
+  }
+
+  async createComment(postId: number, dto: CreatePostCommentDto, userId: number): Promise<PostCommentResponseDto> {
+    await this.ensurePublishedPost(postId);
+
+    const comment = await this.prisma.comment.create({
+      data: {
+        postId,
+        userId,
+        content: dto.content.trim(),
+      },
+      select: this.commentSelect,
+    });
+
+    return this.mapCommentResponse(comment);
+  }
+
+  private async ensurePublishedPost(postId: number): Promise<void> {
+    const post = await this.prisma.post.findFirst({
+      where: { id: postId, status: "PUBLISHED" },
+      select: { id: true },
+    });
+
+    if (!post) {
+      throw new NotFoundException("Publicación no encontrada.");
+    }
   }
 }
