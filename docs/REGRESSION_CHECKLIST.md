@@ -57,15 +57,44 @@
 | Bloqueos por rate limit generan `rate_limit_blocked`. | ⚠️ | Manual | Smoke valida `429`, pero no inspecciona stdout estructurado en aserción formal. |
 | Bloqueos por spam generan `spam_blocked`. | ⚠️ | Manual | Requiere test de captura de logs o test e2e con hook de logger. |
 
-## 7) Tienda (marketplace MVP)
+## 7) Tienda (Marketplace MVP)
 
 | Punto crítico | Estado | Cobertura | Nota |
 |---|---|---|---|
-| `GET /api/marketplace/products` devuelve listado real de productos activos. | ✅ | Manual | Verificar que `items` responda lista y que filtros por contexto (`faculty`, `career`) afecten listado y destacados. |
-| `GET /api/marketplace/products/:id` devuelve detalle de producto activo. | ✅ | Manual | Debe responder categoría y detalle para ID válido; para ID no existente debe responder mensaje claro. |
-| `POST /api/marketplace/products/:id/inquiries` con JWT registra interés. | ✅ | Manual | Debe crear consulta con campos mínimos requeridos y mostrar confirmación en UI. |
-| Página `/app/tienda` maneja error de red con mensaje en español y opción de reintento. | ✅ | Manual | Validar estado de error desconectando API o usando URL inválida temporal. |
-| Página `/app/tienda/[id]` maneja carga, error y éxito con mensajes claros en español. | ✅ | Manual | Validar casos: carga inicial, producto no disponible, interés enviado, error al enviar interés. |
+| `GET /api/marketplace/products` devuelve `items`, `featuredProducts`, `nextCursor` y `context`. | ⚠️ | Manual | Validar con productos activos creados por admin o datos locales existentes. |
+| Filtros `faculty` y `career` se aplican igual en listado y destacados. | ⚠️ | Manual | Con ambos filtros, el backend debe buscar coincidencias por cualquiera de los términos en título, descripción o categoría. |
+| `GET /api/marketplace/products/:id` devuelve detalle de producto activo. | ⚠️ | Manual | Para ID inválido/no existente debe mostrar un error claro y permitir reintentar en UI. |
+| `POST /api/marketplace/products/:id/inquiries` sin JWT responde `401`. | ⚠️ | Manual | La UI debe pedir iniciar sesión para enviar interés. |
+| `POST /api/marketplace/products/:id/inquiries` con JWT registra interés con nombre, celular, mensaje y método. | ⚠️ | Manual | La UI debe mostrar confirmación clara de éxito. |
+| Errores de red en `/app/tienda` y `/app/tienda/[id]` muestran mensaje accionable y botón `Reintentar`. | ⚠️ | Manual | Probar deteniendo solo API o usando temporalmente una URL API inválida. |
+
+Checklist manual verificable:
+
+- Listado de productos:
+  - Abrir `http://localhost:3000/app/tienda`.
+  - Confirmar estado de carga inicial.
+  - Confirmar que los productos activos aparecen con título, categoría, descripción, precio y enlace `Ver detalle`.
+  - Confirmar que si no hay productos se muestra `No hay productos publicados`.
+  - Confirmar que destacados, si existen, coinciden con el mismo contexto usado por el listado.
+- Detalle de producto:
+  - Abrir un producto desde `Ver detalle`.
+  - Confirmar estado de carga inicial.
+  - Confirmar título, categoría, descripción y precio.
+  - Abrir un ID inexistente, por ejemplo `/app/tienda/999999`, y confirmar mensaje de error claro.
+- Envío de interés/consulta:
+  - Sin sesión, presionar `Registrar interés` y confirmar mensaje para iniciar sesión.
+  - Con sesión, completar nombre, celular peruano de 9 dígitos, mensaje y preferencia de contacto.
+  - Enviar y confirmar mensaje `Interés registrado...`.
+  - Verificar que campos inválidos muestren errores de formulario en español.
+- Errores de red:
+  - Detener temporalmente solo la API o configurar temporalmente `NEXT_PUBLIC_API_URL` a una URL inválida.
+  - Abrir `/app/tienda` y confirmar mensaje de reconexión/reintento.
+  - Abrir `/app/tienda/:id` y confirmar mensaje de error con botón `Reintentar`.
+- API directa:
+  - `GET /api/marketplace/products` debe responder `200`.
+  - `GET /api/marketplace/products/:id` con producto activo debe responder `200`.
+  - `POST /api/marketplace/products/:id/inquiries` sin token debe responder `401`.
+  - `POST /api/marketplace/products/:id/inquiries` con token válido debe responder `201`.
 
 ## Ejecución CI local
 

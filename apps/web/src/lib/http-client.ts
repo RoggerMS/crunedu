@@ -31,8 +31,12 @@ function messageByStatus(status: number): string {
 }
 
 async function extractApiError(response: Response): Promise<HttpClientError> {
-  const body = (await response.json().catch(() => null)) as { message?: string | string[]; requestId?: string } | null;
-  const rawMessage = body?.message;
+  const body = (await response.json().catch(() => null)) as {
+    message?: string | string[];
+    error?: string | { message?: string | string[] };
+    requestId?: string;
+  } | null;
+  const rawMessage = body?.message ?? (typeof body?.error === "object" ? body.error.message : undefined);
   const message = Array.isArray(rawMessage) ? rawMessage.join(" ") : rawMessage;
   const fallback = messageByStatus(response.status);
   const requestId = body?.requestId ?? response.headers.get("x-request-id") ?? undefined;

@@ -1,42 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useAccessToken } from "@/hooks/useAccessToken";
+import { useCallback, useEffect, useState } from "react";
 import { PageState, PrimaryButton } from "@/components/ui";
-import { getStoreCatalog } from "@/lib/api-helpers";
+import { getStoreCatalog, type StoreProduct } from "@/lib/api-helpers";
 import { mapApiError } from "@/lib/api";
 
-type Product = {
-  id: number;
-  title: string;
-  description: string;
-  price: string;
-  isFeatured: boolean;
-  category: { name: string };
-};
-
-
 export default function TiendaPage() {
-  const { accessToken } = useAccessToken();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<StoreProduct[]>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<StoreProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function loadProducts() {
-    const params = new URLSearchParams();
-
+  const loadProducts = useCallback(() => {
     const faculty = typeof window !== "undefined" ? localStorage.getItem("profile_faculty") : "";
     const career = typeof window !== "undefined" ? localStorage.getItem("profile_career") : "";
-
-    if (faculty) params.set("faculty", faculty);
-    if (career) params.set("career", career);
 
     setLoading(true);
     setError(null);
 
-    getStoreCatalog(params)
+    getStoreCatalog({ faculty, career })
       .then((data) => {
         setProducts(Array.isArray(data?.items) ? data.items : []);
         setFeaturedProducts(Array.isArray(data?.featuredProducts) ? data.featuredProducts : []);
@@ -47,11 +30,11 @@ export default function TiendaPage() {
         setFeaturedProducts([]);
       })
       .finally(() => setLoading(false));
-  }
+  }, []);
 
   useEffect(() => {
     loadProducts();
-  }, [accessToken]);
+  }, [loadProducts]);
 
   return (
     <section className="space-y-6">
@@ -88,12 +71,14 @@ export default function TiendaPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {!loading && !error && products.length === 0 ? (
-          <PageState
-            type="empty"
-            title="No hay productos publicados"
-            description="Vuelve pronto para revisar nuevos productos útiles para tu ciclo."
-            action={<PrimaryButton type="button" onClick={loadProducts}>Reintentar</PrimaryButton>}
-          />
+          <div className="md:col-span-2 lg:col-span-3">
+            <PageState
+              type="empty"
+              title="No hay productos publicados"
+              description="Vuelve pronto para revisar nuevos productos útiles para tu ciclo."
+              action={<PrimaryButton type="button" onClick={loadProducts}>Reintentar</PrimaryButton>}
+            />
+          </div>
         ) : (
           products.map((product) => (
             <article key={product.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft">

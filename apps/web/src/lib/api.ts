@@ -4,7 +4,7 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost
 
 export const USER_ERROR_MESSAGES = {
   network: "No se pudo conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.",
-  unauthorized: "Tu sesión expiró. Inicia sesión nuevamente para continuar.",
+  unauthorized: "Inicia sesión para continuar con esta acción.",
   forbidden: "No tienes permiso para realizar esta acción.",
   generic: "Ocurrió un error inesperado. Inténtalo nuevamente.",
 } as const;

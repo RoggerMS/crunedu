@@ -1,11 +1,11 @@
 import {
-  BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { ProductStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { PAGINATION_LIMITS } from "../common/pagination.constants";
+import { CreateProductInquiryDto, CreateProductDto, UpdateProductDto } from "./dtos";
 
 type CatalogContext = {
   faculty?: string;
@@ -20,33 +20,33 @@ export class MarketplaceService {
     return this.prisma.productCategory.findMany({ orderBy: { name: "asc" } });
   }
 
-  private buildContextFilters(context?: CatalogContext) {
-    const normalizedFilters = [context?.career, context?.faculty]
+  private buildContextFilter(context?: CatalogContext) {
+    const normalizedFilters = Array.from(new Set([context?.career, context?.faculty]
       .map((value) => value?.trim())
-      .filter((value): value is string => Boolean(value));
+      .filter((value): value is string => Boolean(value))));
 
     if (normalizedFilters.length === 0) {
-      return [];
+      return undefined;
     }
 
-    return normalizedFilters.map((value) => ({
+    return {
       OR: [
-        { title: { contains: value, mode: "insensitive" as const } },
-        { description: { contains: value, mode: "insensitive" as const } },
-        { category: { name: { contains: value, mode: "insensitive" as const } } },
+        ...normalizedFilters.map((value) => ({ title: { contains: value, mode: "insensitive" as const } })),
+        ...normalizedFilters.map((value) => ({ description: { contains: value, mode: "insensitive" as const } })),
+        ...normalizedFilters.map((value) => ({ category: { name: { contains: value, mode: "insensitive" as const } } })),
       ],
-    }));
+    };
   }
 
   async listCatalog(categoryId?: number, context?: CatalogContext, cursor?: number, limit?: number) {
     const safeLimit = Number.isFinite(limit) && (limit as number) > 0 ? Math.min(Math.floor(limit as number), PAGINATION_LIMITS.marketplaceProducts.max) : PAGINATION_LIMITS.marketplaceProducts.default;
-    const contextFilters = this.buildContextFilters(context);
+    const contextFilter = this.buildContextFilter(context);
 
     const products = await this.prisma.product.findMany({
       where: {
         status: "ACTIVE",
         ...(categoryId ? { categoryId } : {}),
-        ...(contextFilters.length > 0 ? { AND: contextFilters } : {}),
+        ...(contextFilter ? contextFilter : {}),
       },
       orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }, { id: "desc" }],
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -59,7 +59,7 @@ export class MarketplaceService {
         status: "ACTIVE",
         isFeatured: true,
         ...(categoryId ? { categoryId } : {}),
-        ...(contextFilters.length > 0 ? { AND: contextFilters } : {}),
+        ...(contextFilter ? contextFilter : {}),
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       include: { category: true },
@@ -94,12 +94,9 @@ export class MarketplaceService {
     return { ...product, viewCount: product.viewCount + 1 };
   }
 
-  async createInquiry(userId: number, productId: number, body: any) {
+  async createInquiry(userId: number, productId: number, body: CreateProductInquiryDto) {
     const product = await this.prisma.product.findFirst({ where: { id: productId, status: "ACTIVE" } });
     if (!product) throw new NotFoundException("Producto no disponible.");
-    if (!body?.contactName || !body?.contactPhone || !body?.message || !body?.preferredContactMethod) {
-      throw new BadRequestException("Faltan campos obligatorios para la consulta.");
-    }
 
     await this.prisma.product.update({ where: { id: productId }, data: { contactClickCount: { increment: 1 } } });
 
@@ -130,12 +127,10 @@ export class MarketplaceService {
     return { items: items.slice(0, safeLimit), nextCursor };
   }
 
-  async adminUpsertProduct(user: { sub: number; role: string }, payload: any) {
-    if (user.role !== "ADMIN") {
-      throw new ForbiddenException("Solo administradores pueden gestionar productos.");
-    }
+  async adminUpsertProduct(user: { sub: number; role: string }, payload: CreateProductDto | UpdateProductDto) {
+    const isUpdate = "id" in payload && payload.id;
 
-    if (payload.id) {
+    if (isUpdate) {
       return this.prisma.product.update({
         where: { id: payload.id },
         data: {
@@ -143,10 +138,11 @@ export class MarketplaceService {
           description: payload.description,
           price: payload.price,
           categoryId: payload.categoryId,
-          status: payload.status,
+          status: payload.status ?? ProductStatus.ACTIVE,
           isFeatured: Boolean(payload.isFeatured),
-          stock: payload.stock,
+          stock: payload.stock ?? 1,
           contactMethod: payload.contactMethod ?? "whatsapp",
+          whatsappMessage: payload.whatsappMessage ?? null,
         },
       });
     }
@@ -157,11 +153,12 @@ export class MarketplaceService {
         description: payload.description,
         price: payload.price,
         categoryId: payload.categoryId,
-        status: payload.status ?? "ACTIVE",
+        status: payload.status ?? ProductStatus.ACTIVE,
         isFeatured: Boolean(payload.isFeatured),
         stock: payload.stock ?? 1,
         createdBy: user.sub,
         contactMethod: payload.contactMethod ?? "whatsapp",
+        whatsappMessage: payload.whatsappMessage ?? null,
       },
     });
   }

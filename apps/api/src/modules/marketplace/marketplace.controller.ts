@@ -1,6 +1,8 @@
 import {
   Body,
   Controller,
+  BadRequestException,
+  ForbiddenException,
   Get,
   Param,
   ParseIntPipe,
@@ -12,9 +14,21 @@ import {
 import { Request } from "express";
 import { JwtAuthGuard, JwtPayload } from "../posts/jwt-auth.guard";
 import { MarketplaceService } from "./marketplace.service";
+import { CreateProductInquiryDto, CreateProductDto, UpdateProductDto } from "./dtos";
 
 interface AuthenticatedRequest extends Request {
   user: JwtPayload;
+}
+
+function parseOptionalPositiveInt(value: string | undefined, fieldName: string): number | undefined {
+  if (!value) return undefined;
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new BadRequestException(`${fieldName} debe ser un número positivo.`);
+  }
+
+  return parsed;
 }
 
 @Controller("marketplace")
@@ -34,7 +48,12 @@ export class MarketplaceController {
     @Query("cursor") cursor?: string,
     @Query("limit") limit?: string,
   ) {
-    return this.service.listCatalog(categoryId ? Number(categoryId) : undefined, { faculty, career }, cursor ? Number(cursor) : undefined, limit ? Number(limit) : undefined);
+    return this.service.listCatalog(
+      parseOptionalPositiveInt(categoryId, "categoryId"),
+      { faculty, career },
+      parseOptionalPositiveInt(cursor, "cursor"),
+      parseOptionalPositiveInt(limit, "limit"),
+    );
   }
 
   @Get("products/:id")
@@ -47,14 +66,17 @@ export class MarketplaceController {
   inquiry(
     @Param("id", ParseIntPipe) id: number,
     @Req() request: AuthenticatedRequest,
-    @Body() body: unknown,
+    @Body() body: CreateProductInquiryDto,
   ) {
     return this.service.createInquiry(request.user.sub, id, body);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post("admin/products")
-  upsertProduct(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+  upsertProduct(@Req() request: AuthenticatedRequest, @Body() body: CreateProductDto | UpdateProductDto) {
+    if (request.user.role !== "ADMIN") {
+      throw new ForbiddenException("Solo administradores pueden gestionar productos.");
+    }
     return this.service.adminUpsertProduct(request.user, body);
   }
 
