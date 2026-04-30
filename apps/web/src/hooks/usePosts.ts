@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FeedDiscoveryResponse, FeedPost } from "@crunedu/shared";
-import { buildApiUrl, mapApiError } from "@/lib/api";
+import { mapApiError } from "@/lib/api";
+import { apiRequest } from "@/lib/http-client";
 
 interface UsePostsResult {
   posts: FeedPost[];
@@ -26,22 +27,19 @@ export function usePosts(): UsePostsResult {
     [sections],
   );
 
-  async function fetchDiscovery(requestedPage: number, signal?: AbortSignal) {
+  async function fetchDiscovery(requestedPage: number) {
     const params = new URLSearchParams({ page: String(requestedPage), perSection: "5" });
-    const response = await fetch(buildApiUrl(`/posts/discovery?${params.toString()}`), { signal });
-    if (!response.ok) throw new Error("No se pudo cargar el feed personalizado.");
-    return (await response.json()) as FeedDiscoveryResponse;
+    return apiRequest<FeedDiscoveryResponse>(`/posts/discovery?${params.toString()}`);
   }
 
-  async function loadInitial(signal?: AbortSignal) {
+  async function loadInitial() {
     try {
       setError(null);
-      const data = await fetchDiscovery(1, signal);
+      const data = await fetchDiscovery(1);
       setSections(data.sections ?? []);
       setPage(data.pagination?.page ?? 1);
       setHasMore(Boolean(data.pagination?.hasNextPage));
     } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
       setError(mapApiError(err, "No se pudo cargar el feed personalizado."));
     } finally {
       setLoading(false);
@@ -65,9 +63,7 @@ export function usePosts(): UsePostsResult {
   }
 
   useEffect(() => {
-    const controller = new AbortController();
-    loadInitial(controller.signal);
-    return () => controller.abort();
+    void loadInitial();
   }, []);
 
   return { posts, sections, loading, loadingMore, hasMore, error, reload: async () => { setLoading(true); await loadInitial(); }, loadMore };

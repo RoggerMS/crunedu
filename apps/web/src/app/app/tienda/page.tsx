@@ -68,7 +68,7 @@ export default function TiendaPage() {
           type="error"
           title="No se pudo cargar la tienda"
           description={error}
-          action={<PrimaryButton type="button" onClick={loadProducts}>Volver a cargar</PrimaryButton>}
+          action={<PrimaryButton type="button" onClick={loadProducts}>Reintentar</PrimaryButton>}
         />
       ) : null}
 

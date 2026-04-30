@@ -344,7 +344,12 @@ export default function AppPage() {
         <div id="actividad-reciente" className="mt-6 space-y-4">
           <h2 className="text-xl font-black">Actividad reciente relevante</h2>
           {loading ? <StatusMessage type="loading">Cargando publicaciones...</StatusMessage> : null}
-          {error ? <StatusMessage type="error">Error: {error}</StatusMessage> : null}
+          {error ? (
+            <div className="space-y-3">
+              <StatusMessage type="error">{error}</StatusMessage>
+              <PrimaryButton type="button" onClick={() => void reload()}>Reintentar</PrimaryButton>
+            </div>
+          ) : null}
           {!loading && !error && posts.length === 0 ? (
             <EmptyState
               title="No hay publicaciones aún"
