@@ -2,8 +2,8 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+import { createAdminProduct, getStoreCategories } from "@/lib/api-helpers";
+import { mapApiError } from "@/lib/api";
 
 export default function AdminTiendaPage() {
   const { accessToken, isAuthenticated } = useAccessToken();
@@ -12,8 +12,7 @@ export default function AdminTiendaPage() {
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/marketplace/categories`)
-      .then((res) => res.json())
+    getStoreCategories()
       .then((data) => setCategories(Array.isArray(data) ? data : []))
       .catch(() => setCategories([]));
   }, []);
@@ -23,26 +22,20 @@ export default function AdminTiendaPage() {
     setStatus(null);
 
     try {
-      const response = await fetch(`${API_URL}/marketplace/admin/products`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({
-          title: form.title,
-          description: form.description,
-          price: form.price,
-          categoryId: Number(form.categoryId),
-          status: "ACTIVE",
-          isFeatured: form.isFeatured,
-          stock: 1,
-          contactMethod: "whatsapp",
-        }),
-      });
-
-      if (!response.ok) throw new Error();
+      await createAdminProduct({
+        title: form.title,
+        description: form.description,
+        price: form.price,
+        categoryId: Number(form.categoryId),
+        status: "ACTIVE",
+        isFeatured: form.isFeatured,
+        stock: 1,
+        contactMethod: "whatsapp",
+      }, accessToken ?? "");
       setStatus("Producto guardado correctamente.");
       setForm({ title: "", description: "", price: "", categoryId: "", isFeatured: false });
-    } catch {
-      setStatus("No se pudo guardar el producto.");
+    } catch (err) {
+      setStatus(mapApiError(err, "No se pudo guardar el producto."));
     }
   }
 

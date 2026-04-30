@@ -4,7 +4,8 @@ import { CommunityCard } from "@/components/community-card";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useCommunities } from "@/hooks/useCommunities";
 import { useEffect, useState } from "react";
-import { buildApiUrl, mapApiError } from "@/lib/api";
+import { mapApiError } from "@/lib/api";
+import { getRecommendedCommunities } from "@/lib/api-helpers";
 import { PageState, PrimaryButton } from "@/components/ui";
 
 export default function Page() {
@@ -16,14 +17,8 @@ export default function Page() {
   useEffect(() => {
     async function fetchRecommended() {
       if (!isAuthenticated) return;
-      const response = await fetch(buildApiUrl("/communities/recommended"), {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (response.ok) {
-        setRecommended(await response.json());
-        return;
-      }
-      setRecommendedError("No se pudieron cargar las comunidades recomendadas.");
+      const data = await getRecommendedCommunities(accessToken ?? "");
+      setRecommended(data);
     }
     fetchRecommended().catch((err) => setRecommendedError(mapApiError(err, "No se pudieron cargar las comunidades recomendadas.")));
   }, [isAuthenticated, accessToken]);
