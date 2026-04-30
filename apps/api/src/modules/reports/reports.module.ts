@@ -1,14 +1,11 @@
 import { Module } from "@nestjs/common";
-import { JwtModule } from "@nestjs/jwt";
+import { JwtSharedModule } from "../auth/jwt-shared.module";
 import { ReportsController } from "./reports.controller";
 import { ReportsService } from "./reports.service";
 
 @Module({
   imports: [
-    JwtModule.register({
-      secret: process.env.JWT_SECRET ?? "change_this_local_secret",
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN ?? "7d" },
-    }),
+    JwtSharedModule
   ],
   controllers: [ReportsController],
   providers: [ReportsService],
