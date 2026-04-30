@@ -1,12 +1,55 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+
+import { useMemo } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
-type AdminReport={id:number;reason:string;status:string;post:{id:number}|null;comment:{id:number}|null};
-function parseRole(token:string|null){if(!token)return null;try{const[,p]=token.split('.');if(!p)return null;return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/'))).role??null;}catch{return null;}}
-export default function AdminReportsPage(){const{accessToken,isAuthenticated}=useAccessToken();const[reports,setReports]=useState<AdminReport[]>([]);const[loading,setLoading]=useState(true);const[error,setError]=useState<string|null>(null);const[actionLoadingId,setActionLoadingId]=useState<number|null>(null);const role=useMemo(()=>parseRole(accessToken),[accessToken]);
-async function loadReports(){if(!accessToken)return;setLoading(true);setError(null);try{const r=await fetch(`${apiBaseUrl}/reports`,{headers:{Authorization:`Bearer ${accessToken}`}});if(!r.ok)throw new Error("No se pudieron cargar los reportes.");setReports(await r.json() as AdminReport[]);}catch(err){setError(err instanceof Error?err.message:"Error inesperado.")}finally{setLoading(false)}}
-async function moderate(reportId:number,action:"hide"|"restore"){if(!accessToken)return;setActionLoadingId(reportId);try{const r=await fetch(`${apiBaseUrl}/reports/${reportId}/${action}`,{method:"PATCH",headers:{Authorization:`Bearer ${accessToken}`}});if(!r.ok)throw new Error("No se pudo aplicar la acción de moderación.");await loadReports();}catch(err){setError(err instanceof Error?err.message:"Error inesperado.")}finally{setActionLoadingId(null)}}
-useEffect(()=>{loadReports();},[accessToken]);
-if(!isAuthenticated)return <p className="text-sm text-slate-600">Inicia sesión para revisar reportes.</p>;if(role!=="ADMIN")return <p className="text-sm text-red-600">Solo administradores pueden acceder a esta vista.</p>;
-return <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft"><h1 className="text-2xl font-black">Moderación de reportes</h1>{loading?<p className="mt-4 text-sm text-slate-500">Cargando reportes...</p>:null}{error?<p className="mt-4 text-sm text-red-600">{error}</p>:null}<div className="mt-4 overflow-x-auto"><table className="min-w-full text-left text-sm"><thead><tr className="border-b border-slate-200"><th className="px-2 py-2">ID</th><th className="px-2 py-2">Objetivo</th><th className="px-2 py-2">Motivo</th><th className="px-2 py-2">Estado</th><th className="px-2 py-2">Acciones</th></tr></thead><tbody>{reports.map((report)=><tr key={report.id} className="border-b border-slate-100"><td className="px-2 py-2">{report.id}</td><td className="px-2 py-2">{report.post?`Post #${report.post.id}`:`Comentario #${report.comment?.id??"-"}`}</td><td className="px-2 py-2">{report.reason}</td><td className="px-2 py-2">{report.status}</td><td className="px-2 py-2"><div className="flex gap-2"><button disabled={actionLoadingId===report.id} onClick={()=>moderate(report.id,"hide")} className="rounded-lg border border-red-300 px-2 py-1 text-red-700">Ocultar</button><button disabled={actionLoadingId===report.id} onClick={()=>moderate(report.id,"restore")} className="rounded-lg border border-emerald-300 px-2 py-1 text-emerald-700">Restaurar</button></div></td></tr>)}</tbody></table></div></section>;}
+import { AdminReportsTable } from "@/modules/admin-reports/components/AdminReportsTable";
+import { useAdminReports } from "@/modules/admin-reports/hooks/useAdminReports";
+import { useModerationActions } from "@/modules/admin-reports/hooks/useModerationActions";
+
+function parseRole(token: string | null) {
+  if (!token) return null;
+
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return null;
+
+    return JSON.parse(
+      atob(payload.replace(/-/g, "+").replace(/_/g, "/")),
+    ).role ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export default function AdminReportsPage() {
+  const { accessToken, isAuthenticated } = useAccessToken();
+  const role = useMemo(() => parseRole(accessToken), [accessToken]);
+
+  const { reports, loading, error, setError, loadReports } = useAdminReports(accessToken);
+  const { actionLoadingId, moderate } = useModerationActions({
+    accessToken,
+    onError: setError,
+    onSuccess: loadReports,
+  });
+
+  if (!isAuthenticated) {
+    return <p className="text-sm text-slate-600">Inicia sesión para revisar reportes.</p>;
+  }
+
+  if (role !== "ADMIN") {
+    return <p className="text-sm text-red-600">Solo administradores pueden acceder a esta vista.</p>;
+  }
+
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft">
+      <h1 className="text-2xl font-black">Moderación de reportes</h1>
+      {loading ? <p className="mt-4 text-sm text-slate-500">Cargando reportes...</p> : null}
+      {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
+      <AdminReportsTable
+        reports={reports}
+        actionLoadingId={actionLoadingId}
+        onModerate={moderate}
+      />
+    </section>
+  );
+}
