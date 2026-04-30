@@ -9,6 +9,7 @@ import { PostResponseDto } from "./dto/post-response.dto";
 import { PostCommentResponseDto } from "./dto/post-comment-response.dto";
 import { UpdatePostDto } from "./dto/update-post.dto";
 import { GetPostsQueryDto } from "./dto/get-posts-query.dto";
+import { GetDiscoveryQueryDto } from "./dto/get-discovery-query.dto";
 import { ObservabilityService } from "../observability/observability.service";
 
 interface FeedEventPayload {
@@ -116,6 +117,65 @@ export class PostsService {
     return response;
   }
 
+
+
+  async getDiscoveryFeed(query: GetDiscoveryQueryDto, userId?: number): Promise<{ sections: { key: "communities" | "friends" | "recommended"; title: string; items: PostResponseDto[] }[]; pagination: { page: number; perSection: number; hasNextPage: boolean } }> {
+    const page = query.page ?? 1;
+    const perSection = Math.min(query.perSection ?? 5, 10);
+    const skip = (page - 1) * perSection;
+
+    const affinityByCommunity = await this.getCommunityAffinity(userId);
+    const affinityCommunityIds = Array.from(affinityByCommunity.entries()).sort((a, b) => b[1] - a[1]).map(([communityId]) => communityId);
+
+    const communityPostsPromise = affinityCommunityIds.length
+      ? this.prisma.post.findMany({
+          where: { status: "PUBLISHED", communityId: { in: affinityCommunityIds } },
+          select: this.postSelect,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          skip,
+          take: perSection + 1,
+        })
+      : Promise.resolve([] as PostWithRelations[]);
+
+    const friendsPostsPromise = userId
+      ? this.prisma.post.findMany({
+          where: { status: "PUBLISHED", user: { followers: { some: { followerId: userId } } } },
+          select: this.postSelect,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          skip,
+          take: perSection + 1,
+        })
+      : Promise.resolve([] as PostWithRelations[]);
+
+    const recommendedRaw = await this.prisma.post.findMany({
+      where: { status: "PUBLISHED" },
+      select: this.postSelect,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 120,
+    });
+
+    const [communityPosts, friendsPosts] = await Promise.all([communityPostsPromise, friendsPostsPromise]);
+    const rankedRecommended = [...recommendedRaw].sort((a, b) => this.computeRelevanceScore(b, Date.now(), affinityByCommunity) - this.computeRelevanceScore(a, Date.now(), affinityByCommunity));
+    const recommendedSlice = rankedRecommended.slice(skip, skip + perSection + 1);
+
+    const sections = [
+      { key: "communities" as const, title: "De tus comunidades", items: communityPosts.slice(0, perSection).map((post: PostWithRelations) => this.mapPostResponse(post)) },
+      { key: "friends" as const, title: "De tus amigos", items: friendsPosts.slice(0, perSection).map((post: PostWithRelations) => this.mapPostResponse(post)) },
+      { key: "recommended" as const, title: "Recomendado para ti", items: recommendedSlice.slice(0, perSection).map((post: PostWithRelations) => this.mapPostResponse(post)) },
+    ];
+
+    this.registerFeedEvent("impression", userId, { mode: "relevant" });
+    for (const section of sections) this.registerFeedEvent("impression", userId, { mode: "relevant", postId: section.items[0]?.id });
+
+    return {
+      sections,
+      pagination: {
+        page,
+        perSection,
+        hasNextPage: communityPosts.length > perSection || friendsPosts.length > perSection || recommendedSlice.length > perSection,
+      },
+    };
+  }
   async create(dto: CreatePostDto, userId: number): Promise<PostResponseDto> {
     this.checkRateLimit(this.postRateLimit, userId, 3, 60_000, "Estás publicando demasiado rápido. Intenta de nuevo en un minuto.");
 

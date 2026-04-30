@@ -33,7 +33,7 @@ function parseJwtPayload(token: string): { sub?: number } | null {
 
 export default function AppPage() {
   const { communities } = useCommunities();
-  const { posts, loading, error, reload } = usePosts();
+  const { posts, sections, loading, error, reload } = usePosts();
   const { accessToken, isAuthenticated } = useAccessToken();
 
   const [title, setTitle] = useState("");
@@ -354,7 +354,10 @@ export default function AppPage() {
           ) : null}
 
           {!loading && !error
-            ? posts.map((post) => (
+            ? sections.map((section) => (
+                <div key={section.key} className="space-y-4">
+                  <h3 className="text-lg font-bold text-slate-800">{section.title}</h3>
+                  {section.items.map((post) => (
                 <article key={post.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft">
                   <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">{post.community?.name ?? "General"} · {post.commentsCount} comentarios</p>
                   {post.title ? <h2 className="mt-2 text-xl font-bold">{post.title}</h2> : null}
@@ -419,6 +422,8 @@ export default function AppPage() {
                     </div>
                   ) : null}
                 </article>
+                  ))}
+                </div>
               ))
             : null}
           {postActionLoadingId ? <p className="text-sm text-slate-500">Procesando acción...</p> : null}

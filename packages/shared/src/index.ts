@@ -77,6 +77,23 @@ export interface FeedPost {
   commentsCount: number;
 }
 
+
+
+export interface FeedDiscoverySection {
+  key: "communities" | "friends" | "recommended";
+  title: string;
+  items: FeedPost[];
+}
+
+export interface FeedDiscoveryResponse {
+  sections: FeedDiscoverySection[];
+  pagination: {
+    page: number;
+    perSection: number;
+    hasNextPage: boolean;
+  };
+}
+
 export interface PostComment {
   id: number;
   content: string;

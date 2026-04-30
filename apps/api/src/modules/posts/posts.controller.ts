@@ -8,6 +8,7 @@ import { JwtAuthGuard, JwtPayload } from "./jwt-auth.guard";
 import { PostsService } from "./posts.service";
 import { RateLimit } from "../core/rate-limit.decorator";
 import { GetPostsQueryDto } from "./dto/get-posts-query.dto";
+import { GetDiscoveryQueryDto } from "./dto/get-discovery-query.dto";
 
 interface AuthenticatedRequest extends Request { user: JwtPayload }
 
@@ -18,6 +19,11 @@ export class PostsController {
   @Get()
   index(@Query() query: GetPostsQueryDto, @Req() request: Request) {
     return this.service.index(query, this.extractUserId(request));
+  }
+
+  @Get("discovery")
+  discovery(@Query() query: GetDiscoveryQueryDto, @Req() request: Request) {
+    return this.service.getDiscoveryFeed(query, this.extractUserId(request));
   }
 
   @Get(":id")

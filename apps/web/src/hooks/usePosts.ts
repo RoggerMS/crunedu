@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
-import type { FeedPost } from "@crunedu/shared";
+import { useEffect, useMemo, useState } from "react";
+import type { FeedDiscoveryResponse, FeedPost } from "@crunedu/shared";
 import { buildApiUrl, mapApiError } from "@/lib/api";
 
 interface UsePostsResult {
   posts: FeedPost[];
+  sections: FeedDiscoveryResponse["sections"];
   loading: boolean;
   loadingMore: boolean;
   hasMore: boolean;
@@ -12,44 +13,50 @@ interface UsePostsResult {
   loadMore: () => Promise<void>;
 }
 
-type PostsResponse = { items: FeedPost[]; nextCursor: number | null };
-
 export function usePosts(): UsePostsResult {
-  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [sections, setSections] = useState<FeedDiscoveryResponse["sections"]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [nextCursor, setNextCursor] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchPosts(cursor?: number, signal?: AbortSignal) {
-    const params = new URLSearchParams({ limit: "10" });
-    if (cursor) params.set("cursor", String(cursor));
-    const response = await fetch(buildApiUrl(`/posts?${params.toString()}`), { signal });
-    if (!response.ok) throw new Error("No se pudieron cargar las publicaciones.");
-    return (await response.json()) as PostsResponse;
+  const posts = useMemo(
+    () => sections.flatMap((section) => section.items),
+    [sections],
+  );
+
+  async function fetchDiscovery(requestedPage: number, signal?: AbortSignal) {
+    const params = new URLSearchParams({ page: String(requestedPage), perSection: "5" });
+    const response = await fetch(buildApiUrl(`/posts/discovery?${params.toString()}`), { signal });
+    if (!response.ok) throw new Error("No se pudo cargar el feed personalizado.");
+    return (await response.json()) as FeedDiscoveryResponse;
   }
 
   async function loadInitial(signal?: AbortSignal) {
     try {
       setError(null);
-      const data = await fetchPosts(undefined, signal);
-      setPosts(data.items ?? []);
-      setNextCursor(data.nextCursor ?? null);
+      const data = await fetchDiscovery(1, signal);
+      setSections(data.sections ?? []);
+      setPage(data.pagination?.page ?? 1);
+      setHasMore(Boolean(data.pagination?.hasNextPage));
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      setError(mapApiError(err, "No se pudieron cargar las publicaciones."));
+      setError(mapApiError(err, "No se pudo cargar el feed personalizado."));
     } finally {
       setLoading(false);
     }
   }
 
   async function loadMore() {
-    if (!nextCursor || loadingMore) return;
+    if (!hasMore || loadingMore) return;
     setLoadingMore(true);
     try {
-      const data = await fetchPosts(nextCursor);
-      setPosts((prev) => [...prev, ...(data.items ?? [])]);
-      setNextCursor(data.nextCursor ?? null);
+      const nextPage = page + 1;
+      const data = await fetchDiscovery(nextPage);
+      setSections((prev) => prev.map((section) => ({ ...section, items: [...section.items, ...(data.sections.find((s) => s.key === section.key)?.items ?? [])] })));
+      setPage(data.pagination?.page ?? nextPage);
+      setHasMore(Boolean(data.pagination?.hasNextPage));
     } catch (err) {
       setError(mapApiError(err, "No se pudieron cargar más publicaciones."));
     } finally {
@@ -63,5 +70,5 @@ export function usePosts(): UsePostsResult {
     return () => controller.abort();
   }, []);
 
-  return { posts, loading, loadingMore, hasMore: nextCursor !== null, error, reload: async () => { setLoading(true); await loadInitial(); }, loadMore };
+  return { posts, sections, loading, loadingMore, hasMore, error, reload: async () => { setLoading(true); await loadInitial(); }, loadMore };
 }
