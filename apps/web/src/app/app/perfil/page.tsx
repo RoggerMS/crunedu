@@ -18,6 +18,15 @@ type SocialProfile = {
   id: number;
   fullName: string;
   isFollowing: boolean;
+  isFollowedBy: boolean;
+  isFriend: boolean;
+};
+
+type SocialUser = {
+  id: number;
+  fullName: string;
+  isFollowing: boolean;
+  isFollowedBy: boolean;
   isFriend: boolean;
 };
 
@@ -31,6 +40,8 @@ export default function PerfilPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [socialLoading, setSocialLoading] = useState(false);
+  const [friends, setFriends] = useState<SocialUser[]>([]);
+  const [friendsLoading, setFriendsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -57,12 +68,27 @@ export default function PerfilPage() {
     } finally { setSocialLoading(false); }
   }
 
+  async function loadFriends() {
+    if (!targetUserId) return;
+    setFriendsLoading(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/users/${targetUserId}/friends`);
+      if (!response.ok) throw new Error("No se pudo cargar la lista de amigos.");
+      setFriends((await response.json()) as SocialUser[]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ocurrió un error inesperado.");
+      setFriends([]);
+    } finally {
+      setFriendsLoading(false);
+    }
+  }
+
   async function toggleFollow() {
     if (!isAuthenticated || !socialProfile) return;
     const method = socialProfile.isFollowing ? "DELETE" : "POST";
     const response = await fetch(`${apiBaseUrl}/follows/${socialProfile.id}`, { method, headers: { Authorization: `Bearer ${accessToken}` } });
     if (!response.ok) throw new Error("No se pudo actualizar seguimiento.");
-    const relation = (await response.json()) as Pick<SocialProfile, "isFollowing" | "isFriend">;
+    const relation = (await response.json()) as Pick<SocialProfile, "isFollowing" | "isFollowedBy" | "isFriend">;
     setSocialProfile({ ...socialProfile, ...relation });
   }
 
@@ -96,9 +122,22 @@ export default function PerfilPage() {
     <div className="rounded-2xl border border-slate-200 p-4">
       <h2 className="text-lg font-bold">Relación social</h2>
       <p className="text-sm text-slate-600">Ingresa un ID de usuario para seguir o dejar de seguir.</p>
-      <div className="mt-3 flex gap-2"><input className="rounded-xl border border-slate-200 px-3 py-2" value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)} /><button onClick={loadSocialProfile} className="rounded-xl bg-slate-900 px-3 py-2 text-white">Ver perfil</button></div>
+      <div className="mt-3 flex gap-2"><input className="rounded-xl border border-slate-200 px-3 py-2" value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)} /><button onClick={loadSocialProfile} className="rounded-xl bg-slate-900 px-3 py-2 text-white">Ver perfil</button><button onClick={loadFriends} className="rounded-xl bg-emerald-700 px-3 py-2 text-white">Ver amigos</button></div>
       {socialLoading ? <p className="mt-2 text-sm">Cargando...</p> : null}
       {socialProfile ? <div className="mt-3 flex items-center gap-3"><p className="font-semibold">{socialProfile.fullName}</p>{socialProfile.isFriend ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">Amigos</span> : null}<button onClick={toggleFollow} className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white">{socialProfile.isFollowing ? "Dejar de seguir" : "Seguir"}</button></div> : null}
+      <div className="mt-4 rounded-2xl border border-slate-100 p-3">
+        <h3 className="font-semibold">Amigos</h3>
+        {friendsLoading ? <p className="mt-2 text-sm text-slate-600">Cargando amigos...</p> : null}
+        {!friendsLoading && friends.length === 0 ? <p className="mt-2 text-sm text-slate-600">No hay amigos mutuos para este perfil.</p> : null}
+        <ul className="mt-2 space-y-2">
+          {friends.map((friend) => (
+            <li key={friend.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
+              <span className="text-sm font-medium">{friend.fullName}</span>
+              {friend.isFriend ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">Amigos</span> : null}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   </section>);
 }
