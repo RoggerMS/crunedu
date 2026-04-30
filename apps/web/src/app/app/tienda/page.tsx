@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
+import { PageState, PrimaryButton } from "@/components/ui";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
@@ -25,8 +26,10 @@ export default function TiendaPage() {
   const { accessToken } = useAccessToken();
   const [products, setProducts] = useState<Product[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  function loadProducts() {
     const params = new URLSearchParams();
 
     const faculty = typeof window !== "undefined" ? localStorage.getItem("profile_faculty") : "";
@@ -35,6 +38,9 @@ export default function TiendaPage() {
     if (faculty) params.set("faculty", faculty);
     if (career) params.set("career", career);
 
+    setLoading(true);
+    setError(null);
+
     fetch(`${API_URL}/marketplace/products?${params.toString()}`)
       .then((res) => res.json())
       .then((data: CatalogResponse) => {
@@ -42,9 +48,15 @@ export default function TiendaPage() {
         setFeaturedProducts(Array.isArray(data?.featuredProducts) ? data.featuredProducts : []);
       })
       .catch(() => {
+        setError("No pudimos cargar la tienda en este momento.");
         setProducts([]);
         setFeaturedProducts([]);
-      });
+      })
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadProducts();
   }, [accessToken]);
 
   return (
@@ -54,7 +66,19 @@ export default function TiendaPage() {
         <p className="mt-2 text-slate-600">Productos reales para estudiantes. Sin carrito, sin pagos automáticos.</p>
       </div>
 
-      {featuredProducts.length > 0 ? (
+      {loading ? (
+        <PageState type="loading" title="Cargando tienda" description="Estamos preparando los productos para estudiantes." />
+      ) : null}
+      {error ? (
+        <PageState
+          type="error"
+          title="No se pudo cargar la tienda"
+          description={error}
+          action={<PrimaryButton type="button" onClick={loadProducts}>Volver a cargar</PrimaryButton>}
+        />
+      ) : null}
+
+      {!loading && !error && featuredProducts.length > 0 ? (
         <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
           <h2 className="text-lg font-bold text-emerald-800">Destacados para tu contexto universitario</h2>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -69,10 +93,13 @@ export default function TiendaPage() {
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {products.length === 0 ? (
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft">
-            <p className="text-sm text-slate-600">No hay productos publicados todavía.</p>
-          </div>
+        {!loading && !error && products.length === 0 ? (
+          <PageState
+            type="empty"
+            title="No hay productos publicados"
+            description="Vuelve pronto para revisar nuevos productos útiles para tu ciclo."
+            action={<PrimaryButton type="button" onClick={loadProducts}>Reintentar</PrimaryButton>}
+          />
         ) : (
           products.map((product) => (
             <article key={product.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft">

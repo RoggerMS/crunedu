@@ -1,10 +1,10 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useCommunities } from "@/hooks/useCommunities";
 import { useQuestions } from "@/hooks/useQuestions";
+import { PageState, PrimaryButton, SecondaryButton } from "@/components/ui";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
@@ -79,8 +79,17 @@ export default function QuestionsPage() {
         <button disabled={submitting} className="rounded-2xl bg-brand-600 px-5 py-2 font-semibold text-white disabled:opacity-70">{submitting ? "Publicando..." : "Publicar pregunta"}</button>
       </form>
 
-      {loading ? <div className="flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-brand-600" /></div> : null}
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {loading ? (
+        <PageState type="loading" title="Cargando preguntas" description="Estamos trayendo nuevas dudas y respuestas para ti." />
+      ) : null}
+      {error ? (
+        <PageState
+          type="error"
+          title="No pudimos cargar las preguntas"
+          description={error}
+          action={<PrimaryButton type="button" onClick={() => void reload()}>Reintentar</PrimaryButton>}
+        />
+      ) : null}
 
       <div className="space-y-4">
         {questions.map((question) => (
@@ -100,14 +109,17 @@ export default function QuestionsPage() {
       </div>
 
       {!loading && !error && questions.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <p className="text-sm text-slate-600">No hay preguntas aún. Publica la primera pregunta para iniciar la conversación.</p>
-        </div>
+        <PageState
+          type="empty"
+          title="Aún no hay preguntas"
+          description="Publica la primera pregunta para iniciar la conversación."
+          action={<SecondaryButton type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Publicar ahora</SecondaryButton>}
+        />
       ) : null}
       {hasMore ? (
         <div className="flex justify-center">
-          <button onClick={() => loadMore()} disabled={loadingMore} className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-60">
-            {loadingMore ? "Cargando..." : "Cargar más"}
+          <button onClick={() => loadMore()} disabled={loadingMore} className="w-full rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-60 sm:w-auto">
+            {loadingMore ? "Cargando más preguntas..." : "Cargar más"}
           </button>
         </div>
       ) : null}
