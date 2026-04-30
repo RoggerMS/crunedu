@@ -262,6 +262,90 @@ Response `200`:
 }
 ```
 
+## Social (followers/following/friends)
+
+Contrato único de relación social (cuando hay usuario viewer autenticado o identificable):
+
+```json
+{
+  "isFollowing": true,
+  "isFollowedBy": false,
+  "isFriend": false
+}
+```
+
+Definiciones:
+
+- `isFollowing`: el viewer sigue al usuario objetivo.
+- `isFollowedBy`: el usuario objetivo sigue al viewer.
+- `isFriend`: relación mutua (`isFollowing && isFollowedBy`).
+
+Si no existe viewer (request público), el estado se resuelve en `false` para los tres campos.
+
+### GET `/users/:id`
+
+Response `200`:
+
+```json
+{
+  "id": 2,
+  "fullName": "Nombre Apellido",
+  "isFollowing": true,
+  "isFollowedBy": true,
+  "isFriend": true
+}
+```
+
+### GET `/users/:id/followers`
+
+Response `200`:
+
+```json
+[
+  {
+    "id": 3,
+    "fullName": "Usuario Seguidor",
+    "isFollowing": true,
+    "isFollowedBy": false,
+    "isFriend": false
+  }
+]
+```
+
+### GET `/users/:id/following`
+
+Response `200`:
+
+```json
+[
+  {
+    "id": 4,
+    "fullName": "Usuario Seguido",
+    "isFollowing": false,
+    "isFollowedBy": true,
+    "isFriend": false
+  }
+]
+```
+
+### GET `/users/:id/friends`
+
+Lista de usuarios con follow mutuo para el usuario objetivo.
+
+Response `200`:
+
+```json
+[
+  {
+    "id": 5,
+    "fullName": "Amigo Mutual",
+    "isFollowing": true,
+    "isFollowedBy": true,
+    "isFriend": true
+  }
+]
+```
+
 ## Marketplace
 
 ### GET `/marketplace/products`

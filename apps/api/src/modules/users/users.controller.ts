@@ -52,4 +52,9 @@ export class UsersController {
   getFollowing(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
     return this.service.getFollowing(id, request.user?.sub);
   }
+
+  @Get("users/:id/friends")
+  getFriends(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
+    return this.service.getFriends(id, request.user?.sub);
+  }
 }

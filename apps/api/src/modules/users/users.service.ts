@@ -54,18 +54,12 @@ export class UsersService {
 
     if (!user) throw new NotFoundException("Usuario no encontrado.");
 
-    const [isFollowing, isFriend] = viewerUserId
-      ? await Promise.all([
-          this.prisma.follow.findUnique({ where: { followerId_followingId: { followerId: viewerUserId, followingId: targetUserId } } }),
-          this.prisma.follow.findFirst({ where: { followerId: viewerUserId, followingId: targetUserId, following: { followers: { some: { followerId: targetUserId, followingId: viewerUserId } } } } }),
-        ])
-      : [null, null];
+    const relationship = await this.getRelationship(viewerUserId, targetUserId);
 
     return {
       id: user.id,
       fullName: `${user.profile?.firstName ?? ""} ${user.profile?.lastName ?? ""}`.trim() || "Estudiante",
-      isFollowing: Boolean(isFollowing),
-      isFriend: Boolean(isFriend),
+      ...relationship,
     };
   }
 
@@ -98,7 +92,13 @@ export class UsersService {
       orderBy: { createdAt: "desc" },
     });
 
-    return Promise.all(followers.map(async (item) => ({ ...(await this.getRelationship(viewerUserId ?? 0, item.follower.id, viewerUserId !== undefined)), id: item.follower.id, fullName: `${item.follower.profile?.firstName ?? ""} ${item.follower.profile?.lastName ?? ""}`.trim() || "Estudiante" })));
+    return Promise.all(
+      followers.map(async (item: { follower: { id: number; profile: { firstName: string | null; lastName: string | null } | null } }) => ({
+        ...(await this.getRelationship(viewerUserId, item.follower.id)),
+        id: item.follower.id,
+        fullName: `${item.follower.profile?.firstName ?? ""} ${item.follower.profile?.lastName ?? ""}`.trim() || "Estudiante",
+      })),
+    );
   }
 
   async getFollowing(userId: number, viewerUserId?: number) {
@@ -109,9 +109,45 @@ export class UsersService {
       orderBy: { createdAt: "desc" },
     });
 
-    return Promise.all(following.map(async (item) => ({ ...(await this.getRelationship(viewerUserId ?? 0, item.following.id, viewerUserId !== undefined)), id: item.following.id, fullName: `${item.following.profile?.firstName ?? ""} ${item.following.profile?.lastName ?? ""}`.trim() || "Estudiante" })));
+    return Promise.all(
+      following.map(async (item: { following: { id: number; profile: { firstName: string | null; lastName: string | null } | null } }) => ({
+        ...(await this.getRelationship(viewerUserId, item.following.id)),
+        id: item.following.id,
+        fullName: `${item.following.profile?.firstName ?? ""} ${item.following.profile?.lastName ?? ""}`.trim() || "Estudiante",
+      })),
+    );
   }
 
+  async getFriends(userId: number, viewerUserId?: number) {
+    await this.ensureUserExists(userId);
+    const friends = await this.prisma.follow.findMany({
+      where: {
+        followerId: userId,
+        following: {
+          followers: {
+            some: { followerId: userId },
+          },
+        },
+      },
+      select: {
+        following: {
+          select: {
+            id: true,
+            profile: { select: { firstName: true, lastName: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return Promise.all(
+      friends.map(async (item: { following: { id: number; profile: { firstName: string | null; lastName: string | null } | null } }) => ({
+        ...(await this.getRelationship(viewerUserId, item.following.id)),
+        id: item.following.id,
+        fullName: `${item.following.profile?.firstName ?? ""} ${item.following.profile?.lastName ?? ""}`.trim() || "Estudiante",
+      })),
+    );
+  }
 
   private async preventFollowSpam(currentUserId: number, targetUserId: number): Promise<void> {
     const recentFollow = await this.prisma.follow.findFirst({
@@ -128,14 +164,18 @@ export class UsersService {
     }
   }
 
-  private async getRelationship(currentUserId: number, targetUserId: number, hasViewer = true) {
-    if (!hasViewer || !currentUserId) return { isFollowing: false, isFriend: false };
-    const [isFollowing, reverse] = await Promise.all([
+  private async getRelationship(currentUserId: number | undefined, targetUserId: number) {
+    if (!currentUserId) return { isFollowing: false, isFollowedBy: false, isFriend: false };
+    const [isFollowing, isFollowedBy] = await Promise.all([
       this.prisma.follow.findUnique({ where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } } }),
       this.prisma.follow.findUnique({ where: { followerId_followingId: { followerId: targetUserId, followingId: currentUserId } } }),
     ]);
 
-    return { isFollowing: Boolean(isFollowing), isFriend: Boolean(isFollowing && reverse) };
+    return {
+      isFollowing: Boolean(isFollowing),
+      isFollowedBy: Boolean(isFollowedBy),
+      isFriend: Boolean(isFollowing && isFollowedBy),
+    };
   }
 
   private async ensureUserExists(userId: number) {
