@@ -37,3 +37,32 @@ CrunEdu es una red social educativa universitaria. El MVP debe permitir comunida
 | MinIO API | http://localhost:9000 |
 | MinIO Console | http://localhost:9001 |
 | Mailhog | http://localhost:8025 |
+
+## Patrón de módulos NestJS (auditoría abril 2026)
+
+### JWT compartido
+
+- Se centralizó la configuración JWT en `JwtSharedModule` (`apps/api/src/modules/auth/jwt-shared.module.ts`).
+- `JwtSharedModule` es `@Global()` y exporta `JwtModule`, evitando duplicar `JwtModule.register(...)` en cada módulo funcional.
+- Módulos que consumen `JwtService` o `JwtAuthGuard` importan `JwtSharedModule` para mantener explícita la dependencia en cada feature module:
+  - `AuthModule`
+  - `PostsModule`
+  - `UsersModule`
+  - `QuestionsModule`
+  - `CommunitiesModule`
+  - `MarketplaceModule`
+  - `ReportsModule`
+
+### Observability
+
+- Regla: si un servicio inyecta `ObservabilityService`, su módulo debe importar `ObservabilityModule`.
+- Estado auditado:
+  - `AuthModule`: ✅ importa `ObservabilityModule`.
+  - `PostsModule`: ✅ importa `ObservabilityModule`.
+  - `UsersModule`: ✅ importa `ObservabilityModule`.
+
+### Prueba de arranque por dependencias
+
+- Se agrega `apps/api/src/tests/bootstrap.dependencies.spec.ts`.
+- Esta prueba crea `ApplicationContext` con `AppModule` y falla si Nest no puede resolver providers/imports.
+- Script: `npm run test:bootstrap -w @crunedu/api`.
