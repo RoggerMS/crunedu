@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { DevSecurityService } from "../core/dev-security.service";
 import { Request } from "express";
 
 export interface JwtPayload {
@@ -19,13 +20,17 @@ interface AuthenticatedRequest extends Request {
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(private readonly jwtService: JwtService, private readonly devSecurity: DevSecurityService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const authHeader = request.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      if (this.devSecurity.isRelaxedAuthEnabled()) {
+        request.user = { sub: 1, email: "dev@crunedu.local", role: "ADMIN" };
+        return true;
+      }
       throw new UnauthorizedException("Token de autenticación inválido.");
     }
 
@@ -36,6 +41,10 @@ export class JwtAuthGuard implements CanActivate {
       request.user = payload;
       return true;
     } catch {
+      if (this.devSecurity.isRelaxedAuthEnabled()) {
+        request.user = { sub: 1, email: "dev@crunedu.local", role: "ADMIN" };
+        return true;
+      }
       throw new UnauthorizedException("Token expirado o inválido.");
     }
   }

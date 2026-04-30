@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Param,
   ParseIntPipe,
@@ -16,6 +15,7 @@ import { JwtAuthGuard, JwtPayload } from "../posts/jwt-auth.guard";
 import { CreateReportDto } from "./dto/create-report.dto";
 import { ModerateReportDto } from "./dto/moderate-report.dto";
 import { ReportsService } from "./reports.service";
+import { DevSecurityService } from "../core/dev-security.service";
 
 interface AuthenticatedRequest extends Request {
   user: JwtPayload;
@@ -23,7 +23,7 @@ interface AuthenticatedRequest extends Request {
 
 @Controller("reports")
 export class ReportsController {
-  constructor(private readonly service: ReportsService) {}
+  constructor(private readonly service: ReportsService, private readonly devSecurity: DevSecurityService) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -38,7 +38,7 @@ export class ReportsController {
     @Query("communityId") communityId?: string,
     @Query("severity") severity?: "high" | "medium" | "low",
   ) {
-    if (request.user.role !== "ADMIN") throw new ForbiddenException("Solo administradores pueden revisar reportes.");
+    this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden revisar reportes.");
 
     return this.service.index({ communityId: communityId ? Number(communityId) : undefined, severity });
   }
@@ -46,7 +46,7 @@ export class ReportsController {
   @Patch(":id/moderate")
   @UseGuards(JwtAuthGuard)
   moderate(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest, @Body() dto: ModerateReportDto) {
-    if (request.user.role !== "ADMIN") throw new ForbiddenException("Solo administradores pueden moderar contenido.");
+    this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden moderar contenido.");
 
     return this.service.moderate(id, request.user.sub, dto);
   }
@@ -54,7 +54,7 @@ export class ReportsController {
   @Get("reputation/:userId")
   @UseGuards(JwtAuthGuard)
   reputation(@Param("userId", ParseIntPipe) userId: number, @Req() request: AuthenticatedRequest) {
-    if (request.user.role !== "ADMIN") throw new ForbiddenException("Solo administradores pueden revisar reputación.");
+    this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden revisar reputación.");
     return this.service.getUserReputation(userId);
   }
 }

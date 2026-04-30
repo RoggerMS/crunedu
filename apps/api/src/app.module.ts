@@ -15,6 +15,7 @@ import { SearchModule } from "./modules/search/search.module";
 import { UsersModule } from "./modules/users/users.module";
 import { ObservabilityModule } from "./modules/observability/observability.module";
 import { RateLimitGuard } from "./modules/core/rate-limit.guard";
+import { DevSecurityService } from "./modules/core/dev-security.service";
 
 @Module({
   imports: [
@@ -34,6 +35,6 @@ import { RateLimitGuard } from "./modules/core/rate-limit.guard";
     SearchModule,
     ObservabilityModule,
   ],
-  providers: [RateLimitGuard],
+  providers: [RateLimitGuard, DevSecurityService],
 })
 export class AppModule {}
