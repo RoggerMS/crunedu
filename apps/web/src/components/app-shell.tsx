@@ -3,18 +3,43 @@
 import { MAIN_NAVIGATION } from "@crunedu/shared";
 import { ChevronLeft, ChevronRight, GraduationCap, Search } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearch } from "@/hooks/useSearch";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [query, setQuery] = useState("");
-  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(true);
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
   const { results, loading, error } = useSearch(query);
   const hasQuery = query.trim().length > 0;
   const hasResults =
     results.posts.length > 0 ||
     results.questions.length > 0 ||
     results.communities.length > 0;
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const storedPreference = window.sessionStorage.getItem(
+      "crunedu:right-panel-open",
+    );
+
+    if (storedPreference !== null) {
+      setIsQuickActionsOpen(storedPreference === "true");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.sessionStorage.setItem(
+      "crunedu:right-panel-open",
+      String(isQuickActionsOpen),
+    );
+  }, [isQuickActionsOpen]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -79,7 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className={`lg:pl-64 ${isQuickActionsOpen ? "lg:pr-72" : ""}`}>
         <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-5 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
+            <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
               <Search size={16} />
               <input
                 value={query}
@@ -94,7 +119,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() =>
                 setIsQuickActionsOpen((currentState) => !currentState)
               }
-              className="hidden items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 lg:inline-flex"
+              className="ml-auto hidden shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 lg:inline-flex"
             >
               {isQuickActionsOpen ? (
                 <ChevronRight size={16} />
