@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   BadRequestException,
-  ForbiddenException,
   Get,
   Param,
   ParseIntPipe,
@@ -14,6 +13,7 @@ import {
 import { Request } from "express";
 import { JwtAuthGuard, JwtPayload } from "../posts/jwt-auth.guard";
 import { MarketplaceService } from "./marketplace.service";
+import { DevSecurityService } from "../core/dev-security.service";
 import { CreateProductInquiryDto, CreateProductDto, UpdateProductDto } from "./dtos";
 
 interface AuthenticatedRequest extends Request {
@@ -33,7 +33,7 @@ function parseOptionalPositiveInt(value: string | undefined, fieldName: string):
 
 @Controller("marketplace")
 export class MarketplaceController {
-  constructor(private readonly service: MarketplaceService) {}
+  constructor(private readonly service: MarketplaceService, private readonly devSecurity: DevSecurityService) {}
 
   @Get("categories")
   categories() {
@@ -74,9 +74,7 @@ export class MarketplaceController {
   @UseGuards(JwtAuthGuard)
   @Post("admin/products")
   upsertProduct(@Req() request: AuthenticatedRequest, @Body() body: CreateProductDto | UpdateProductDto) {
-    if (request.user.role !== "ADMIN") {
-      throw new ForbiddenException("Solo administradores pueden gestionar productos.");
-    }
+    this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden gestionar productos.");
     return this.service.adminUpsertProduct(request.user, body);
   }
 

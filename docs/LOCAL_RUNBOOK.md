@@ -242,3 +242,46 @@ Si aparece `FAIL>0`, revisar el primer `❌` y correlacionar con logs del API:
 ```powershell
 docker compose logs api --tail=120
 ```
+
+## Modo relajado de desarrollo (solo `NODE_ENV=development`)
+
+### Flags disponibles en `.env`
+- `DEV_RELAXED_AUTH=false`
+- `DEV_BYPASS_ADMIN_GATES=false`
+
+Estas flags **solo tienen efecto** cuando `NODE_ENV=development`. En `production` se ignoran automáticamente.
+
+### Cómo activar/desactivar
+1. Edita tu archivo `.env` local.
+2. Activa solo la flag que necesites:
+
+```powershell
+# Ejemplo en .env
+NODE_ENV=development
+DEV_RELAXED_AUTH=true
+DEV_BYPASS_ADMIN_GATES=true
+```
+
+3. Reinicia servicios para aplicar cambios:
+
+```powershell
+docker compose up -d --build api
+```
+
+4. Para desactivar modo relajado, vuelve ambas flags a `false` y reinicia API.
+
+### Qué relaja cada flag
+- `DEV_RELAXED_AUTH=true`: permite pasar guards JWT en desarrollo incluso sin token válido (usa usuario técnico local de desarrollo).
+- `DEV_BYPASS_ADMIN_GATES=true`: permite pasar validaciones de rol admin en endpoints administrativos durante desarrollo.
+
+### Riesgos
+- Puede ocultar errores reales de autenticación/autorización si se deja activo durante pruebas finales.
+- No debe usarse para pruebas de seguridad o pruebas de regresión pre-release.
+- Nunca debe activarse fuera de entorno local de desarrollo.
+
+### Checklist antes de pasar a producción
+1. Confirmar `NODE_ENV=production`.
+2. Confirmar `DEV_RELAXED_AUTH=false`.
+3. Confirmar `DEV_BYPASS_ADMIN_GATES=false`.
+4. Rebuild/redeploy del API con variables finales.
+5. Validar login real con JWT y endpoints admin con usuario no admin (debe fallar con 401/403 según corresponda).
