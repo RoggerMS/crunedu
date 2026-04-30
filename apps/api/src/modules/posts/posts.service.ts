@@ -10,6 +10,7 @@ import { PostCommentResponseDto } from "./dto/post-comment-response.dto";
 import { UpdatePostDto } from "./dto/update-post.dto";
 import { GetPostsQueryDto } from "./dto/get-posts-query.dto";
 import { GetDiscoveryQueryDto } from "./dto/get-discovery-query.dto";
+import { UploadPostImageResponseDto } from "./dto/upload-post-image-response.dto";
 import { ObservabilityService } from "../observability/observability.service";
 
 interface FeedEventPayload {
@@ -26,6 +27,7 @@ type PostWithRelations = {
   community: { id: number; name: string; slug: string } | null;
   comments: Array<{ createdAt: Date }>;
   _count: { comments: number } | null;
+  images: Array<{ id:number; imageUrl:string; mimeType:string; sizeBytes:number; position:number }>;
 };
 
 @Injectable()
@@ -69,6 +71,7 @@ export class PostsService {
         createdAt: true,
       },
     },
+    images: { select: { id: true, imageUrl: true, mimeType: true, sizeBytes: true, position: true }, orderBy: { position: "asc" } },
     _count: {
       select: {
         comments: true,
@@ -79,7 +82,7 @@ export class PostsService {
   private readonly commentSelect = { id: true, content: true, createdAt: true, user: { select: { id: true, email: true, profile: { select: { firstName: true, lastName: true } } } } } as const;
 
   private mapPostResponse(post: PostWithRelations): PostResponseDto {
-    return { id: post.id, title: post.title, content: post.content, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, commentsCount: post._count?.comments ?? 0 };
+    return { id: post.id, title: post.title, content: post.content, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, commentsCount: post._count?.comments ?? 0, images: post.images };
   }
 
   private mapCommentResponse(comment: any): PostCommentResponseDto {
@@ -187,13 +190,28 @@ export class PostsService {
     await this.preventRepeatedPostContent(userId, dto.content);
     const title = dto.title?.trim() ?? "";
 
-    const post = await this.prisma.post.create({ data: { title, content: dto.content.trim(), communityId: dto.communityId, userId }, select: this.postSelect });
+    const post = await this.prisma.post.create({ data: { title, content: dto.content.trim(), communityId: dto.communityId, userId, images: dto.images?.length ? { create: dto.images.slice(0,4).map((image, index) => ({ imageUrl: image.imageUrl, storageKey: image.storageKey, mimeType: image.mimeType, sizeBytes: image.sizeBytes, position: index })) } : undefined }, select: this.postSelect });
     this.cache.invalidate("hot:feed:initial");
     await this.jobs.enqueueNotification({ type: "POST_CREATED", userId, postId: post.id, communityId: dto.communityId });
     await this.jobs.enqueueRankingRecalculation({ trigger: "POST_CREATED", postId: post.id });
     this.observability.recordPostCreated(userId, post.id);
     this.registerFeedEvent("create_post", userId, { postId: post.id });
     return this.mapPostResponse(post);
+  }
+
+  async uploadImage(file: Express.Multer.File): Promise<UploadPostImageResponseDto> {
+    const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+    const maxSizeBytes = 3 * 1024 * 1024;
+    if (!file) throw new BadRequestException("Debes adjuntar una imagen.");
+    if (!allowedTypes.has(file.mimetype)) throw new BadRequestException("Formato no permitido. Solo JPG, PNG o WEBP.");
+    if (file.size > maxSizeBytes) throw new BadRequestException("La imagen supera el límite de 3MB.");
+    const extension = file.originalname.split(".").pop()?.toLowerCase() || "jpg";
+    const filename = `post-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+    const storageKey = `posts/${filename}`;
+    const targetDir = process.cwd() + "/tmp/uploads/posts";
+    await import("node:fs/promises").then((fs) => fs.mkdir(targetDir, { recursive: true }));
+    await import("node:fs/promises").then((fs) => fs.writeFile(`${targetDir}/${filename}`, file.buffer));
+    return { imageUrl: `/api/posts/images/${filename}`, storageKey, mimeType: file.mimetype, sizeBytes: file.size };
   }
 
   async findOne(id: number, userId?: number): Promise<PostResponseDto> {

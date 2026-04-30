@@ -1,3 +1,5 @@
+import { PostImageResponseDto } from "./post-image-response.dto";
+
 export class PostResponseDto {
   id: number;
   title: string;
@@ -15,4 +17,5 @@ export class PostResponseDto {
     slug: string;
   } | null;
   commentsCount: number;
+  images: PostImageResponseDto[];
 }

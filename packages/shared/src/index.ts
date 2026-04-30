@@ -67,6 +67,14 @@ export interface FeedCommunity {
   slug: string;
 }
 
+export interface FeedPostImage {
+  id: number;
+  imageUrl: string;
+  mimeType: string;
+  sizeBytes: number;
+  position: number;
+}
+
 export interface FeedPost {
   id: number;
   title: string;
@@ -75,6 +83,7 @@ export interface FeedPost {
   author: FeedAuthor;
   community: FeedCommunity | null;
   commentsCount: number;
+  images: FeedPostImage[];
 }
 
 
@@ -101,10 +110,18 @@ export interface PostComment {
   author: FeedAuthor;
 }
 
+export interface CreatePostImagePayload {
+  imageUrl: string;
+  storageKey: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
 export interface CreateFeedPostPayload {
   title?: string;
   content: string;
   communityId: number;
+  images?: CreatePostImagePayload[];
 }
 
 

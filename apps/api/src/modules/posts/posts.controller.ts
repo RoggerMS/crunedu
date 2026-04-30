@@ -1,6 +1,9 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req, Res, StreamableFile, UnauthorizedException, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { Request } from "express";
+import { Request, Response } from "express";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { createReadStream } from "node:fs";
+import { access } from "node:fs/promises";
 import { CreatePostDto } from "./dto/create-post.dto";
 import { CreatePostCommentDto } from "./dto/create-post-comment.dto";
 import { UpdatePostDto } from "./dto/update-post.dto";
@@ -35,6 +38,25 @@ export class PostsController {
   @UseGuards(JwtAuthGuard)
   @RateLimit({ windowMs: 60_000, maxPerIp: 10, maxPerUser: 3, message: "Límite alcanzado para publicar. Espera 1 minuto e inténtalo de nuevo." })
   create(@Body() dto: CreatePostDto, @Req() request: AuthenticatedRequest) { return this.service.create(dto, request.user.sub); }
+
+
+  @Post("images")
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor("image"))
+  uploadImage(@UploadedFile() file: Express.Multer.File, @Req() request: AuthenticatedRequest) {
+    if (!request.user?.sub) throw new UnauthorizedException();
+    return this.service.uploadImage(file);
+  }
+
+  @Get("images/:filename")
+  async getImage(@Param("filename") filename: string, @Res({ passthrough: true }) response: Response): Promise<StreamableFile> {
+    const filePath = `${process.cwd()}/tmp/uploads/posts/${filename}`;
+    await access(filePath);
+    if (filename.endsWith(".png")) response.setHeader("Content-Type", "image/png");
+    else if (filename.endsWith(".webp")) response.setHeader("Content-Type", "image/webp");
+    else response.setHeader("Content-Type", "image/jpeg");
+    return new StreamableFile(createReadStream(filePath));
+  }
 
   @Get(":id/comments")
   getComments(@Param("id", ParseIntPipe) id: number) { return this.service.getComments(id); }
