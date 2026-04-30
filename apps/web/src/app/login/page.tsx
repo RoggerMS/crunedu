@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { mapApiError } from "@/lib/api";
@@ -9,6 +10,8 @@ import { login } from "@/lib/api-helpers";
 
 export default function LoginPage() {
   const { setAccessToken } = useAccessToken();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -25,8 +28,15 @@ export default function LoginPage() {
     try {
       const data = await login(email.trim(), password);
       setAccessToken(data.accessToken);
-      setSuccessMessage("Sesión iniciada. Ya puedes publicar.");
+      setSuccessMessage("Sesión iniciada. Redirigiendo...");
       setPassword("");
+
+      const returnUrl = searchParams.get("returnUrl")?.trim();
+      const nextPath = returnUrl && returnUrl.startsWith("/") ? returnUrl : "/app";
+
+      window.setTimeout(() => {
+        router.replace(nextPath);
+      }, 450);
     } catch (err) {
       setError(mapApiError(err, "No se pudo iniciar sesión."));
     } finally {
