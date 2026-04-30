@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FeedQuestion } from "@crunedu/shared";
+import { mapApiError } from "@/lib/api";
+import { apiRequest } from "@/lib/http-client";
 
 interface UseQuestionsResult {
   questions: FeedQuestion[];
@@ -19,25 +21,21 @@ export function useQuestions(): UseQuestionsResult {
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
-  async function fetchQuestions(cursor?: number, signal?: AbortSignal) {
+  async function fetchQuestions(cursor?: number) {
     const params = new URLSearchParams({ limit: "10" });
     if (cursor) params.set("cursor", String(cursor));
-    const response = await fetch(`${apiBaseUrl}/questions?${params.toString()}`, { signal });
-    if (!response.ok) throw new Error("Error al cargar las preguntas");
-    return (await response.json()) as QuestionsResponse;
+    return apiRequest<QuestionsResponse>(`/questions?${params.toString()}`);
   }
 
-  async function loadInitial(signal?: AbortSignal) {
+  async function loadInitial() {
     try {
       setError(null);
-      const data = await fetchQuestions(undefined, signal);
+      const data = await fetchQuestions();
       setQuestions(data.items ?? []);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Error desconocido");
+      setError(mapApiError(err, "No se pudieron cargar las preguntas."));
     } finally {
       setLoading(false);
     }
@@ -51,17 +49,15 @@ export function useQuestions(): UseQuestionsResult {
       setQuestions((prev) => [...prev, ...(data.items ?? [])]);
       setNextCursor(data.nextCursor ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido");
+      setError(mapApiError(err, "No se pudieron cargar más preguntas."));
     } finally {
       setLoadingMore(false);
     }
   }
 
   useEffect(() => {
-    const controller = new AbortController();
-    loadInitial(controller.signal);
-    return () => controller.abort();
-  }, [apiBaseUrl]);
+    void loadInitial();
+  }, []);
 
   return { questions, loading, loadingMore, hasMore: nextCursor !== null, error, loadMore, reload: async () => { setLoading(true); await loadInitial(); } };
 }

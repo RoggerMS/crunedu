@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Community } from "@crunedu/shared";
-import { buildApiUrl, mapApiError } from "@/lib/api";
+import { mapApiError } from "@/lib/api";
+import { apiRequest } from "@/lib/http-client";
 
 interface UseCommunitiesResult {
   communities: Community[];
@@ -14,27 +15,20 @@ export function useCommunities(): UseCommunitiesResult {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchCommunities(signal?: AbortSignal) {
+  async function fetchCommunities() {
     try {
       setError(null);
-      const response = await fetch(buildApiUrl("/communities"), { signal });
-      if (!response.ok) {
-        throw new Error("Error al cargar las comunidades.");
-      }
-      const data = await response.json();
+      const data = await apiRequest<Community[]>("/communities");
       setCommunities(data);
     } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
-      setError(mapApiError(err, "Error al cargar las comunidades."));
+      setError(mapApiError(err, "No se pudieron cargar las comunidades."));
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchCommunities(controller.signal);
-    return () => controller.abort();
+    void fetchCommunities();
   }, []);
 
   return {

@@ -32,7 +32,7 @@ export default function Page() {
         type="error"
         title="No pudimos cargar las comunidades"
         description={error}
-        action={<PrimaryButton type="button" onClick={() => void reload()}>Volver a cargar</PrimaryButton>}
+        action={<PrimaryButton type="button" onClick={() => void reload()}>Reintentar</PrimaryButton>}
       />
     );
   }
