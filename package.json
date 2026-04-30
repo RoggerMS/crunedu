@@ -8,7 +8,7 @@
     "dev:web": "npm run dev -w @crunedu/web",
     "dev:api": "npm run start:dev -w @crunedu/api",
     "build": "npm run build -w @crunedu/shared && npm run build -w @crunedu/ui && npm run build -w @crunedu/database && npm run build -w @crunedu/web && npm run build -w @crunedu/api",
-    "lint": "npm run lint -ws --if-present",
+    "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md,yml,yaml}\"",
     "db:generate": "npm run prisma:generate -w @crunedu/database",
     "db:migrate": "npm run prisma:migrate -w @crunedu/database",
