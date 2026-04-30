@@ -22,6 +22,7 @@ type Product = {
 };
 
 export type CatalogResponse = { items: Product[]; featuredProducts: Product[]; nextCursor: number | null };
+export type ProductDetailResponse = Product & { contactMethod?: string; stock?: number; viewCount?: number };
 
 export function login(email: string, password: string) {
   return apiRequest<LoginResponse>("/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
@@ -49,6 +50,27 @@ export function createAnswer(questionId: number, content: string, token: string)
 
 export function getStoreCatalog(params: URLSearchParams) {
   return apiRequest<CatalogResponse>(`/marketplace/products?${params.toString()}`);
+}
+
+export function getStoreProductDetail(productId: number) {
+  return apiRequest<ProductDetailResponse>(`/marketplace/products/${productId}`);
+}
+
+export function createStoreInquiry(
+  productId: number,
+  payload: {
+    contactName: string;
+    contactPhone: string;
+    message: string;
+    preferredContactMethod: "whatsapp" | "email";
+  },
+  token: string,
+) {
+  return apiRequest(`/marketplace/products/${productId}/inquiries`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
 }
 
 export function getStoreCategories() {

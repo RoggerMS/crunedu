@@ -46,6 +46,7 @@ export class MarketplaceService {
       where: {
         status: "ACTIVE",
         ...(categoryId ? { categoryId } : {}),
+        ...(contextFilters.length > 0 ? { AND: contextFilters } : {}),
       },
       orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }, { id: "desc" }],
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),

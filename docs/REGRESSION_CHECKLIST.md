@@ -57,6 +57,16 @@
 | Bloqueos por rate limit generan `rate_limit_blocked`. | ⚠️ | Manual | Smoke valida `429`, pero no inspecciona stdout estructurado en aserción formal. |
 | Bloqueos por spam generan `spam_blocked`. | ⚠️ | Manual | Requiere test de captura de logs o test e2e con hook de logger. |
 
+## 7) Tienda (marketplace MVP)
+
+| Punto crítico | Estado | Cobertura | Nota |
+|---|---|---|---|
+| `GET /api/marketplace/products` devuelve listado real de productos activos. | ✅ | Manual | Verificar que `items` responda lista y que filtros por contexto (`faculty`, `career`) afecten listado y destacados. |
+| `GET /api/marketplace/products/:id` devuelve detalle de producto activo. | ✅ | Manual | Debe responder categoría y detalle para ID válido; para ID no existente debe responder mensaje claro. |
+| `POST /api/marketplace/products/:id/inquiries` con JWT registra interés. | ✅ | Manual | Debe crear consulta con campos mínimos requeridos y mostrar confirmación en UI. |
+| Página `/app/tienda` maneja error de red con mensaje en español y opción de reintento. | ✅ | Manual | Validar estado de error desconectando API o usando URL inválida temporal. |
+| Página `/app/tienda/[id]` maneja carga, error y éxito con mensajes claros en español. | ✅ | Manual | Validar casos: carga inicial, producto no disponible, interés enviado, error al enviar interés. |
+
 ## Ejecución CI local
 
 ```bash
@@ -69,7 +79,7 @@ Salida legible esperada:
 
 
 
-## 7) Trazabilidad item por item (checklist -> prueba)
+## 8) Trazabilidad item por item (checklist -> prueba)
 
 | ID | Item | Tipo | Evidencia |
 |---|---|---|---|
