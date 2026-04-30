@@ -40,6 +40,7 @@ export default function AppPage() {
   const [content, setContent] = useState("");
   const [communityId, setCommunityId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editingPostId, setEditingPostId] = useState<number | null>(null);
@@ -264,7 +265,11 @@ export default function AppPage() {
           <h1 className="text-2xl font-black tracking-tight sm:text-3xl">¿Qué quieres hacer hoy en CrunEdu?</h1>
           <p className="text-sm text-slate-600">Prioriza acciones rápidas para mantenerte al día con tu comunidad.</p>
           <div className="grid gap-2 sm:grid-cols-3">
-            <PrimaryButton type="button" onClick={() => document.getElementById("post-content")?.focus()} className="w-full justify-center">
+            <PrimaryButton
+              type="button"
+              onClick={() => setIsCreateFormOpen((prev) => !prev)}
+              className="w-full justify-center"
+            >
               Publicar
             </PrimaryButton>
             <SecondaryButton asChild className="w-full justify-center">
@@ -276,11 +281,12 @@ export default function AppPage() {
           </div>
         </Card>
 
-        <Card>
-        <form onSubmit={handleSubmit}>
-          <h2 className="text-lg font-black">¿Qué quieres compartir?</h2>
+        {isCreateFormOpen ? (
+          <Card>
+            <form onSubmit={handleSubmit}>
+              <h2 className="text-lg font-black">¿Qué quieres compartir?</h2>
 
-          <div className="mt-4 space-y-4">
+              <div className="mt-4 space-y-4">
             <FormField><p className="text-sm font-semibold text-slate-700">Contenido de la publicación</p><TextArea
               id="post-content"
               value={content}
@@ -326,13 +332,14 @@ export default function AppPage() {
             {formError ? <StatusMessage type="error">{formError}</StatusMessage> : null}
             {successMessage ? <StatusMessage type="success">{successMessage}</StatusMessage> : null}
 
-            <PrimaryButton type="submit" className="w-full sm:w-auto" disabled={!canSubmit || submitting}>
-              {submitting ? <Loader2 className="animate-spin" size={16} /> : null}
-              Publicar
-            </PrimaryButton>
-          </div>
-        </form>
-        </Card>
+                <PrimaryButton type="submit" className="w-full sm:w-auto" disabled={!canSubmit || submitting}>
+                  {submitting ? <Loader2 className="animate-spin" size={16} /> : null}
+                  Publicar
+                </PrimaryButton>
+              </div>
+            </form>
+          </Card>
+        ) : null}
 
         <div id="actividad-reciente" className="mt-6 space-y-4">
           <h2 className="text-xl font-black">Actividad reciente relevante</h2>
@@ -344,7 +351,7 @@ export default function AppPage() {
               description="Comienza uniéndote a una comunidad o crea tu primera publicación para activar el feed."
               action={(
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <PrimaryButton onClick={() => document.getElementById("post-content")?.focus()}>Crear primera publicación</PrimaryButton>
+                  <PrimaryButton onClick={() => setIsCreateFormOpen(true)}>Crear primera publicación</PrimaryButton>
                   <SecondaryButton asChild>
                     <Link href="/app/comunidades">Únete a tu primera comunidad</Link>
                   </SecondaryButton>
@@ -432,7 +439,7 @@ export default function AppPage() {
         </div>
       </section>
 
-      <aside className="space-y-4">
+      <aside className="hidden space-y-4 lg:block">
         <Card>
           <FileText className="text-indigo-600" />
           <h3 className="mt-3 font-black">Tu actividad</h3>
