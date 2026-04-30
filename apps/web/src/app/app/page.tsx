@@ -1,7 +1,8 @@
 "use client";
 
-import type { Community, CreateFeedPostPayload, PostComment } from "@crunedu/shared";
+import type { Community, CreateFeedPostPayload, CreatePostImagePayload, PostComment } from "@crunedu/shared";
 import { Loader2 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { useCommunities } from "@/hooks/useCommunities";
@@ -40,6 +41,8 @@ export default function AppPage() {
   const [content, setContent] = useState("");
   const [communityId, setCommunityId] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [attachedImages, setAttachedImages] = useState<CreatePostImagePayload[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -83,6 +86,7 @@ export default function AppPage() {
       title: title.trim() || undefined,
       content: content.trim(),
       communityId: Number(communityId),
+      images: attachedImages,
     };
 
     try {
@@ -98,6 +102,7 @@ export default function AppPage() {
       setTitle("");
       setContent("");
       setCommunityId("");
+      setAttachedImages([]);
       setSuccessMessage("Publicación creada correctamente.");
       await reload();
     } catch (err) {
@@ -108,6 +113,27 @@ export default function AppPage() {
       }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+
+  async function handleAttachImage(file: File | null) {
+    if (!file || !accessToken) return;
+    setUploadingImage(true);
+    setFormError(null);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const uploaded = await apiRequest<CreatePostImagePayload>("/posts/images", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: formData,
+      });
+      setAttachedImages((prev) => [...prev, uploaded].slice(0, 4));
+    } catch (err) {
+      setFormError(mapApiError(err, "No se pudo subir la imagen. Usa JPG, PNG o WEBP de hasta 3MB."));
+    } finally {
+      setUploadingImage(false);
     }
   }
 
@@ -318,6 +344,8 @@ export default function AppPage() {
               ))}
             </Select></FormField>
 
+            <FormField><p className="text-sm font-semibold text-slate-700">Imágenes (opcional)</p><Input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void handleAttachImage(event.target.files?.[0] ?? null)} disabled={!isAuthenticated || uploadingImage || attachedImages.length >= 4} /><p className="mt-1 text-xs text-slate-500">Máximo 4 imágenes. No se permiten videos MP4 en esta fase.</p><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">{attachedImages.map((image) => (<img key={image.storageKey} src={image.imageUrl} alt="Vista previa" loading="lazy" className="h-20 w-full rounded-xl object-cover" />))}</div></FormField>
+
             {!isAuthenticated ? (
               <p className="text-sm text-slate-600">
                 Inicia sesión para publicar. {" "}
@@ -371,6 +399,7 @@ export default function AppPage() {
                   <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">{post.community?.name ?? "General"} · {post.commentsCount} comentarios</p>
                   {post.title ? <h2 className="mt-2 text-xl font-bold">{post.title}</h2> : null}
                   <p className="mt-2 text-slate-600">{post.content}</p>
+                  {post.images?.length ? (<div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{post.images.map((image) => (<Image key={image.id} src={image.imageUrl} alt="Imagen de publicación" width={320} height={200} loading="lazy" className="h-32 w-full rounded-xl object-cover" />))}</div>) : null}
                   <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-slate-500">
                     <span>Autor: {buildAuthorName(post.author.firstName, post.author.lastName, post.author.email)}</span>
                     <span>•</span>

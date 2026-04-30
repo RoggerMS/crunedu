@@ -281,6 +281,7 @@ model Post {
   savedBy   SavedPost[]
   reports   Report[]
   tags      PostTag[]
+  images    PostImage[]
 
   @@index([userId])
   @@index([communityId])
@@ -289,6 +290,23 @@ model Post {
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([communityId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@map("posts")
+}
+
+
+model PostImage {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  imageUrl  String   @map("image_url")
+  storageKey String  @map("storage_key")
+  mimeType  String   @map("mime_type")
+  sizeBytes Int      @map("size_bytes")
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@map("post_images")
 }
 
 model Question {
