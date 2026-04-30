@@ -67,3 +67,35 @@ Salida legible esperada:
 - líneas por check con `✅ / ⚠️ / ❌`
 - resumen final `PASS/FAIL/SKIP`
 
+
+
+## 7) Trazabilidad item por item (checklist -> prueba)
+
+| ID | Item | Tipo | Evidencia |
+|---|---|---|---|
+| AUTH-01 | Register crea usuario | Automatizada | `integration.smoke.ts` -> bloque "Auth register/login" (`register A`, `register B`). |
+| AUTH-02 | Login devuelve token | Automatizada | `integration.smoke.ts` -> `login A` y `login B`. |
+| AUTH-03 | Login inválido = 401 | Automatizada | `integration.smoke.ts` -> `badLogin`. |
+| AUTH-04 | Rate limit registro = 429 | Automatizada | `integration.smoke.ts` -> bloque "Auth rate limit (register)". |
+| AUTH-05 | Rate limit login = 429 | Manual justificado | Se deja manual para evitar falsos negativos por ventana temporal compartida de límites por IP/usuario en la misma suite smoke. |
+| COM-01 | GET communities 200 | Manual justificado | Validación local con datos semilla (`Invoke-RestMethod /api/communities`) para no acoplar smoke a estado de seed externo. |
+| COM-02 | Comunidades semilla esperadas | Manual justificado | Requiere entorno local con seed y revisión de contenido exacto. |
+| COM-03 | UI comunidades sin mocks | Manual justificado | Requiere validación visual web end-to-end. |
+| POST-01 | GET posts lista publicaciones | Automatizada | `integration.smoke.ts` -> `postsBefore`. |
+| POST-02 | POST posts sin token = 401 | Automatizada | `integration.smoke.ts` -> `createPostNoToken`. |
+| POST-03 | POST posts con token crea publicación | Automatizada | `integration.smoke.ts` -> `createPost`. |
+| CMT-01 | GET comments por post | Automatizada | `integration.smoke.ts` -> `listCommentsRes`. |
+| CMT-02 | POST comment con token | Automatizada | `integration.smoke.ts` -> `createCommentRes`. |
+| CMT-03 | Rate limit comments (8/min user) | Automatizada | `integration.smoke.ts` -> bloque "Comment limits". |
+| POST-04 | Rate limit posts (3/min user) | Manual justificado | Pendiente prueba dedicada para no contaminar límites globales de la suite base. |
+| QST-01 | GET questions | Manual justificado | Fuera del alcance de esta suite expandida; no se modifica flujo de questions en este cambio. |
+| QST-02 | POST questions con token | Manual justificado | Pendiente suite específica de preguntas/respuestas. |
+| QST-03 | POST answers con token | Manual justificado | Pendiente flujo completo pregunta->respuesta estable. |
+| FOL-01 | Follow crea relación | Automatizada | `integration.smoke.ts` -> `followRes`. |
+| FOL-02 | isFriend mutuo | Automatizada | `integration.smoke.ts` -> `followBackRes` + validaciones `relationship.isFriend` en ambos perfiles. |
+| FOL-03 | Unfollow revierte relación | Automatizada | `integration.smoke.ts` -> `unfollowRes` + validaciones posteriores. |
+| FOL-04 | Lista friends 200 | Automatizada | `integration.smoke.ts` -> `friendsList`. |
+| FOL-05 | Rate limit follows | Manual justificado | Pendiente suite dedicada para no interferir con otras pruebas anti-spam/rate-limit. |
+| FOL-06 | Anti-spam duplicado follow | Manual justificado | Depende de ventana temporal exacta de negocio; mejor validación manual controlada por tiempo. |
+| LOG-01 | Log `rate_limit_blocked` | Manual justificado | Smoke valida HTTP 429 pero no aserta stdout estructurado. |
+| LOG-02 | Log `spam_blocked` | Manual justificado | Requiere captura formal de logger o hook e2e de observabilidad. |
