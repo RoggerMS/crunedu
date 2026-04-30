@@ -120,22 +120,49 @@ async function run() {
     record("comments", "crear y listar comentario", "PASS");
 
     // Follow / friend status coverage
+    const userAMe = await fetch(`${baseUrl}/users/me`, { headers: { authorization: `Bearer ${authA.accessToken}` } });
+    assertStatus(userAMe.status, 200, "get me A");
+    const userA = (await userAMe.json()) as { id: number };
+
     const userBMe = await fetch(`${baseUrl}/users/me`, { headers: { authorization: `Bearer ${authB.accessToken}` } });
     assertStatus(userBMe.status, 200, "get me B");
     const userB = (await userBMe.json()) as { id: number };
 
     const followRes = await fetch(`${baseUrl}/follows/${userB.id}`, { method: "POST", headers: authHeaderA });
-    assertStatus(followRes.status, 201, "follow user");
+    assertStatus(followRes.status, 201, "follow user A->B");
 
-    const profileAfterFollow = await fetch(`${baseUrl}/users/${userB.id}`, { headers: { authorization: `Bearer ${authA.accessToken}` } });
-    assertStatus(profileAfterFollow.status, 200, "profile after follow");
-    const profileJson = (await profileAfterFollow.json()) as { relationship?: { isFollowing?: boolean } };
-    if (!profileJson.relationship?.isFollowing) throw new Error("relationship.isFollowing should be true after follow");
-    record("follows", "follow + estado de relación en perfil", "PASS");
+    const followBackRes = await fetch(`${baseUrl}/follows/${userA.id}`, { method: "POST", headers: authHeaderB });
+    assertStatus(followBackRes.status, 201, "follow user B->A");
+
+    const profileAfterMutual = await fetch(`${baseUrl}/users/${userB.id}`, { headers: { authorization: `Bearer ${authA.accessToken}` } });
+    assertStatus(profileAfterMutual.status, 200, "profile after mutual follow");
+    const profileAfterMutualJson = (await profileAfterMutual.json()) as {
+      relationship?: { isFollowing?: boolean; isFriend?: boolean };
+    };
+    if (!profileAfterMutualJson.relationship?.isFollowing) throw new Error("relationship.isFollowing should be true after follow");
+    if (!profileAfterMutualJson.relationship?.isFriend) throw new Error("relationship.isFriend should be true after mutual follow");
+
+    const profileFromB = await fetch(`${baseUrl}/users/${userA.id}`, { headers: { authorization: `Bearer ${authB.accessToken}` } });
+    assertStatus(profileFromB.status, 200, "profile B sees A");
+    const profileFromBJson = (await profileFromB.json()) as { relationship?: { isFollowing?: boolean; isFriend?: boolean } };
+    if (!profileFromBJson.relationship?.isFriend) throw new Error("relationship.isFriend should be true from both sides");
+    record("follows", "follow mutuo refleja estado isFriend en ambos perfiles", "PASS");
 
     const friendsList = await fetch(`${baseUrl}/users/${userB.id}/friends`, { headers: { authorization: `Bearer ${authA.accessToken}` } });
     assertStatus(friendsList.status, 200, "friends list");
     record("follows", "GET /users/:id/friends responde 200", "PASS");
+
+    const unfollowRes = await fetch(`${baseUrl}/follows/${userB.id}`, { method: "DELETE", headers: authHeaderA });
+    assertStatus(unfollowRes.status, 200, "unfollow user A->B");
+
+    const profileAfterUnfollow = await fetch(`${baseUrl}/users/${userB.id}`, { headers: { authorization: `Bearer ${authA.accessToken}` } });
+    assertStatus(profileAfterUnfollow.status, 200, "profile after unfollow");
+    const profileAfterUnfollowJson = (await profileAfterUnfollow.json()) as {
+      relationship?: { isFollowing?: boolean; isFriend?: boolean };
+    };
+    if (profileAfterUnfollowJson.relationship?.isFollowing) throw new Error("relationship.isFollowing should be false after unfollow");
+    if (profileAfterUnfollowJson.relationship?.isFriend) throw new Error("relationship.isFriend should be false after unfollow");
+    record("follows", "unfollow actualiza estado de relación", "PASS");
 
     // Comment limits (8/min user)
     for (let i = 0; i < 7; i += 1) {

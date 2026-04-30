@@ -221,3 +221,24 @@ Invoke-RestMethod http://localhost:4000/api/observability/dashboard
 4. Correlacionar con logs estructurados por `requestId`.
 5. Revisar si el incidente afecta eventos de producto (login/post/comment/follow).
 6. Mitigar primero el endpoint con mayor impacto (error rate y throughput).
+
+
+## Regresión local rápida (script único)
+
+Ejecuta el smoke de regresión MVP en un solo comando:
+
+```powershell
+cd C:\GITHUB\crunedu
+npm run regression:quick
+```
+
+Salida esperada:
+- múltiples líneas con formato `✅ / ⚠️ / ❌` por check
+- resumen final en consola con patrón: `Resumen: PASS=<n> FAIL=<n> SKIP=<n>`
+- línea final: `Integration smoke tests passed.` cuando todo termina correctamente
+
+Si aparece `FAIL>0`, revisar el primer `❌` y correlacionar con logs del API:
+
+```powershell
+docker compose logs api --tail=120
+```
