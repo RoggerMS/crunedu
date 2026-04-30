@@ -48,3 +48,30 @@ export function EmptyState({ title, description, action }: { title: string; desc
     </Card>
   );
 }
+
+export function PageState({
+  type,
+  title,
+  description,
+  action,
+}: {
+  type: "loading" | "empty" | "error" | "success";
+  title: string;
+  description: string;
+  action?: ReactNode;
+}) {
+  const styles = {
+    loading: "border-slate-200 bg-slate-50",
+    empty: "border-slate-200 bg-white",
+    error: "border-red-200 bg-red-50",
+    success: "border-emerald-200 bg-emerald-50",
+  };
+
+  return (
+    <Card className={styles[type]}>
+      <h3 className="text-base font-bold text-slate-900">{title}</h3>
+      <p className="mt-2 text-sm text-slate-700">{description}</p>
+      {action ? <div className="mt-4">{action}</div> : null}
+    </Card>
+  );
+}

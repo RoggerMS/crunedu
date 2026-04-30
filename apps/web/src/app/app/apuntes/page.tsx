@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageState } from "@/components/ui";
 
 export default function Page() {
   return (
@@ -17,6 +18,13 @@ export default function Page() {
           <button className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-left text-sm text-slate-500">Subida de archivos: próximamente</button>
         </div>
       </div>
+
+      <PageState
+        type="success"
+        title="¿No encuentras lo que buscas?"
+        description="Puedes pedir apuntes en el feed o preguntar por curso para recibir ayuda de otros estudiantes."
+        action={<Link href="/app" className="text-sm font-semibold text-indigo-700 hover:underline">Ir al feed para publicar</Link>}
+      />
     </section>
   );
 }
