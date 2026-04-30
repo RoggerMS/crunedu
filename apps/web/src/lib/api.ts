@@ -14,7 +14,7 @@ export function buildApiUrl(path: string): string {
   return `${API_BASE_URL}${normalizedPath}`;
 }
 
-export function mapApiError(error: unknown, fallbackMessage = USER_ERROR_MESSAGES.generic): string {
+export function mapApiError(error: unknown, fallbackMessage?: string): string {
   if (error instanceof HttpClientError) {
     if (error.status === 401) return USER_ERROR_MESSAGES.unauthorized;
     if (error.status === 403) return USER_ERROR_MESSAGES.forbidden;
@@ -30,12 +30,12 @@ export function mapApiError(error: unknown, fallbackMessage = USER_ERROR_MESSAGE
       return safeMessage;
     }
 
-    return fallbackMessage;
+    return fallbackMessage ?? USER_ERROR_MESSAGES.generic;
   }
 
   if (error instanceof TypeError) {
     return USER_ERROR_MESSAGES.network;
   }
 
-  return fallbackMessage;
+  return fallbackMessage ?? USER_ERROR_MESSAGES.generic;
 }

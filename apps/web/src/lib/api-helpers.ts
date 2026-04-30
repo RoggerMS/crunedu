@@ -1,5 +1,7 @@
-import type { Community, CreateFeedPostPayload, FeedPost, LoginResponse } from "@crunedu/shared";
+import type { Community, CreateFeedPostPayload, FeedPost } from "@crunedu/shared";
 import { apiRequest } from "@/lib/http-client";
+
+type LoginResponse = { accessToken: string };
 
 type Question = {
   id: number;

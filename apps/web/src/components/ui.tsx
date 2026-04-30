@@ -4,11 +4,11 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
   return <div className={`rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 shadow-soft ${className}`}>{children}</div>;
 }
 
-export function PrimaryButton({ children, className = "", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export function PrimaryButton({ children, className = "", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }) {
   return <button {...props} className={`inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300 ${className}`}>{children}</button>;
 }
 
-export function SecondaryButton({ children, className = "", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export function SecondaryButton({ children, className = "", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }) {
   return <button {...props} className={`rounded-2xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 ${className}`}>{children}</button>;
 }
 
