@@ -3,22 +3,36 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+import { mapApiError } from "@/lib/api";
+import { createStoreInquiry, getStoreProductDetail, ProductDetailResponse } from "@/lib/api-helpers";
 
 export default function ProductoDetallePage() {
   const params = useParams<{ id: string }>();
   const { accessToken, isAuthenticated } = useAccessToken();
-  const [product, setProduct] = useState<any>(null);
+  const productId = Number(params.id);
+  const [product, setProduct] = useState<ProductDetailResponse | null>(null);
   const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/marketplace/products/${params.id}`)
-      .then((res) => res.json())
+    if (!Number.isFinite(productId)) {
+      setLoading(false);
+      setError("Producto no válido.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    getStoreProductDetail(productId)
       .then((data) => setProduct(data))
-      .catch(() => setProduct(null));
-  }, [params.id]);
+      .catch((err) => {
+        setProduct(null);
+        setError(mapApiError(err, "No pudimos cargar este producto."));
+      })
+      .finally(() => setLoading(false));
+  }, [productId]);
 
   async function sendInterest() {
     if (!isAuthenticated) {
@@ -30,34 +44,35 @@ export default function ProductoDetallePage() {
     setMessage(null);
 
     try {
-      const response = await fetch(`${API_URL}/marketplace/products/${params.id}/inquiries`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
+      await createStoreInquiry(
+        productId,
+        {
           contactName: "Estudiante CrunEdu",
           contactPhone: "999999999",
           message: "Hola, estoy interesado en este producto.",
           preferredContactMethod: "whatsapp",
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("No se pudo registrar tu interés.");
-      }
+        },
+        accessToken,
+      );
 
       setMessage("Interés enviado. Pronto te contactaremos.");
-    } catch {
-      setMessage("No se pudo registrar tu interés.");
+    } catch (err) {
+      setMessage(mapApiError(err, "No se pudo registrar tu interés."));
     } finally {
       setSending(false);
     }
   }
 
+  if (loading) {
+    return <p className="rounded-2xl border border-slate-200 bg-white p-4">Cargando producto...</p>;
+  }
+
+  if (error) {
+    return <p className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-700">{error}</p>;
+  }
+
   if (!product?.id) {
-    return <p className="rounded-2xl border border-slate-200 bg-white p-4">Producto no disponible.</p>;
+    return <p className="rounded-2xl border border-slate-200 bg-white p-4">Producto no disponible en este momento.</p>;
   }
 
   return (
