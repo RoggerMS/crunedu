@@ -5,8 +5,8 @@ import { useAccessToken } from "@/hooks/useAccessToken";
 import { useCommunities } from "@/hooks/useCommunities";
 import { useQuestions } from "@/hooks/useQuestions";
 import { PageState, PrimaryButton, SecondaryButton } from "@/components/ui";
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+import { createAnswer, createQuestion } from "@/lib/api-helpers";
+import { mapApiError } from "@/lib/api";
 
 function buildAuthorName(firstName: string | null, lastName: string | null, email: string) {
   const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
@@ -31,19 +31,11 @@ export default function QuestionsPage() {
     setFormError(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/questions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ title: title.trim(), content: content.trim(), communityId: communityId ? Number(communityId) : undefined }),
-      });
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(Array.isArray(data?.message) ? data.message.join(" ") : data?.message ?? "No se pudo crear la pregunta.");
-      }
+      await createQuestion({ title: title.trim(), content: content.trim(), communityId: communityId ? Number(communityId) : undefined }, accessToken ?? "");
       setTitle(""); setContent(""); setCommunityId("");
       await reload();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Error inesperado.");
+      setFormError(mapApiError(err, "No se pudo crear la pregunta."));
     } finally { setSubmitting(false); }
   }
 
@@ -51,11 +43,7 @@ export default function QuestionsPage() {
     if (!isAuthenticated) return;
     const text = answers[questionId]?.trim();
     if (!text) return;
-    await fetch(`${apiBaseUrl}/questions/${questionId}/answers`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ content: text }),
-    });
+    await createAnswer(questionId, text, accessToken ?? "");
     setAnswers((prev) => ({ ...prev, [questionId]: "" }));
     await reload();
   }

@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { PageState, PrimaryButton } from "@/components/ui";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+import { getStoreCatalog } from "@/lib/api-helpers";
+import { mapApiError } from "@/lib/api";
 
 type Product = {
   id: number;
@@ -16,11 +16,6 @@ type Product = {
   category: { name: string };
 };
 
-type CatalogResponse = {
-  items: Product[];
-  featuredProducts: Product[];
-  nextCursor: number | null;
-};
 
 export default function TiendaPage() {
   const { accessToken } = useAccessToken();
@@ -41,14 +36,13 @@ export default function TiendaPage() {
     setLoading(true);
     setError(null);
 
-    fetch(`${API_URL}/marketplace/products?${params.toString()}`)
-      .then((res) => res.json())
-      .then((data: CatalogResponse) => {
+    getStoreCatalog(params)
+      .then((data) => {
         setProducts(Array.isArray(data?.items) ? data.items : []);
         setFeaturedProducts(Array.isArray(data?.featuredProducts) ? data.featuredProducts : []);
       })
-      .catch(() => {
-        setError("No pudimos cargar la tienda en este momento.");
+      .catch((err) => {
+        setError(mapApiError(err, "No pudimos cargar la tienda en este momento."));
         setProducts([]);
         setFeaturedProducts([]);
       })

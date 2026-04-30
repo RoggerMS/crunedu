@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
-import { buildApiUrl, mapApiError } from "@/lib/api";
+import { mapApiError } from "@/lib/api";
+import { login } from "@/lib/api-helpers";
 
 
 export default function LoginPage() {
@@ -22,25 +23,7 @@ export default function LoginPage() {
     setSuccessMessage(null);
 
     try {
-      const response = await fetch(buildApiUrl("/auth/login"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-        }),
-      });
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok || !data?.accessToken) {
-        const message = data?.message;
-        const errorMessage = Array.isArray(message) ? message.join(" ") : message ?? "No se pudo iniciar sesión.";
-        throw new Error(errorMessage);
-      }
-
+      const data = await login(email.trim(), password);
       setAccessToken(data.accessToken);
       setSuccessMessage("Sesión iniciada. Ya puedes publicar.");
       setPassword("");

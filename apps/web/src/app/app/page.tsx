@@ -8,8 +8,9 @@ import { useCommunities } from "@/hooks/useCommunities";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { usePosts } from "@/hooks/usePosts";
 import { Card, EmptyState, FormField, Input, PrimaryButton, SecondaryButton, Select, StatusMessage, TextArea } from "@/components/ui";
+import { apiRequest } from "@/lib/http-client";
+import { mapApiError } from "@/lib/api";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
 function buildAuthorName(firstName: string | null, lastName: string | null, email: string) {
   const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
@@ -95,7 +96,7 @@ export default function AppPage() {
     };
 
     try {
-      const response = await fetch(`${apiBaseUrl}/posts`, {
+      await apiRequest("/posts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -104,12 +105,6 @@ export default function AppPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        const message = data?.message ?? "No se pudo publicar. Verifica tus datos.";
-        throw new Error(Array.isArray(message) ? message.join(" ") : message);
-      }
-
       setTitle("");
       setContent("");
       setCommunityId("");
@@ -117,7 +112,7 @@ export default function AppPage() {
       await reload();
     } catch (err) {
       if (err instanceof Error) {
-        setFormError(err.message);
+        setFormError(mapApiError(err, "No se pudo publicar. Verifica tus datos."));
       } else {
         setFormError("Ocurrió un error inesperado.");
       }
@@ -146,7 +141,7 @@ export default function AppPage() {
     setPostActionSuccess(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/posts/${postId}`, {
+      await apiRequest(`/posts/${postId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
@@ -156,17 +151,11 @@ export default function AppPage() {
         }),
       });
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        const message = data?.message ?? "No se pudo actualizar la publicación.";
-        throw new Error(Array.isArray(message) ? message.join(" ") : message);
-      }
-
       setEditingPostId(null);
       setPostActionSuccess("Publicación actualizada correctamente.");
       await reload();
     } catch (err) {
-      setPostActionError(err instanceof Error ? err.message : "Ocurrió un error inesperado.");
+      setPostActionError(mapApiError(err));
     } finally {
       setPostActionLoadingId(null);
     }
@@ -183,21 +172,15 @@ export default function AppPage() {
     setPostActionSuccess(null);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/posts/${postId}`, {
+      await apiRequest(`/posts/${postId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        const message = data?.message ?? "No se pudo eliminar la publicación.";
-        throw new Error(Array.isArray(message) ? message.join(" ") : message);
-      }
-
       setPostActionSuccess("Publicación eliminada correctamente.");
       await reload();
     } catch (err) {
-      setPostActionError(err instanceof Error ? err.message : "Ocurrió un error inesperado.");
+      setPostActionError(mapApiError(err));
     } finally {
       setPostActionLoadingId(null);
     }
@@ -213,15 +196,14 @@ export default function AppPage() {
     setPostActionLoadingId(targetId);
     setPostActionError(null);
     try {
-      const response = await fetch(`${apiBaseUrl}/reports`, {
+      await apiRequest("/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({ targetType, targetId, reason: "Contenido inapropiado" }),
       });
-      if (!response.ok) throw new Error("No se pudo reportar el contenido.");
       setPostActionSuccess("Reporte enviado correctamente.");
     } catch (err) {
-      setPostActionError(err instanceof Error ? err.message : "Ocurrió un error inesperado.");
+      setPostActionError(mapApiError(err));
     } finally {
       setPostActionLoadingId(null);
     }
@@ -232,17 +214,10 @@ export default function AppPage() {
     setCommentErrorByPost((prev) => ({ ...prev, [postId]: null }));
 
     try {
-      const response = await fetch(`${apiBaseUrl}/posts/${postId}/comments`);
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        const message = data?.message ?? "No se pudieron cargar los comentarios.";
-        throw new Error(Array.isArray(message) ? message.join(" ") : message);
-      }
-
-      const comments = (await response.json()) as PostComment[];
+      const comments = await apiRequest<PostComment[]>(`/posts/${postId}/comments`);
       setCommentsByPost((prev) => ({ ...prev, [postId]: comments }));
     } catch (err) {
-      setCommentErrorByPost((prev) => ({ ...prev, [postId]: err instanceof Error ? err.message : "Error inesperado al cargar comentarios." }));
+      setCommentErrorByPost((prev) => ({ ...prev, [postId]: mapApiError(err, "No se pudieron cargar los comentarios.") }));
     } finally {
       setCommentLoadingByPost((prev) => ({ ...prev, [postId]: false }));
     }
@@ -264,7 +239,7 @@ export default function AppPage() {
     setCommentErrorByPost((prev) => ({ ...prev, [postId]: null }));
 
     try {
-      const response = await fetch(`${apiBaseUrl}/posts/${postId}/comments`, {
+      await apiRequest(`/posts/${postId}/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -273,16 +248,10 @@ export default function AppPage() {
         body: JSON.stringify({ content: contentValue }),
       });
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        const message = data?.message ?? "No se pudo publicar el comentario.";
-        throw new Error(Array.isArray(message) ? message.join(" ") : message);
-      }
-
       setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
       await Promise.all([loadComments(postId), reload()]);
     } catch (err) {
-      setCommentErrorByPost((prev) => ({ ...prev, [postId]: err instanceof Error ? err.message : "Ocurrió un error inesperado." }));
+      setCommentErrorByPost((prev) => ({ ...prev, [postId]: mapApiError(err, "No se pudo publicar el comentario.") }));
     } finally {
       setCommentLoadingByPost((prev) => ({ ...prev, [postId]: false }));
     }
