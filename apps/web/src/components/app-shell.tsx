@@ -16,20 +16,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <aside className="fixed left-0 top-0 hidden h-full w-64 border-r border-slate-200 bg-white px-4 py-6 lg:block">
-        <Link href="/app" className="flex items-center gap-3 text-2xl font-black tracking-tight">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-600 text-white">
+        <div className="flex h-full flex-col">
+          <Link href="/app" className="flex items-center gap-3 text-2xl font-black tracking-tight">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-600 text-white">
             <GraduationCap size={22} />
           </span>
-          Crun<span className="-ml-3 text-indigo-600">Edu</span>
-        </Link>
+            Crun<span className="-ml-3 text-indigo-600">Edu</span>
+          </Link>
 
-        <nav className="mt-8 space-y-1">
-          {MAIN_NAVIGATION.map((item) => (
-            <Link key={item.href} href={item.href} className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+          <nav className="mt-8 space-y-1">
+            {MAIN_NAVIGATION.map((item) => (
+              <Link key={item.href} href={item.href} className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2">
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="mt-auto border-t border-slate-200 pt-4">
+            <h2 className="text-xs font-medium text-slate-400">Información legal</h2>
+            <nav className="mt-2 space-y-1" aria-label="Enlaces legales">
+              <Link href="/terminos" className="block rounded-md px-2 py-1 text-xs text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2">
+                Términos y condiciones
+              </Link>
+              <Link href="/privacidad" className="block rounded-md px-2 py-1 text-xs text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2">
+                Política de privacidad
+              </Link>
+              <Link href="/cookies" className="block rounded-md px-2 py-1 text-xs text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2">
+                Política de cookies
+              </Link>
+              <Link href="/publicidad" className="block rounded-md px-2 py-1 text-xs text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2">
+                Preferencias de publicidad
+              </Link>
+            </nav>
+          </div>
+        </div>
       </aside>
 
       <main className={`lg:pl-64 ${isQuickActionsOpen ? "lg:pr-72" : ""}`}>
