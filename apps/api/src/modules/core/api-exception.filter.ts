@@ -1,4 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
@@ -7,8 +8,18 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse();
     const request = ctx.getRequest();
 
-    const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
-    const error = exception instanceof HttpException ? exception.getResponse() : "Error interno del servidor";
+    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let error: any = "Error interno del servidor";
+
+    if (exception instanceof HttpException) {
+      status = exception.getStatus();
+      error = exception.getResponse();
+    } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      status = HttpStatus.BAD_REQUEST;
+      error = { message: "Error de base de datos", code: exception.code };
+    } else if (exception instanceof Error) {
+      error = { message: exception.message };
+    }
 
     response.status(status).json({
       success: false,

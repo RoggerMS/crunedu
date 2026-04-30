@@ -7,7 +7,8 @@ import { access } from "node:fs/promises";
 import { CreatePostDto } from "./dto/create-post.dto";
 import { CreatePostCommentDto } from "./dto/create-post-comment.dto";
 import { UpdatePostDto } from "./dto/update-post.dto";
-import { JwtAuthGuard, JwtPayload } from "./jwt-auth.guard";
+import { JwtAuthGuard, JwtPayload } from "../auth/guards/jwt-auth.guard";
+import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard";
 import { PostsService } from "./posts.service";
 import { RateLimit } from "../core/rate-limit.decorator";
 import { GetPostsQueryDto } from "./dto/get-posts-query.dto";
@@ -20,18 +21,21 @@ export class PostsController {
   constructor(private readonly service: PostsService, private readonly jwtService: JwtService) {}
 
   @Get()
-  index(@Query() query: GetPostsQueryDto, @Req() request: Request) {
-    return this.service.index(query, this.extractUserId(request));
+  @UseGuards(OptionalJwtAuthGuard)
+  index(@Query() query: GetPostsQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.service.index(query, request.user?.sub);
   }
 
   @Get("discovery")
-  discovery(@Query() query: GetDiscoveryQueryDto, @Req() request: Request) {
-    return this.service.getDiscoveryFeed(query, this.extractUserId(request));
+  @UseGuards(OptionalJwtAuthGuard)
+  discovery(@Query() query: GetDiscoveryQueryDto, @Req() request: AuthenticatedRequest) {
+    return this.service.getDiscoveryFeed(query, request.user?.sub);
   }
 
   @Get(":id")
-  findOne(@Param("id", ParseIntPipe) id: number, @Req() request: Request) {
-    return this.service.findOne(id, this.extractUserId(request));
+  @UseGuards(OptionalJwtAuthGuard)
+  findOne(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
+    return this.service.findOne(id, request.user?.sub);
   }
 
   @Post()
@@ -73,17 +77,4 @@ export class PostsController {
   @Delete(":id")
   @UseGuards(JwtAuthGuard)
   remove(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) { return this.service.remove(id, request.user.sub, request.user.role); }
-
-  private extractUserId(request: Request): number | undefined {
-    const authHeader = request.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) return undefined;
-    const token = authHeader.replace("Bearer ", "").trim();
-
-    try {
-      const payload = this.jwtService.verify<JwtPayload>(token);
-      return payload.sub;
-    } catch {
-      return undefined;
-    }
-  }
 }

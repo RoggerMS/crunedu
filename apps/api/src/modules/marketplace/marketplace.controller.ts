@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Request } from "express";
-import { JwtAuthGuard, JwtPayload } from "../posts/jwt-auth.guard";
+import { JwtAuthGuard, JwtPayload } from "../auth/guards/jwt-auth.guard";
 import { MarketplaceService } from "./marketplace.service";
 import { DevSecurityService } from "../core/dev-security.service";
 import { CreateProductInquiryDto, CreateProductDto, UpdateProductDto } from "./dtos";

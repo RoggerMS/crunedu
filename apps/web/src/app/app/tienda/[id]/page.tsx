@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { PageState, PrimaryButton } from "@/components/ui";
-import { mapApiError } from "@/lib/api";
+import { mapApiError } from "@/lib/http-client";
 import { createStoreInquiry, getStoreProductDetail, type ProductDetailResponse } from "@/lib/api-helpers";
 
 type FormState = {

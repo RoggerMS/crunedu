@@ -2,24 +2,13 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
-  UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { DevSecurityService } from "../core/dev-security.service";
-import { Request } from "express";
-
-export interface JwtPayload {
-  sub: number;
-  email: string;
-  role: string;
-}
-
-interface AuthenticatedRequest extends Request {
-  user: JwtPayload;
-}
+import { DevSecurityService } from "../../core/dev-security.service";
+import { AuthenticatedRequest, JwtPayload } from "./jwt-auth.guard";
 
 @Injectable()
-export class JwtAuthGuard implements CanActivate {
+export class OptionalJwtAuthGuard implements CanActivate {
   constructor(private readonly jwtService: JwtService, private readonly devSecurity: DevSecurityService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -29,9 +18,8 @@ export class JwtAuthGuard implements CanActivate {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       if (this.devSecurity.isRelaxedAuthEnabled()) {
         request.user = { sub: 1, email: "dev@crunedu.local", role: "ADMIN" };
-        return true;
       }
-      throw new UnauthorizedException("Token de autenticación inválido.");
+      return true;
     }
 
     const token = authHeader.slice(7).trim();
@@ -43,9 +31,8 @@ export class JwtAuthGuard implements CanActivate {
     } catch {
       if (this.devSecurity.isRelaxedAuthEnabled()) {
         request.user = { sub: 1, email: "dev@crunedu.local", role: "ADMIN" };
-        return true;
       }
-      throw new UnauthorizedException("Token expirado o inválido.");
+      return true;
     }
   }
 }

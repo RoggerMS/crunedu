@@ -4,7 +4,7 @@ import { CommunityCard } from "@/components/community-card";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useCommunities } from "@/hooks/useCommunities";
 import { useEffect, useState } from "react";
-import { mapApiError } from "@/lib/api";
+import { mapApiError } from "@/lib/http-client";
 import { getRecommendedCommunities } from "@/lib/api-helpers";
 import { PageState, PrimaryButton } from "@/components/ui";
 

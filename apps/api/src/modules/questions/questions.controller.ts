@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { Request } from "express";
-import { JwtAuthGuard, JwtPayload } from "../posts/jwt-auth.guard";
+import { JwtAuthGuard, JwtPayload } from "../auth/guards/jwt-auth.guard";
 import { CreateAnswerDto } from "./dto/create-answer.dto";
 import { CreateQuestionDto } from "./dto/create-question.dto";
 import { GetQuestionsQueryDto } from "./dto/get-questions-query.dto";

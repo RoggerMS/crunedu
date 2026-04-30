@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { Request } from "express";
-import { JwtAuthGuard, JwtPayload } from "../posts/jwt-auth.guard";
+import { JwtAuthGuard, JwtPayload } from "../auth/guards/jwt-auth.guard";
 import { UpdateMeDto } from "./dto/update-me.dto";
 import { UsersService } from "./users.service";
 import { RateLimit } from "../core/rate-limit.decorator";

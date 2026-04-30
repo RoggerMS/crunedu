@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PageState, PrimaryButton } from "@/components/ui";
 import { getStoreCatalog, type StoreProduct } from "@/lib/api-helpers";
-import { mapApiError } from "@/lib/api";
+import { mapApiError } from "@/lib/http-client";
 
 export default function TiendaPage() {
   const [products, setProducts] = useState<StoreProduct[]>([]);

@@ -6,7 +6,7 @@ import { useCommunities } from "@/hooks/useCommunities";
 import { useQuestions } from "@/hooks/useQuestions";
 import { PageState, PrimaryButton, SecondaryButton } from "@/components/ui";
 import { createAnswer, createQuestion } from "@/lib/api-helpers";
-import { mapApiError } from "@/lib/api";
+import { mapApiError } from "@/lib/http-client";
 
 function buildAuthorName(firstName: string | null, lastName: string | null, email: string) {
   const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();

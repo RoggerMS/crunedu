@@ -1,5 +1,8 @@
 import { Global, Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
+import { JwtAuthGuard } from "./guards/jwt-auth.guard";
+import { OptionalJwtAuthGuard } from "./guards/optional-jwt-auth.guard";
+import { DevSecurityService } from "../core/dev-security.service";
 
 @Global()
 @Module({
@@ -9,6 +12,7 @@ import { JwtModule } from "@nestjs/jwt";
       signOptions: { expiresIn: process.env.JWT_EXPIRES_IN ?? "7d" },
     }),
   ],
-  exports: [JwtModule],
+  providers: [JwtAuthGuard, OptionalJwtAuthGuard, DevSecurityService],
+  exports: [JwtModule, JwtAuthGuard, OptionalJwtAuthGuard],
 })
 export class JwtSharedModule {}

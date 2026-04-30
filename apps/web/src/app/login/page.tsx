@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
-import { mapApiError } from "@/lib/api";
+import { mapApiError } from "@/lib/http-client";
 import { login } from "@/lib/api-helpers";
 
 

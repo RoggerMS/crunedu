@@ -1,7 +1,7 @@
-import { API_BASE_URL } from "@/lib/api";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
 export const ERROR_MESSAGES = {
-  network: "No se pudo conectar con el servidor.",
+  network: "No se pudo conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.",
   unauthorized: "Tu sesión expiró o no tienes permisos. Inicia sesión nuevamente.",
   forbidden: "No tienes permisos para realizar esta acción.",
   notFound: "No encontramos lo que estás buscando.",
@@ -17,8 +17,35 @@ export class HttpClientError extends Error {
   }
 }
 
-function buildUrl(path: string): string {
-  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+export function buildApiUrl(path: string): string {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE_URL}${normalizedPath}`;
+}
+
+export function mapApiError(error: unknown, fallbackMessage?: string): string {
+  if (error instanceof HttpClientError) {
+    if (error.status === 401) return ERROR_MESSAGES.unauthorized;
+    if (error.status === 403) return ERROR_MESSAGES.forbidden;
+    if (!error.status) return ERROR_MESSAGES.network;
+
+    const safeMessage = error.message.replace(/\s*\(ID:[^)]+\)\s*/gi, "").trim();
+    if (
+      safeMessage &&
+      safeMessage !== ERROR_MESSAGES.generic &&
+      safeMessage !== ERROR_MESSAGES.server &&
+      safeMessage !== ERROR_MESSAGES.network
+    ) {
+      return safeMessage;
+    }
+
+    return fallbackMessage ?? ERROR_MESSAGES.generic;
+  }
+
+  if (error instanceof TypeError) {
+    return ERROR_MESSAGES.network;
+  }
+
+  return fallbackMessage ?? ERROR_MESSAGES.generic;
 }
 
 function messageByStatus(status: number): string {
@@ -45,7 +72,7 @@ async function extractApiError(response: Response): Promise<HttpClientError> {
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   try {
-    const response = await fetch(buildUrl(path), init);
+    const response = await fetch(buildApiUrl(path), init);
     if (!response.ok) {
       throw await extractApiError(response);
     }

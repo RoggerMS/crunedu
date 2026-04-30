@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Request } from "express";
-import { JwtAuthGuard, JwtPayload } from "../posts/jwt-auth.guard";
+import { JwtAuthGuard, JwtPayload } from "../auth/guards/jwt-auth.guard";
 import { CreateReportDto } from "./dto/create-report.dto";
 import { ModerateReportDto } from "./dto/moderate-report.dto";
 import { ReportsService } from "./reports.service";

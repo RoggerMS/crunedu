@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { createAdminProduct, getStoreCategories } from "@/lib/api-helpers";
-import { mapApiError } from "@/lib/api";
+import { mapApiError } from "@/lib/http-client";
 
 export default function AdminTiendaPage() {
   const { accessToken, isAuthenticated } = useAccessToken();

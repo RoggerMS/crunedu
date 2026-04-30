@@ -10,7 +10,7 @@ import { useAccessToken } from "@/hooks/useAccessToken";
 import { usePosts } from "@/hooks/usePosts";
 import { Card, EmptyState, FormField, Input, PrimaryButton, SecondaryButton, Select, StatusMessage, TextArea } from "@/components/ui";
 import { apiRequest } from "@/lib/http-client";
-import { mapApiError } from "@/lib/api";
+import { mapApiError } from "@/lib/http-client";
 
 
 function buildAuthorName(firstName: string | null, lastName: string | null, email: string) {

@@ -26,7 +26,7 @@ services:
     container_name: crunedu_api
     restart: unless-stopped
     working_dir: /workspace
-    command: sh -c "npm install && npm run prisma:generate -w @crunedu/database && npm run start:dev -w @crunedu/api"
+    command: sh -c "npm install --no-fund --no-audit && npm run prisma:generate -w @crunedu/database && npm run start:dev -w @crunedu/api"
     environment:
       NODE_ENV: development
       PORT: 4000

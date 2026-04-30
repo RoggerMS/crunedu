@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Community } from "@crunedu/shared";
-import { mapApiError } from "@/lib/api";
+import { mapApiError } from "@/lib/http-client";
 import { apiRequest } from "@/lib/http-client";
 
 interface UseCommunitiesResult {
