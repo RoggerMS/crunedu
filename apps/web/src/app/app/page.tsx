@@ -1,7 +1,7 @@
 "use client";
 
 import type { Community, CreateFeedPostPayload, PostComment } from "@crunedu/shared";
-import { FileText, Loader2, UsersRound } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { useCommunities } from "@/hooks/useCommunities";
@@ -65,19 +65,6 @@ export default function AppPage() {
 
   const canSubmit = useMemo(() => content.trim() && communityId.trim() && isAuthenticated, [content, communityId, isAuthenticated]);
 
-  const userActivity = useMemo(() => {
-    const myPosts = authenticatedUserId
-      ? posts.filter((post) => post.author.id === authenticatedUserId)
-      : [];
-
-    const responsesCount = myPosts.reduce((total, post) => total + post.commentsCount, 0);
-
-    return {
-      postsCreated: myPosts.length,
-      responsesCount,
-      communitiesJoined: communities.length,
-    };
-  }, [authenticatedUserId, communities.length, posts]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -259,12 +246,10 @@ export default function AppPage() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-      <section className="space-y-5">
+    <div className="space-y-5">
         <Card className="space-y-4">
           <h1 className="text-2xl font-black tracking-tight sm:text-3xl">¿Qué quieres hacer hoy en CrunEdu?</h1>
-          <p className="text-sm text-slate-600">Prioriza acciones rápidas para mantenerte al día con tu comunidad.</p>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2">
             <PrimaryButton
               type="button"
               onClick={() => setIsCreateFormOpen((prev) => !prev)}
@@ -274,9 +259,6 @@ export default function AppPage() {
             </PrimaryButton>
             <SecondaryButton asChild className="w-full justify-center">
               <Link href="/app/comunidades">Explorar comunidades</Link>
-            </SecondaryButton>
-            <SecondaryButton type="button" onClick={() => document.getElementById("actividad-reciente")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="w-full justify-center">
-              Ver actividad reciente
             </SecondaryButton>
           </div>
         </Card>
@@ -341,8 +323,7 @@ export default function AppPage() {
           </Card>
         ) : null}
 
-        <div id="actividad-reciente" className="mt-6 space-y-4">
-          <h2 className="text-xl font-black">Actividad reciente relevante</h2>
+        <div className="mt-6 space-y-4">
           {loading ? <StatusMessage type="loading">Cargando publicaciones...</StatusMessage> : null}
           {error ? (
             <div className="space-y-3">
@@ -442,29 +423,6 @@ export default function AppPage() {
           {postActionSuccess ? <p className="text-sm text-emerald-600">{postActionSuccess}</p> : null}
           {postActionError ? <p className="text-sm text-red-600">{postActionError}</p> : null}
         </div>
-      </section>
-
-      <aside className="hidden space-y-4 lg:block">
-        <Card>
-          <FileText className="text-indigo-600" />
-          <h3 className="mt-3 font-black">Tu actividad</h3>
-          <div className="mt-3 space-y-2 text-sm text-slate-700">
-            <p className="flex items-center justify-between"><span>Posts creados</span><strong>{userActivity.postsCreated}</strong></p>
-            <p className="flex items-center justify-between"><span>Respuestas recibidas</span><strong>{userActivity.responsesCount}</strong></p>
-            <p className="flex items-center justify-between"><span>Comunidades unidas</span><strong>{userActivity.communitiesJoined}</strong></p>
-          </div>
-          <p className="mt-3 text-xs text-slate-500">Mantén tu actividad al día participando en comunidades relevantes.</p>
-        </Card>
-
-        <Card>
-          <UsersRound className="text-indigo-600" />
-          <h3 className="mt-3 font-black">Siguiente paso recomendado</h3>
-          <p className="mt-2 text-sm text-slate-600">Explora comunidades para encontrar preguntas y aportes que te ayuden hoy.</p>
-          <SecondaryButton asChild className="mt-3 w-full justify-center">
-            <Link href="/app/comunidades">Ir a comunidades</Link>
-          </SecondaryButton>
-        </Card>
-      </aside>
     </div>
   );
 }
