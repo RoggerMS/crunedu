@@ -13,7 +13,8 @@
     "db:generate": "npm run prisma:generate -w @crunedu/database",
     "db:migrate": "npm run prisma:migrate -w @crunedu/database",
     "db:seed": "npm run prisma:seed -w @crunedu/database",
-    "db:studio": "npm run prisma:studio -w @crunedu/database"
+    "db:studio": "npm run prisma:studio -w @crunedu/database",
+    "regression:mvp": "npm run test:regression:mvp -w @crunedu/api"
   },
   "workspaces": [
     "apps/web",
