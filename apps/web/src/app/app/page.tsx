@@ -54,6 +54,8 @@ export default function AppPage() {
   const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
   const [commentLoadingByPost, setCommentLoadingByPost] = useState<Record<number, boolean>>({});
   const [commentErrorByPost, setCommentErrorByPost] = useState<Record<number, string | null>>({});
+  const [commentSuccessByPost, setCommentSuccessByPost] = useState<Record<number, string | null>>({});
+  const [activeCommentPostId, setActiveCommentPostId] = useState<number | null>(null);
 
   const authenticatedUserId = useMemo(() => {
     if (!accessToken) {
@@ -225,6 +227,7 @@ export default function AppPage() {
 
     setCommentLoadingByPost((prev) => ({ ...prev, [postId]: true }));
     setCommentErrorByPost((prev) => ({ ...prev, [postId]: null }));
+    setCommentSuccessByPost((prev) => ({ ...prev, [postId]: null }));
 
     try {
       await apiRequest(`/posts/${postId}/comments`, {
@@ -237,11 +240,24 @@ export default function AppPage() {
       });
 
       setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
+      setCommentSuccessByPost((prev) => ({ ...prev, [postId]: "Comentario publicado correctamente." }));
       await Promise.all([loadComments(postId), reload()]);
     } catch (err) {
       setCommentErrorByPost((prev) => ({ ...prev, [postId]: mapApiError(err, "No se pudo publicar el comentario.") }));
     } finally {
       setCommentLoadingByPost((prev) => ({ ...prev, [postId]: false }));
+    }
+  }
+
+  async function toggleCommentPanel(postId: number) {
+    if (activeCommentPostId === postId) {
+      setActiveCommentPostId(null);
+      return;
+    }
+
+    setActiveCommentPostId(postId);
+    if (!commentsByPost[postId]) {
+      await loadComments(postId);
     }
   }
 
@@ -255,7 +271,7 @@ export default function AppPage() {
               onClick={() => setIsCreateFormOpen((prev) => !prev)}
               className="w-full justify-center"
             >
-              Publicar
+              {isCreateFormOpen ? "Cerrar publicación" : "Publicar"}
             </PrimaryButton>
             <SecondaryButton asChild className="w-full justify-center">
               <Link href="/app/comunidades">Explorar comunidades</Link>
@@ -362,11 +378,18 @@ export default function AppPage() {
                   </div>
                   <button type="button" onClick={() => handleReport("POST", post.id)} className="mt-3 rounded-xl border border-amber-300 px-3 py-2 text-sm font-semibold text-amber-700">Reportar</button>
                   <div className="mt-4 rounded-2xl border border-slate-200 p-4">
-                    <h3 className="text-sm font-bold text-slate-700">Comentarios</h3>
+                    <button
+                      type="button"
+                      onClick={() => void toggleCommentPanel(post.id)}
+                      className="text-sm font-bold text-indigo-600 hover:text-indigo-700"
+                    >
+                      {activeCommentPostId === post.id ? "Cerrar comentarios" : "Comentar"}
+                    </button>
+                    {activeCommentPostId === post.id ? (
                     <div className="mt-3 space-y-3">
-                      <button type="button" onClick={() => loadComments(post.id)} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">Ver comentarios</button>
                       {commentLoadingByPost[post.id] ? <p className="text-sm text-slate-500">Cargando comentarios...</p> : null}
                       {commentErrorByPost[post.id] ? <p className="text-sm text-red-600">{commentErrorByPost[post.id]}</p> : null}
+                      {commentSuccessByPost[post.id] ? <p className="text-sm text-emerald-600">{commentSuccessByPost[post.id]}</p> : null}
                       {(commentsByPost[post.id] ?? []).map((comment) => (
                         <div key={comment.id} className="rounded-xl bg-slate-50 p-3">
                           <p className="text-sm text-slate-700">{comment.content}</p>
@@ -386,6 +409,7 @@ export default function AppPage() {
                         <button type="button" onClick={() => handleCreateComment(post.id)} disabled={commentLoadingByPost[post.id]} className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:bg-indigo-300">Comentar</button>
                       </div>
                     </div>
+                    ) : null}
                   </div>
                   {isAuthenticated && authenticatedUserId === post.author.id ? (
                     <div className="mt-4 space-y-3">
