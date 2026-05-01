@@ -4,9 +4,10 @@ import { DocumentsService } from "./documents.service";
 import { PrismaModule } from "../prisma/prisma.module";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard";
+import { JwtSharedModule } from "../auth/jwt-shared.module";
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, JwtSharedModule],
   controllers: [DocumentsController],
   providers: [DocumentsService, JwtAuthGuard, OptionalJwtAuthGuard],
 })

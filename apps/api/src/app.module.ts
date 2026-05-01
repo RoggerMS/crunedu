@@ -15,12 +15,13 @@ import { ReportsModule } from "./modules/reports/reports.module";
 import { SearchModule } from "./modules/search/search.module";
 import { UsersModule } from "./modules/users/users.module";
 import { ObservabilityModule } from "./modules/observability/observability.module";
+import { CoreModule } from "./modules/core/core.module";
 import { RateLimitGuard } from "./modules/core/rate-limit.guard";
-import { DevSecurityService } from "./modules/core/dev-security.service";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    CoreModule,
     PrismaModule,
     CacheModule,
     JobsModule,
@@ -37,6 +38,6 @@ import { DevSecurityService } from "./modules/core/dev-security.service";
     SearchModule,
     ObservabilityModule,
   ],
-  providers: [RateLimitGuard, DevSecurityService],
+  providers: [RateLimitGuard],
 })
 export class AppModule {}
