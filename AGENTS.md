@@ -421,3 +421,16 @@ Posts are the life of the social network.
 Comments and questions create interaction.
 Guides solve recurring student problems.
 The store helps sustain the project later.
+
+## 13. Registro obligatorio de planes (.md)
+
+En cada tarea se debe mantener un **registro de planes/documentos `.md` pendientes** y su estado de implementación.
+
+Regla operativa:
+
+- Cuando se cree o agregue un nuevo `.md` de plan en cualquier ruta del repositorio, se debe **actualizar este `AGENTS.md`** indicando:
+  - ruta del archivo nuevo
+  - módulo objetivo
+  - estado inicial (pendiente / en progreso / implementado)
+  - fecha de alta
+- Este registro debe permitir retomar la implementación en tareas futuras sin perder contexto.
