@@ -361,6 +361,8 @@ model Document {
   communityId Int?          @map("community_id")
   title       String
   description String?
+  course      String        @default("")
+  cycle       String?
   fileUrl     String        @map("file_url")
   storageKey  String        @map("storage_key")
   fileType    String        @map("file_type")
