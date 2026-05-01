@@ -153,7 +153,7 @@ export default function ProductoDetallePage() {
 
       <form onSubmit={sendInterest} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
         <h2 className="text-lg font-bold">Registra tu interés</h2>
-        <p className="mt-2 text-sm text-slate-600">Completa el formulario para contactar rápido con CrunEdu y separar este producto.</p>
+        <p className="mt-2 text-sm text-slate-600">Completa el formulario para registrar tu interés. No hay pagos automáticos: CrunEdu te contactará manualmente.</p>
 
         <div className="mt-5 space-y-4">
           <div>
