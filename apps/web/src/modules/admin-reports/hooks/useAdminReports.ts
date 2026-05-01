@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { AdminReport, fetchAdminReports } from "../services/adminReportsApi";
+import { AdminReport, AdminReportFilters, fetchAdminReports } from "../services/adminReportsApi";
 
-export function useAdminReports(accessToken: string | null) {
+export function useAdminReports(accessToken: string | null, filters: AdminReportFilters) {
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,14 +16,14 @@ export function useAdminReports(accessToken: string | null) {
     setError(null);
 
     try {
-      const nextReports = await fetchAdminReports(accessToken);
+      const nextReports = await fetchAdminReports(accessToken, filters);
       setReports(nextReports);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [accessToken, filters]);
 
   useEffect(() => {
     void loadReports();

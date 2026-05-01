@@ -1,8 +1,5 @@
 import { useState } from "react";
-import {
-  executeModerationAction,
-  ModerationAction,
-} from "../services/adminReportsApi";
+import { executeBulkModeration, executeModeration, ModerationPayload } from "../services/adminReportsApi";
 
 type UseModerationActionsParams = {
   accessToken: string | null;
@@ -10,22 +7,21 @@ type UseModerationActionsParams = {
   onSuccess: () => Promise<void>;
 };
 
-export function useModerationActions({
-  accessToken,
-  onError,
-  onSuccess,
-}: UseModerationActionsParams) {
+const defaultModeration: ModerationPayload = {
+  status: "resolved",
+  decision: "warning",
+  reason: "Revisión administrativa",
+};
+
+export function useModerationActions({ accessToken, onError, onSuccess }: UseModerationActionsParams) {
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
-  async function moderate(reportId: number, action: ModerationAction) {
-    if (!accessToken) {
-      return;
-    }
-
+  async function moderate(reportId: number) {
+    if (!accessToken) return;
     setActionLoadingId(reportId);
-
     try {
-      await executeModerationAction(accessToken, reportId, action);
+      await executeModeration(accessToken, reportId, defaultModeration);
       await onSuccess();
     } catch (err) {
       onError(err instanceof Error ? err.message : "Error inesperado.");
@@ -34,5 +30,18 @@ export function useModerationActions({
     }
   }
 
-  return { actionLoadingId, moderate };
+  async function moderateBulk(reportIds: number[]) {
+    if (!accessToken || reportIds.length === 0) return;
+    setBulkLoading(true);
+    try {
+      await executeBulkModeration(accessToken, reportIds, defaultModeration);
+      await onSuccess();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Error inesperado.");
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
+  return { actionLoadingId, moderate, bulkLoading, moderateBulk };
 }

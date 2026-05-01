@@ -21,12 +21,21 @@ export class ReportsService {
     return this.prisma.report.create({ data: { reporterId, reason, commentId: dto.targetId } });
   }
 
-  async index(filters: { communityId?: number; severity?: "high" | "medium" | "low" }) {
+  async index(filters: { communityId?: number; severity?: "high" | "medium" | "low"; status?: "open" | "reviewing" | "resolved"; dateFrom?: string; dateTo?: string }) {
     const reports = await this.prisma.report.findMany({
       where: {
         ...(filters.communityId
           ? {
               OR: [{ post: { communityId: filters.communityId } }, { comment: { post: { communityId: filters.communityId } } }],
+            }
+          : {}),
+        ...(filters.status ? { status: this.mapStatusToPrisma(filters.status) } : {}),
+        ...(filters.dateFrom || filters.dateTo
+          ? {
+              createdAt: {
+                ...(filters.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
+                ...(filters.dateTo ? { lte: new Date(filters.dateTo) } : {}),
+              },
             }
           : {}),
       },
@@ -40,11 +49,14 @@ export class ReportsService {
     });
 
     const queue = reports
-      .map((report) => ({ ...report, priorityScore: this.calculatePriority(report.reason, report.createdAt) }))
+      .map((report) => ({ ...report, priorityScore: this.calculatePriority(report.reason, report.createdAt), severity: this.mapSeverity(this.calculatePriority(report.reason, report.createdAt)) }))
       .filter((report) => (filters.severity ? this.mapSeverity(report.priorityScore) === filters.severity : true))
       .sort((a, b) => b.priorityScore - a.priorityScore);
 
-    return queue;
+    return queue.map((report) => ({
+      ...report,
+      slaTargetHours: report.severity === "high" ? 4 : report.severity === "medium" ? 24 : 72,
+    }));
   }
 
   async moderate(reportId: number, moderatorId: number, dto: ModerateReportDto) {
@@ -67,6 +79,29 @@ export class ReportsService {
     });
 
     return { message: "Moderación aplicada correctamente." };
+  }
+
+
+
+  async moderateBulk(reportIds: number[], moderatorId: number, dto: ModerateReportDto) {
+    const uniqueIds = [...new Set(reportIds)].filter((id) => Number.isInteger(id) && id > 0);
+    if (!uniqueIds.length) throw new BadRequestException("Debe enviar IDs de reportes válidos.");
+
+    for (const reportId of uniqueIds) {
+      await this.moderate(reportId, moderatorId, dto);
+    }
+
+    return { message: `Se moderaron ${uniqueIds.length} reportes.` };
+  }
+
+  async auditTrail(reportId: number) {
+    await this.findReport(reportId);
+
+    return this.prisma.moderationLog.findMany({
+      where: { entityType: "REPORT", entityId: reportId },
+      orderBy: { createdAt: "desc" },
+      include: { moderator: { select: { id: true, email: true } } },
+    });
   }
 
   async getUserReputation(userId: number) {
@@ -120,6 +155,12 @@ export class ReportsService {
         reason: `${dto.reason} | status:${dto.status} | user:${targetOwnerId}`,
       },
     });
+  }
+
+  private mapStatusToPrisma(status: "open" | "reviewing" | "resolved"): ReportStatus {
+    if (status === "open") return ReportStatus.OPEN;
+    if (status === "reviewing") return ReportStatus.UNDER_REVIEW;
+    return ReportStatus.RESOLVED;
   }
 
   private mapReviewStatusToPrisma(status: ReportReviewStatus): ReportStatus {
