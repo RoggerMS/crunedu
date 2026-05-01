@@ -37,10 +37,19 @@ export class ReportsController {
     @Req() request: AuthenticatedRequest,
     @Query("communityId") communityId?: string,
     @Query("severity") severity?: "high" | "medium" | "low",
+    @Query("status") status?: "open" | "reviewing" | "resolved",
+    @Query("dateFrom") dateFrom?: string,
+    @Query("dateTo") dateTo?: string,
   ) {
     this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden revisar reportes.");
 
-    return this.service.index({ communityId: communityId ? Number(communityId) : undefined, severity });
+    return this.service.index({
+      communityId: communityId ? Number(communityId) : undefined,
+      severity,
+      status,
+      dateFrom,
+      dateTo,
+    });
   }
 
   @Patch(":id/moderate")
@@ -49,6 +58,23 @@ export class ReportsController {
     this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden moderar contenido.");
 
     return this.service.moderate(id, request.user.sub, dto);
+  }
+
+  @Patch("bulk/moderate")
+  @UseGuards(JwtAuthGuard)
+  moderateBulk(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: { reportIds: number[]; moderation: ModerateReportDto },
+  ) {
+    this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden moderar contenido.");
+    return this.service.moderateBulk(body.reportIds, request.user.sub, body.moderation);
+  }
+
+  @Get(":id/audit")
+  @UseGuards(JwtAuthGuard)
+  audit(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
+    this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden revisar auditoría.");
+    return this.service.auditTrail(id);
   }
 
   @Get("reputation/:userId")
