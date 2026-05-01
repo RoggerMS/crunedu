@@ -17,9 +17,12 @@ type ProfileForm = {
 type SocialProfile = {
   id: number;
   fullName: string;
-  isFollowing: boolean;
-  isFollowedBy: boolean;
-  isFriend: boolean;
+  academicInfo: { faculty: string | null; career: string | null; cycle: string | null };
+  activeCommunities: Array<{ id: number; name: string; slug: string }>;
+  recentPosts: Array<{ id: number; title: string; content: string; createdAt: string; community: { id: number; name: string } | null }>;
+  activitySummary: { recentContributions: Array<{ type: string; id: number; title: string; createdAt: string }> };
+  reputation: { usefulContributions: number; answersGiven: number };
+  relationship: { isFollowing: boolean; isFollowedBy: boolean; isFriend: boolean };
 };
 
 type SocialUser = {
@@ -85,11 +88,11 @@ export default function PerfilPage() {
 
   async function toggleFollow() {
     if (!isAuthenticated || !socialProfile) return;
-    const method = socialProfile.isFollowing ? "DELETE" : "POST";
+    const method = socialProfile.relationship.isFollowing ? "DELETE" : "POST";
     const response = await fetch(`${apiBaseUrl}/follows/${socialProfile.id}`, { method, headers: { Authorization: `Bearer ${accessToken}` } });
     if (!response.ok) throw new Error("No se pudo actualizar seguimiento.");
-    const relation = (await response.json()) as Pick<SocialProfile, "isFollowing" | "isFollowedBy" | "isFriend">;
-    setSocialProfile({ ...socialProfile, ...relation });
+    const relation = (await response.json()) as SocialProfile["relationship"];
+    setSocialProfile({ ...socialProfile, relationship: relation });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -124,7 +127,7 @@ export default function PerfilPage() {
       <p className="text-sm text-slate-600">Ingresa un ID de usuario para seguir o dejar de seguir.</p>
       <div className="mt-3 flex gap-2"><input className="rounded-xl border border-slate-200 px-3 py-2" value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)} /><button onClick={loadSocialProfile} className="rounded-xl bg-slate-900 px-3 py-2 text-white">Ver perfil</button><button onClick={loadFriends} className="rounded-xl bg-emerald-700 px-3 py-2 text-white">Ver amigos</button></div>
       {socialLoading ? <p className="mt-2 text-sm">Cargando...</p> : null}
-      {socialProfile ? <div className="mt-3 flex items-center gap-3"><p className="font-semibold">{socialProfile.fullName}</p>{socialProfile.isFriend ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">Amigos</span> : null}<button onClick={toggleFollow} className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white">{socialProfile.isFollowing ? "Dejar de seguir" : "Seguir"}</button></div> : null}
+      {socialProfile ? <div className="mt-3 space-y-3"><div className="flex items-center gap-3"><p className="font-semibold">{socialProfile.fullName}</p>{socialProfile.relationship.isFriend ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">Amistad mutua</span> : <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">Sin amistad mutua</span>}<button onClick={toggleFollow} className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white">{socialProfile.relationship.isFollowing ? "Dejar de seguir" : "Seguir"}</button></div><p className="text-sm text-slate-600">Facultad: {socialProfile.academicInfo.faculty || "No disponible"} · Carrera: {socialProfile.academicInfo.career || "No disponible"} · Ciclo: {socialProfile.academicInfo.cycle || "No disponible"}</p><div><h3 className="font-semibold">Comunidades activas</h3><ul className="mt-2 flex flex-wrap gap-2">{socialProfile.activeCommunities.length ? socialProfile.activeCommunities.map((community) => <li key={community.id} className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">{community.name}</li>) : <li className="text-sm text-slate-600">Sin comunidades activas registradas.</li>}</ul></div><div><h3 className="font-semibold">Publicaciones recientes</h3><ul className="mt-2 space-y-2">{socialProfile.recentPosts.length ? socialProfile.recentPosts.map((post) => <li key={post.id} className="rounded-xl border border-slate-200 p-3"><p className="text-sm font-semibold">{post.title || "Sin título"}</p><p className="text-xs text-slate-500">{new Date(post.createdAt).toLocaleDateString("es-PE")} · {post.community?.name || "Comunidad no especificada"}</p></li>) : <li className="text-sm text-slate-600">No hay publicaciones recientes.</li>}</ul></div><div className="rounded-xl border border-slate-100 bg-slate-50 p-3"><h3 className="font-semibold">Resumen de actividad</h3><p className="mt-1 text-sm text-slate-700">Aportes útiles: {socialProfile.reputation.usefulContributions} · Respuestas dadas: {socialProfile.reputation.answersGiven}</p><p className="mt-1 text-xs text-slate-600">Últimos aportes: {socialProfile.activitySummary.recentContributions.length}</p></div></div> : null}
       <div className="mt-4 rounded-2xl border border-slate-100 p-3">
         <h3 className="font-semibold">Amigos</h3>
         {friendsLoading ? <p className="mt-2 text-sm text-slate-600">Cargando amigos...</p> : null}

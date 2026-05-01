@@ -48,7 +48,33 @@ export class UsersService {
       where: { id: targetUserId },
       select: {
         id: true,
-        profile: { select: { firstName: true, lastName: true } },
+        profile: {
+          select: {
+            firstName: true,
+            lastName: true,
+            faculty: { select: { name: true } },
+            career: { select: { name: true } },
+            cycle: true,
+          },
+        },
+        communityMembers: {
+          take: 5,
+          orderBy: { joinedAt: "desc" },
+          select: { community: { select: { id: true, name: true, slug: true } } },
+        },
+        posts: {
+          where: { status: "PUBLISHED" },
+          take: 5,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            title: true,
+            content: true,
+            createdAt: true,
+            community: { select: { id: true, name: true } },
+          },
+        },
+        _count: { select: { posts: true, answers: true } },
       },
     });
 
@@ -59,7 +85,32 @@ export class UsersService {
     return {
       id: user.id,
       fullName: `${user.profile?.firstName ?? ""} ${user.profile?.lastName ?? ""}`.trim() || "Estudiante",
-      ...relationship,
+      academicInfo: {
+        faculty: user.profile?.faculty?.name ?? null,
+        career: user.profile?.career?.name ?? null,
+        cycle: user.profile?.cycle ?? null,
+      },
+      activeCommunities: user.communityMembers.map((item: { community: { id: number; name: string; slug: string } }) => item.community),
+      recentPosts: user.posts.map((post: { id: number; title: string; content: string; createdAt: Date; community: { id: number; name: string } | null }) => ({
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        createdAt: post.createdAt,
+        community: post.community,
+      })),
+      activitySummary: {
+        recentContributions: user.posts.slice(0, 3).map((post: { id: number; title: string; createdAt: Date }) => ({
+          type: "POST",
+          id: post.id,
+          title: post.title,
+          createdAt: post.createdAt,
+        })),
+      },
+      reputation: {
+        usefulContributions: user._count.posts,
+        answersGiven: user._count.answers,
+      },
+      relationship,
     };
   }
 
