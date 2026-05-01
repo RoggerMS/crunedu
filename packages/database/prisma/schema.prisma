@@ -35,9 +35,9 @@ enum ProductStatus {
 }
 
 enum InquiryStatus {
-  NEW
+  PENDING
   CONTACTED
-  CLOSED
+  RESOLVED
   CANCELLED
 }
 
@@ -124,16 +124,15 @@ model User {
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
   moderationLogs          ModerationLog[]
-  moderatedReports        Report[] @relation("ReportModerator")
+  moderatedReports        Report[]                 @relation("ReportModerator")
   sanctions               UserSanction[]
-  followers               Follow[]      @relation("UserFollowers")
-  following               Follow[]      @relation("UserFollowing")
+  followers               Follow[]                 @relation("UserFollowers")
+  following               Follow[]                 @relation("UserFollowing")
 
   @@index([role])
   @@index([createdAt])
   @@map("users")
 }
-
 
 model Follow {
   followerId  Int      @map("follower_id")
@@ -152,13 +151,13 @@ model Follow {
 }
 
 model UserSanction {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @map("user_id")
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
   type      String
   reason    String
-  isActive  Boolean  @default(true) @map("is_active")
+  isActive  Boolean   @default(true) @map("is_active")
   expiresAt DateTime? @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -292,16 +291,15 @@ model Post {
   @@map("posts")
 }
 
-
 model PostImage {
-  id        Int      @id @default(autoincrement())
-  postId    Int      @map("post_id")
-  imageUrl  String   @map("image_url")
-  storageKey String  @map("storage_key")
-  mimeType  String   @map("mime_type")
-  sizeBytes Int      @map("size_bytes")
-  position  Int      @default(0)
-  createdAt DateTime @default(now()) @map("created_at")
+  id         Int      @id @default(autoincrement())
+  postId     Int      @map("post_id")
+  imageUrl   String   @map("image_url")
+  storageKey String   @map("storage_key")
+  mimeType   String   @map("mime_type")
+  sizeBytes  Int      @map("size_bytes")
+  position   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
@@ -499,22 +497,22 @@ model ProductCategory {
 }
 
 model Product {
-  id              Int           @id @default(autoincrement())
-  title           String
-  description     String
-  price           Decimal       @db.Decimal(10, 2)
-  currency        String        @default("PEN")
-  categoryId      Int           @map("category_id")
-  status          ProductStatus @default(DRAFT)
-  stock           Int           @default(1)
-  isFeatured      Boolean       @default(false) @map("is_featured")
-  contactMethod   String        @map("contact_method")
-  whatsappMessage String?       @map("whatsapp_message")
-  viewCount       Int           @default(0) @map("view_count")
-  contactClickCount Int         @default(0) @map("contact_click_count")
-  createdBy       Int           @map("created_by")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  id                Int           @id @default(autoincrement())
+  title             String
+  description       String
+  price             Decimal       @db.Decimal(10, 2)
+  currency          String        @default("PEN")
+  categoryId        Int           @map("category_id")
+  status            ProductStatus @default(DRAFT)
+  stock             Int           @default(1)
+  isFeatured        Boolean       @default(false) @map("is_featured")
+  contactMethod     String        @map("contact_method")
+  whatsappMessage   String?       @map("whatsapp_message")
+  viewCount         Int           @default(0) @map("view_count")
+  contactClickCount Int           @default(0) @map("contact_click_count")
+  createdBy         Int           @map("created_by")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
 
   category  ProductCategory   @relation(fields: [categoryId], references: [id])
   admin     User              @relation(fields: [createdBy], references: [id])
@@ -567,7 +565,7 @@ model ProductInquiry {
   contactPhone           String        @map("contact_phone")
   message                String
   preferredContactMethod String        @map("preferred_contact_method")
-  status                 InquiryStatus @default(NEW)
+  status                 InquiryStatus @default(PENDING)
   createdAt              DateTime      @default(now()) @map("created_at")
   updatedAt              DateTime      @updatedAt @map("updated_at")
 
@@ -598,17 +596,17 @@ model Report {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  moderatedAt  DateTime? @map("moderated_at")
-  moderatedById Int?     @map("moderated_by_id")
+  moderatedAt   DateTime? @map("moderated_at")
+  moderatedById Int?      @map("moderated_by_id")
 
-  reporter  User   @relation(fields: [reporterId], references: [id])
-  moderator User?  @relation("ReportModerator", fields: [moderatedById], references: [id])
-  post      Post?  @relation(fields: [postId], references: [id])
-  comment   Comment? @relation(fields: [commentId], references: [id])
-  question Question? @relation(fields: [questionId], references: [id])
-  answer   Answer?   @relation(fields: [answerId], references: [id])
-  document Document? @relation(fields: [documentId], references: [id])
-  product  Product?  @relation(fields: [productId], references: [id])
+  reporter  User      @relation(fields: [reporterId], references: [id])
+  moderator User?     @relation("ReportModerator", fields: [moderatedById], references: [id])
+  post      Post?     @relation(fields: [postId], references: [id])
+  comment   Comment?  @relation(fields: [commentId], references: [id])
+  question  Question? @relation(fields: [questionId], references: [id])
+  answer    Answer?   @relation(fields: [answerId], references: [id])
+  document  Document? @relation(fields: [documentId], references: [id])
+  product   Product?  @relation(fields: [productId], references: [id])
 
   @@index([reporterId])
   @@index([status])

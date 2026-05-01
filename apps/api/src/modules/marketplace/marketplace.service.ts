@@ -3,7 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from "@nestjs/common";
-import { ProductStatus } from "@prisma/client";
+import { ProductStatus, InquiryStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { PAGINATION_LIMITS } from "../common/pagination.constants";
 import { CreateProductInquiryDto, CreateProductDto, UpdateProductDto } from "./dtos";
@@ -136,18 +136,17 @@ export class MarketplaceService {
   }
 
   async adminUpdateInquiryStatus(id: number, status: string) {
-    const allowedStatuses = ["NEW", "CONTACTED", "CLOSED", "CANCELLED"];
-    if (!allowedStatuses.includes(status)) {
-      throw new BadRequestException("Estado de consulta no válido.");
+    const allowedStatuses: InquiryStatus[] = ['PENDING', 'CONTACTED', 'RESOLVED', 'CANCELLED'];
+
+    if (!allowedStatuses.includes(status as InquiryStatus)) {
+      throw new BadRequestException('Estado inválido');
     }
+
+    const nextStatus = status as InquiryStatus;
 
     return this.prisma.productInquiry.update({
       where: { id },
-      data: { status },
-      include: {
-        product: { select: { id: true, title: true } },
-        user: { select: { id: true, email: true } },
-      },
+      data: { status: nextStatus },
     });
   }
 

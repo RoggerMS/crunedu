@@ -37,6 +37,7 @@
     "@nestjs/testing": "^10.4.15",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.0",
+    "@types/multer": "^2.1.0",
     "@types/node": "^22.10.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
