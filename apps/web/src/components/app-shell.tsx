@@ -3,10 +3,14 @@
 import { MAIN_NAVIGATION } from "@crunedu/shared";
 import { ChevronLeft, ChevronRight, GraduationCap, Search } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useAccessToken } from "@/hooks/useAccessToken";
 import { useSearch } from "@/hooks/useSearch";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const { isAuthenticated, setAccessToken } = useAccessToken();
   const [query, setQuery] = useState("");
   const [searchType, setSearchType] = useState<"all" | "posts" | "questions" | "communities" | "products">("all");
   const [searchPage, setSearchPage] = useState(1);
@@ -60,6 +64,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }, [isQuickActionsOpen]);
 
+  function handleLogout() {
+    setAccessToken("");
+    router.replace("/login");
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <aside className="fixed left-0 top-0 hidden h-full w-64 border-r border-slate-200 bg-white px-4 py-6 lg:block">
@@ -87,6 +96,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="mt-auto border-t border-slate-200 pt-3">
+            {isAuthenticated ? (
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              >
+                Cerrar sesión
+              </button>
+            ) : null}
             <h2 className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
               Información legal
             </h2>
