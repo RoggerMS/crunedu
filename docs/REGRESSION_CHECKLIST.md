@@ -65,7 +65,7 @@
 | Filtros `faculty` y `career` se aplican igual en listado y destacados. | ⚠️ | Manual | Con ambos filtros, el backend debe buscar coincidencias por cualquiera de los términos en título, descripción o categoría. |
 | `GET /api/marketplace/products/:id` devuelve detalle de producto activo. | ⚠️ | Manual | Para ID inválido/no existente debe mostrar un error claro y permitir reintentar en UI. |
 | `POST /api/marketplace/products/:id/inquiries` sin JWT responde `401`. | ⚠️ | Manual | La UI debe pedir iniciar sesión para enviar interés. |
-| `POST /api/marketplace/products/:id/inquiries` con JWT registra interés con nombre, celular, mensaje y método. | ⚠️ | Manual | La UI debe mostrar confirmación clara de éxito. |
+| `POST /api/marketplace/products/:id/inquiries` con JWT registra interés con nombre, celular, mensaje y método. | ✅ | Automatizada | Smoke usa producto activo de catálogo y valida `201` con JWT. |
 | Errores de red en `/app/tienda` y `/app/tienda/[id]` muestran mensaje accionable y botón `Reintentar`. | ⚠️ | Manual | Probar deteniendo solo API o usando temporalmente una URL API inválida. |
 
 Checklist manual verificable:
@@ -99,8 +99,13 @@ Checklist manual verificable:
 ## Ejecución CI local
 
 ```bash
-npm run regression:mvp
+npm run quality:gate
 ```
+
+Incluye:
+- `test:bootstrap`
+- `test:contract` (validación de contrato API base)
+- `test:regression:mvp` (smoke e2e MVP)
 
 Salida legible esperada:
 - líneas por check con `✅ / ⚠️ / ❌`
@@ -138,3 +143,13 @@ Salida legible esperada:
 | FOL-06 | Anti-spam duplicado follow | Manual justificado | Depende de ventana temporal exacta de negocio; mejor validación manual controlada por tiempo. |
 | LOG-01 | Log `rate_limit_blocked` | Manual justificado | Smoke valida HTTP 429 pero no aserta stdout estructurado. |
 | LOG-02 | Log `spam_blocked` | Manual justificado | Requiere captura formal de logger o hook e2e de observabilidad. |
+
+
+## Cobertura E2E mínima automatizada (actual)
+
+- Login: ✅ (`POST /api/auth/login` en smoke).
+- Publicar/comentar: ✅ (`POST /api/posts`, `POST /api/posts/:id/comments`).
+- Seguir/amigo: ✅ (`POST /api/follows/:userId` + validación `isFriend`).
+- Flujo tienda: ✅ (`GET /api/marketplace/products`, detalle y `POST /inquiries` con/sin JWT).
+- Contrato API en CI local: ✅ (`test:contract` incluido en `quality:gate`).
+- Umbral de calidad antes de merge: ✅ se exige pasar `npm run quality:gate`.

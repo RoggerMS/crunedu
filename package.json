@@ -2,7 +2,7 @@
   "name": "crunedu",
   "version": "0.1.0",
   "private": true,
-  "description": "CrunEdu monorepo: red social educativa universitaria con marketplace básico.",
+  "description": "CrunEdu monorepo: red social educativa universitaria con marketplace b\u00e1sico.",
   "scripts": {
     "dev": "concurrently -n WEB,API -c blue,green npm:dev:web npm:dev:api",
     "dev:web": "npm run dev -w @crunedu/web",
@@ -15,7 +15,8 @@
     "db:seed": "npm run prisma:seed -w @crunedu/database",
     "db:studio": "npm run prisma:studio -w @crunedu/database",
     "regression:mvp": "npm run test:regression:mvp -w @crunedu/api",
-    "regression:quick": "npm run regression:mvp"
+    "regression:quick": "npm run regression:mvp",
+    "quality:gate": "npm run quality:gate -w @crunedu/api"
   },
   "workspaces": [
     "apps/web",
