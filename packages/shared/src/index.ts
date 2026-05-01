@@ -150,6 +150,9 @@ export interface SearchPostResult {
   content: string;
   createdAt: string;
   community: FeedCommunity | null;
+  titleHighlighted?: string;
+  contentHighlighted?: string;
+  relevance?: number;
 }
 
 export interface SearchQuestionResult {
@@ -158,6 +161,9 @@ export interface SearchQuestionResult {
   content: string;
   createdAt: string;
   community: FeedCommunity | null;
+  titleHighlighted?: string;
+  contentHighlighted?: string;
+  relevance?: number;
 }
 
 export interface SearchCommunityResult {
@@ -165,11 +171,36 @@ export interface SearchCommunityResult {
   name: string;
   slug: string;
   description: string | null;
+  nameHighlighted?: string;
+  descriptionHighlighted?: string;
+  relevance?: number;
+}
+
+export interface SearchProductResult {
+  id: number;
+  title: string;
+  description: string;
+  createdAt: string;
+  viewCount: number;
+  contactClickCount: number;
+  category: {
+    id: number;
+    name: string;
+  } | null;
+  titleHighlighted?: string;
+  descriptionHighlighted?: string;
+  relevance?: number;
 }
 
 export interface SearchResults {
   query: string;
+  type?: "posts" | "questions" | "communities" | "products" | "all";
+  page?: number;
+  limit?: number;
+  total?: number;
+  noResultsTracked?: boolean;
   posts: SearchPostResult[];
   questions: SearchQuestionResult[];
   communities: SearchCommunityResult[];
+  products: SearchProductResult[];
 }

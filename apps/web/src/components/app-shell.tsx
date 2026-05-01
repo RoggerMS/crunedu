@@ -8,13 +8,32 @@ import { useSearch } from "@/hooks/useSearch";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [query, setQuery] = useState("");
+  const [searchType, setSearchType] = useState<"all" | "posts" | "questions" | "communities" | "products">("all");
+  const [searchPage, setSearchPage] = useState(1);
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
-  const { results, loading, error } = useSearch(query);
+  const { results, loading, error } = useSearch(query, searchType, searchPage);
   const hasQuery = query.trim().length > 0;
   const hasResults =
     results.posts.length > 0 ||
     results.questions.length > 0 ||
-    results.communities.length > 0;
+    results.communities.length > 0 ||
+    results.products.length > 0;
+
+  useEffect(() => {
+    setSearchPage(1);
+  }, [query, searchType]);
+
+  useEffect(() => {
+    if (!hasQuery || loading || error || (results.total ?? 0) > 0 || typeof window === "undefined") {
+      return;
+    }
+
+    const key = "crunedu_search_no_results_metrics";
+    const current = JSON.parse(window.localStorage.getItem(key) ?? "{}") as Record<string, number>;
+    const metricKey = `${searchType}:${query.trim().toLowerCase()}`;
+    const next = { ...current, [metricKey]: Number(current[metricKey] ?? 0) + 1 };
+    window.localStorage.setItem(key, JSON.stringify(next));
+  }, [error, hasQuery, loading, query, results.total, searchType]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -109,7 +128,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar publicaciones, preguntas y comunidades"
+                placeholder="Buscar publicaciones, preguntas, comunidades y productos"
                 className="w-full bg-transparent text-slate-700 outline-none placeholder:text-slate-500"
               />
             </div>
@@ -132,6 +151,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {hasQuery ? (
             <div className="mt-3 rounded-xl border border-slate-200 bg-white p-4">
+              <div className="mb-3 flex flex-wrap gap-2">
+                {[
+                  { key: "all", label: "Todos" },
+                  { key: "posts", label: "Publicaciones" },
+                  { key: "questions", label: "Preguntas" },
+                  { key: "communities", label: "Comunidades" },
+                  { key: "products", label: "Productos" },
+                ].map((tab) => (
+                  <button key={tab.key} type="button" onClick={() => setSearchType(tab.key as typeof searchType)} className={`rounded-lg px-3 py-1 text-xs font-semibold ${searchType === tab.key ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700"}`}>
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
               {loading ? (
                 <p className="text-sm text-slate-500">Buscando resultados...</p>
               ) : null}
@@ -140,6 +172,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <p className="text-sm text-slate-600">
                   No se encontraron resultados para tu búsqueda.
                 </p>
+              ) : null}
+              {!loading && !error && hasResults ? <p className="text-xs text-slate-500">Resultados: {results.total ?? 0}.</p> : null}
+              {!loading && !error && (results.total ?? 0) > 5 ? (
+                <div className="mt-2 flex items-center gap-2">
+                  <button type="button" onClick={() => setSearchPage((value) => Math.max(1, value - 1))} disabled={searchPage === 1} className="rounded border border-slate-300 px-2 py-1 text-xs disabled:opacity-50">Anterior</button>
+                  <span className="text-xs text-slate-600">Página {searchPage}</span>
+                  <button type="button" onClick={() => setSearchPage((value) => value + 1)} className="rounded border border-slate-300 px-2 py-1 text-xs">Siguiente</button>
+                </div>
               ) : null}
             </div>
           ) : null}
