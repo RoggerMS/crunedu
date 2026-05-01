@@ -110,28 +110,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </h2>
             <nav className="mt-1.5 space-y-0.5" aria-label="Enlaces legales">
               <Link
-                href="/terminos"
+                href="/legal/terminos"
                 className="block rounded-md px-2 py-0.5 text-[11px] text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
               >
                 Términos y condiciones
               </Link>
               <Link
-                href="/privacidad"
+                href="/legal/politica-privacidad"
                 className="block rounded-md px-2 py-0.5 text-[11px] text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
               >
                 Política de privacidad
               </Link>
               <Link
-                href="/cookies"
+                href="/legal/politica-cookies"
                 className="block rounded-md px-2 py-0.5 text-[11px] text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
               >
                 Política de cookies
               </Link>
               <Link
-                href="/publicidad"
+                href="/legal/preferencias-publicidad"
                 className="block rounded-md px-2 py-0.5 text-[11px] text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
               >
                 Preferencias de publicidad
+              </Link>
+              <Link
+                href="/legal/normas-comunidad"
+                className="block rounded-md px-2 py-0.5 text-[11px] text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+              >
+                Normas de comunidad
               </Link>
             </nav>
           </div>
@@ -215,28 +221,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-label="Enlaces legales móviles"
             >
               <Link
-                href="/terminos"
+                href="/legal/terminos"
                 className="rounded-sm text-[11px] text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
               >
                 Términos
               </Link>
               <Link
-                href="/privacidad"
+                href="/legal/politica-privacidad"
                 className="rounded-sm text-[11px] text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
               >
                 Privacidad
               </Link>
               <Link
-                href="/cookies"
+                href="/legal/politica-cookies"
                 className="rounded-sm text-[11px] text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
               >
                 Cookies
               </Link>
               <Link
-                href="/publicidad"
+                href="/legal/preferencias-publicidad"
                 className="rounded-sm text-[11px] text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
               >
                 Publicidad
+              </Link>
+              <Link
+                href="/legal/normas-comunidad"
+                className="rounded-sm text-[11px] text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+              >
+                Normas
               </Link>
             </nav>
           </div>
