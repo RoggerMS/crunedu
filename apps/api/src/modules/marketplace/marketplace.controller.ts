@@ -80,7 +80,8 @@ export class MarketplaceController {
 
   @UseGuards(JwtAuthGuard)
   @Get("admin/inquiries")
-  adminInquiries(@Query("cursor") cursor?: string, @Query("limit") limit?: string) {
+  adminInquiries(@Req() request: AuthenticatedRequest, @Query("cursor") cursor?: string, @Query("limit") limit?: string) {
+    this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden gestionar consultas.");
     return this.service.adminListInquiries(cursor ? Number(cursor) : undefined, limit ? Number(limit) : undefined);
   }
 
@@ -104,7 +105,8 @@ export class MarketplaceController {
 
   @UseGuards(JwtAuthGuard)
   @Get("admin/metrics")
-  metrics() {
+  metrics(@Req() request: AuthenticatedRequest) {
+    this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden ver métricas.");
     return this.service.getConversionMetrics();
   }
 }
