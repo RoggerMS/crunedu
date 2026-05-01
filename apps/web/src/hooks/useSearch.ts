@@ -3,12 +3,18 @@ import type { SearchResults } from "@crunedu/shared";
 
 const EMPTY_RESULTS: SearchResults = {
   query: "",
+  type: "all",
+  page: 1,
+  limit: 5,
+  total: 0,
+  noResultsTracked: false,
   posts: [],
   questions: [],
   communities: [],
+  products: [],
 };
 
-export function useSearch(query: string) {
+export function useSearch(query: string, type: "all" | "posts" | "questions" | "communities" | "products", page: number) {
   const [results, setResults] = useState<SearchResults>(EMPTY_RESULTS);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +35,9 @@ export function useSearch(query: string) {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(`${apiBaseUrl}/search?q=${encodeURIComponent(normalized)}`, {
+        const params = new URLSearchParams({ q: normalized, page: String(page), limit: "5" });
+        if (type !== "all") params.set("type", type);
+        const response = await fetch(`${apiBaseUrl}/search?${params.toString()}`, {
           signal: controller.signal,
         });
 
@@ -53,7 +61,7 @@ export function useSearch(query: string) {
     fetchResults();
 
     return () => controller.abort();
-  }, [apiBaseUrl, query]);
+  }, [apiBaseUrl, query, type, page]);
 
   return { results, loading, error };
 }
