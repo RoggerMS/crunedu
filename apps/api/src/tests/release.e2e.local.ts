@@ -44,11 +44,12 @@ async function run() {
       record("landing -> login -> app", "FAIL", `register=${register.status} login=${login.status}`);
     }
 
-    const auth = token ? { authorization: `Bearer ${token}`, "content-type": "application/json" } : { "content-type": "application/json" };
-    const postRes = await fetch(`${baseUrl}/posts`, { method: "POST", headers: auth, body: JSON.stringify({ title: "E2E Feed", content: "Publicación feed", communityId: 1 }) });
+    const authHeaders: Record<string, string> = { "content-type": "application/json" };
+    if (token) authHeaders.authorization = `Bearer ${token}`;
+    const postRes = await fetch(`${baseUrl}/posts`, { method: "POST", headers: authHeaders, body: JSON.stringify({ title: "E2E Feed", content: "Publicación feed", communityId: 1 }) });
     if (postRes.status === 201) {
       const post = (await postRes.json()) as { id: number };
-      const commentRes = await fetch(`${baseUrl}/posts/${post.id}/comments`, { method: "POST", headers: auth, body: JSON.stringify({ content: "Comentario E2E" }) });
+      const commentRes = await fetch(`${baseUrl}/posts/${post.id}/comments`, { method: "POST", headers: authHeaders, body: JSON.stringify({ content: "Comentario E2E" }) });
       record("feed publicar/comentar", commentRes.status === 201 ? "PASS" : "FAIL", `post=${postRes.status} comment=${commentRes.status}`);
     } else {
       record("feed publicar/comentar", "FAIL", `post=${postRes.status}`);
@@ -59,7 +60,7 @@ async function run() {
       ["apuntes publicar", "notes", { title: "Apunte E2E", description: "Descripción", course: "Curso", cycle: "I", fileUrl: "https://example.com/file.pdf" }],
       ["trámites publicar", "procedures", { title: "Trámite E2E", description: "Detalle del trámite", faculty: "Educación" }],
     ] as const) {
-      const res = await fetch(`${baseUrl}/${endpoint}`, { method: "POST", headers: auth, body: JSON.stringify(body) });
+      const res = await fetch(`${baseUrl}/${endpoint}`, { method: "POST", headers: authHeaders, body: JSON.stringify(body) });
       record(name, res.status === 201 ? "PASS" : "FAIL", `status=${res.status}`);
     }
 
@@ -70,7 +71,7 @@ async function run() {
       const first = marketJson.items?.[0];
       if (!first) record("tienda interés", "WARN", "Sin productos activos");
       else {
-        const inquiry = await fetch(`${baseUrl}/marketplace/products/${first.id}/inquiries`, { method: "POST", headers: auth, body: JSON.stringify({ contactName: "Release User", contactPhone: "987654321", message: "Interés e2e", preferredContactMethod: "whatsapp" }) });
+        const inquiry = await fetch(`${baseUrl}/marketplace/products/${first.id}/inquiries`, { method: "POST", headers: authHeaders, body: JSON.stringify({ contactName: "Release User", contactPhone: "987654321", message: "Interés e2e", preferredContactMethod: "whatsapp" }) });
         record("tienda interés", inquiry.status === 201 ? "PASS" : "FAIL", `status=${inquiry.status}`);
       }
     }
