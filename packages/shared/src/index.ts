@@ -26,6 +26,7 @@ export const FILE_LIMITS = {
 export const MAIN_NAVIGATION = [
   { label: "Inicio", href: "/app" },
   { label: "Comunidades", href: "/app/comunidades" },
+  { label: "Debates", href: "/app/debates" },
   { label: "Preguntas", href: "/app/preguntas" },
   { label: "Apuntes", href: "/app/apuntes" },
   { label: "Trámites", href: "/app/tramites" },
