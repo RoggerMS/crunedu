@@ -32,7 +32,7 @@ export default function LoginPage() {
       setPassword("");
 
       const returnUrl = searchParams.get("returnUrl")?.trim();
-      const nextPath = returnUrl && returnUrl.startsWith("/") ? returnUrl : "/app";
+      const nextPath = returnUrl && returnUrl.startsWith("/") && !returnUrl.startsWith("//") ? returnUrl : "/app";
 
       window.setTimeout(() => {
         router.replace(nextPath);

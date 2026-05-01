@@ -106,6 +106,7 @@ Incluye:
 - `test:bootstrap`
 - `test:contract` (validación de contrato API base)
 - `test:regression:mvp` (smoke e2e MVP)
+- `test:release:e2e` (flujo de CTA y recorridos pre-release)
 
 Salida legible esperada:
 - líneas por check con `✅ / ⚠️ / ❌`
@@ -153,3 +154,14 @@ Salida legible esperada:
 - Flujo tienda: ✅ (`GET /api/marketplace/products`, detalle y `POST /inquiries` con/sin JWT).
 - Contrato API en CI local: ✅ (`test:contract` incluido en `quality:gate`).
 - Umbral de calidad antes de merge: ✅ se exige pasar `npm run quality:gate`.
+
+
+## 9) Suite pre-release local (nuevo)
+
+Ejecutar:
+
+```bash
+npm run quality:gate
+```
+
+Genera reporte en `docs/RELEASE_E2E_REPORT.md` con pasos PASS/FAIL/WARN, fallos y guía de capturas locales.
