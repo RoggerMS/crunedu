@@ -10,7 +10,9 @@
     "lint": "echo lint pending",
     "test:integration": "tsx src/tests/integration.smoke.ts",
     "test:regression:mvp": "tsx src/tests/integration.smoke.ts",
-    "test:bootstrap": "tsx src/tests/bootstrap.dependencies.spec.ts"
+    "test:bootstrap": "tsx src/tests/bootstrap.dependencies.spec.ts",
+    "test:contract": "tsx src/tests/api.contract.spec.ts",
+    "quality:gate": "npm run test:bootstrap && npm run test:contract && npm run test:regression:mvp"
   },
   "dependencies": {
     "@crunedu/database": "*",

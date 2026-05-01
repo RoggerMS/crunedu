@@ -198,6 +198,47 @@ async function run() {
     assertStatus(registerLimit.status, 429, "register rate limit");
     record("auth", "rate limit de registro devuelve 429", "PASS");
 
+    
+    // Marketplace minimal flow
+    const marketplaceList = await fetch(`${baseUrl}/marketplace/products`);
+    assertStatus(marketplaceList.status, 200, "marketplace list");
+    const marketplaceListJson = (await marketplaceList.json()) as { items?: Array<{ id: number }>; featuredProducts?: unknown[]; context?: unknown; nextCursor?: number | null };
+    if (!Array.isArray(marketplaceListJson.items)) throw new Error("marketplace list must return items array");
+    if (!Array.isArray(marketplaceListJson.featuredProducts)) throw new Error("marketplace list must return featuredProducts array");
+
+    if (marketplaceListJson.items.length > 0) {
+      const productId = marketplaceListJson.items[0].id;
+      const productDetail = await fetch(`${baseUrl}/marketplace/products/${productId}`);
+      assertStatus(productDetail.status, 200, "marketplace detail");
+
+      const inquiryNoToken = await fetch(`${baseUrl}/marketplace/products/${productId}/inquiries`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          contactName: "Usuario Integración",
+          contactPhone: "987654321",
+          message: "Estoy interesado en este producto",
+          preferredContactMethod: "whatsapp",
+        }),
+      });
+      assertStatus(inquiryNoToken.status, 401, "marketplace inquiry without token");
+
+      const inquiryWithToken = await fetch(`${baseUrl}/marketplace/products/${productId}/inquiries`, {
+        method: "POST",
+        headers: authHeaderA,
+        body: JSON.stringify({
+          contactName: "Usuario Integración",
+          contactPhone: "987654321",
+          message: "Estoy interesado en este producto",
+          preferredContactMethod: "whatsapp",
+        }),
+      });
+      assertStatus(inquiryWithToken.status, 201, "marketplace inquiry with token");
+      record("marketplace", "flujo mínimo listar/detalle/consulta autenticada", "PASS");
+    } else {
+      record("marketplace", "flujo mínimo listar/detalle/consulta autenticada", "SKIP", "No hay productos activos para validar detalle e inquiry");
+    }
+
     record("questions", "cobertura manual pendiente en este smoke (ver checklist)", "SKIP", "prioridad en auth/posts/comments/follows para MVP");
 
     const passed = results.filter((item) => item.status === "PASS").length;
