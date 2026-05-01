@@ -32,6 +32,15 @@ function parseJwtPayload(token: string): { sub?: number } | null {
   }
 }
 
+type DailyValueBlockKey = "community-posts" | "new-replies" | "friends-activity";
+
+const DAILY_BLOCK_STORAGE_KEY = "crunedu_daily_block_metrics";
+
+function calculateRecencyScore(createdAt: string) {
+  const hoursSinceCreation = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
+  return Math.max(0, 72 - hoursSinceCreation);
+}
+
 export default function AppPage() {
   const { communities } = useCommunities();
   const { posts, sections, loading, error, reload } = usePosts();
@@ -69,6 +78,38 @@ export default function AppPage() {
   }, [accessToken]);
 
   const canSubmit = useMemo(() => content.trim() && communityId.trim() && isAuthenticated, [content, communityId, isAuthenticated]);
+
+  const affinityPosts = useMemo(() => {
+    return [...posts]
+      .map((post) => {
+        const socialScore = authenticatedUserId && post.author.id === authenticatedUserId ? 50 : 20;
+        const communityScore = post.community ? 30 : 10;
+        const recencyScore = calculateRecencyScore(post.createdAt);
+
+        return {
+          ...post,
+          affinityScore: socialScore + communityScore + recencyScore,
+        };
+      })
+      .sort((a, b) => b.affinityScore - a.affinityScore)
+      .slice(0, 4);
+  }, [authenticatedUserId, posts]);
+
+  function trackDailyBlockInteraction(block: DailyValueBlockKey, action: string) {
+    const currentMetrics = typeof window === "undefined"
+      ? {}
+      : JSON.parse(window.localStorage.getItem(DAILY_BLOCK_STORAGE_KEY) ?? "{}");
+
+    const key = `${block}:${action}`;
+    const nextMetrics = {
+      ...currentMetrics,
+      [key]: Number(currentMetrics[key] ?? 0) + 1,
+    };
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DAILY_BLOCK_STORAGE_KEY, JSON.stringify(nextMetrics));
+    }
+  }
 
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -366,6 +407,66 @@ export default function AppPage() {
             </form>
           </Card>
         ) : null}
+
+        <section className="space-y-3">
+          <h2 className="text-xl font-black text-slate-900">Valor diario para ti</h2>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <Card className="space-y-3">
+              <h3 className="text-base font-bold">Nuevas publicaciones en tus comunidades</h3>
+              {affinityPosts.length > 0 ? (
+                <>
+                  <p className="text-sm text-slate-600">Se prioriza por afinidad (comunidad, relación social y recencia).</p>
+                  <p className="text-sm text-slate-700">{affinityPosts[0]?.title || affinityPosts[0]?.content.slice(0, 80)}</p>
+                  <SecondaryButton asChild onClick={() => trackDailyBlockInteraction("community-posts", "ver_comunidad")}>
+                    <Link href="/app/comunidades">Ver comunidad</Link>
+                  </SecondaryButton>
+                </>
+              ) : (
+                <EmptyState
+                  title="Aún no hay publicaciones"
+                  description="Únete a una comunidad para recibir contenido nuevo cada día."
+                  action={<SecondaryButton asChild onClick={() => trackDailyBlockInteraction("community-posts", "explorar_comunidades")}><Link href="/app/comunidades">Explorar comunidades</Link></SecondaryButton>}
+                />
+              )}
+            </Card>
+
+            <Card className="space-y-3">
+              <h3 className="text-base font-bold">Respuestas nuevas a tus preguntas/posts</h3>
+              {posts.some((post) => post.commentsCount > 0) ? (
+                <>
+                  <p className="text-sm text-slate-600">Tienes publicaciones con nuevas respuestas listas para revisar.</p>
+                  <PrimaryButton type="button" onClick={() => trackDailyBlockInteraction("new-replies", "responder")}>
+                    Responder
+                  </PrimaryButton>
+                </>
+              ) : (
+                <EmptyState
+                  title="Sin respuestas nuevas por ahora"
+                  description="Crea una publicación con una pregunta para iniciar conversación."
+                  action={<PrimaryButton type="button" onClick={() => { trackDailyBlockInteraction("new-replies", "publicar_pregunta"); setIsCreateFormOpen(true); }}>Publicar pregunta</PrimaryButton>}
+                />
+              )}
+            </Card>
+
+            <Card className="space-y-3">
+              <h3 className="text-base font-bold">Actividad de tus amigos</h3>
+              {isAuthenticated ? (
+                <>
+                  <p className="text-sm text-slate-600">Mira publicaciones recientes de personas con quienes interactúas.</p>
+                  <PrimaryButton type="button" onClick={() => trackDailyBlockInteraction("friends-activity", "comentar")}>
+                    Comentar
+                  </PrimaryButton>
+                </>
+              ) : (
+                <EmptyState
+                  title="Inicia sesión para ver actividad"
+                  description="Cuando entres con tu cuenta, mostraremos la actividad de tus amigos y contactos."
+                  action={<SecondaryButton asChild onClick={() => trackDailyBlockInteraction("friends-activity", "ir_login")}><Link href="/login">Iniciar sesión</Link></SecondaryButton>}
+                />
+              )}
+            </Card>
+          </div>
+        </section>
 
         <div className="mt-6 space-y-4">
           {loading ? <StatusMessage type="loading">Cargando publicaciones...</StatusMessage> : null}
