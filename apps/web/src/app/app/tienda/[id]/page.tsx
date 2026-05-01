@@ -153,7 +153,7 @@ export default function ProductoDetallePage() {
 
       <form onSubmit={sendInterest} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
         <h2 className="text-lg font-bold">Registra tu interés</h2>
-        <p className="mt-2 text-sm text-slate-600">Completa el formulario y nos pondremos en contacto contigo.</p>
+        <p className="mt-2 text-sm text-slate-600">Completa el formulario para contactar rápido con CrunEdu y separar este producto.</p>
 
         <div className="mt-5 space-y-4">
           <div>
@@ -251,7 +251,7 @@ export default function ProductoDetallePage() {
           disabled={sending}
           className="mt-5 w-full rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
         >
-          {sending ? "Registrando..." : "Registrar interés"}
+          {sending ? "Enviando solicitud..." : "Quiero este producto · Contactar ahora"}
         </button>
       </form>
     </section>

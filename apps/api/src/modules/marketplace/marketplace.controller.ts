@@ -85,6 +85,24 @@ export class MarketplaceController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get("admin/products")
+  adminProducts(@Req() request: AuthenticatedRequest) {
+    this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden gestionar productos.");
+    return this.service.adminListProducts();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post("admin/inquiries/:id/status")
+  adminUpdateInquiryStatus(
+    @Req() request: AuthenticatedRequest,
+    @Param("id", ParseIntPipe) id: number,
+    @Body("status") status: string,
+  ) {
+    this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden gestionar consultas.");
+    return this.service.adminUpdateInquiryStatus(id, status);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get("admin/metrics")
   metrics() {
     return this.service.getConversionMetrics();
