@@ -66,3 +66,7 @@ CrunEdu es una red social educativa universitaria. El MVP debe permitir comunida
 - Se agrega `apps/api/src/tests/bootstrap.dependencies.spec.ts`.
 - Esta prueba crea `ApplicationContext` con `AppModule` y falla si Nest no puede resolver providers/imports.
 - Script: `npm run test:bootstrap -w @crunedu/api`.
+
+## Evolución multiuniversidad
+
+- Ver plan incremental en `docs/MULTI_UNIVERSITY_PLAN.md` para aislamiento por campus, feature flags y migración no destructiva.
