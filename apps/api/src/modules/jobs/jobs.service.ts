@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createClient, RedisClientType } from "redis";
 
@@ -7,10 +7,10 @@ export class JobsService implements OnModuleInit {
   private readonly logger = new Logger(JobsService.name);
   private redis: RedisClientType | null = null;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(@Optional() private readonly config?: ConfigService) {}
 
   async onModuleInit() {
-    const url = this.config.get<string>("REDIS_URL") ?? "redis://localhost:6379";
+    const url = this.config?.get<string>("REDIS_URL") ?? process.env.REDIS_URL ?? "redis://localhost:6379";
     this.redis = createClient({ url });
     this.redis.on("error", (error) => this.logger.warn(`Redis unavailable: ${String(error)}`));
     try {
