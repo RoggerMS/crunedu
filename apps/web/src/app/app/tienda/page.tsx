@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PageState, PrimaryButton } from "@/components/ui";
-import { getStoreCatalog, type StoreProduct } from "@/lib/api-helpers";
+import { getStoreCatalog, getStoreCategories, type StoreProduct } from "@/lib/api-helpers";
 import { mapApiError } from "@/lib/http-client";
 
 export default function TiendaPage() {
@@ -11,6 +11,7 @@ export default function TiendaPage() {
   const [featuredProducts, setFeaturedProducts] = useState<StoreProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
 
   const loadProducts = useCallback(() => {
     const faculty = typeof window !== "undefined" ? localStorage.getItem("profile_faculty") : "";
@@ -30,6 +31,8 @@ export default function TiendaPage() {
         setFeaturedProducts([]);
       })
       .finally(() => setLoading(false));
+
+    getStoreCategories().then((data) => setCategories(Array.isArray(data) ? data : [])).catch(() => setCategories([]));
   }, []);
 
   useEffect(() => {
@@ -68,6 +71,14 @@ export default function TiendaPage() {
           </div>
         </div>
       ) : null}
+      {!loading && !error && categories.length > 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <p className="text-sm font-semibold">Categorías disponibles</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {categories.map((category) => <span key={category.id} className="rounded-full bg-slate-100 px-3 py-1 text-xs">{category.name}</span>)}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {!loading && !error && products.length === 0 ? (
@@ -83,6 +94,7 @@ export default function TiendaPage() {
           products.map((product) => (
             <article key={product.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft">
               {product.isFeatured ? <span className="text-xs font-semibold text-emerald-700">Destacado</span> : null}
+              <span className="ml-2 text-xs font-semibold text-indigo-700">Activo</span>
               <h2 className="text-lg font-bold">{product.title}</h2>
               <p className="mt-1 text-xs text-slate-500">{product.category?.name}</p>
               <p className="mt-2 text-sm text-slate-600 line-clamp-3">{product.description}</p>

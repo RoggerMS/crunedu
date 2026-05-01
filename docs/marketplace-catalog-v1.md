@@ -10,11 +10,13 @@
 - Conexión con comunidades/carreras (filtro inicial por `communityId` en listado).
 - Panel admin básico por API:
   - crear/editar/ocultar producto (`POST /api/marketplace/admin/products`)
+  - listar productos para gestión (`GET /api/marketplace/admin/products`)
   - ver consultas (`GET /api/marketplace/admin/inquiries`)
+  - actualizar estado de atención (`POST /api/marketplace/admin/inquiries/:id/status`)
 - Conversión mínima:
   - vistas (`view_count`)
   - clics en contacto (`contact_click_count`)
-  - consultas completadas (inquiries con estado `CLOSED`)
+  - consultas/completadas (inquiries total y estado `CLOSED`)
 
 ## Endpoints
 
@@ -23,9 +25,12 @@
 - `POST /api/marketplace/products/:id/inquiries` (JWT)
 - `POST /api/marketplace/admin/products` (JWT admin)
 - `GET /api/marketplace/admin/inquiries` (JWT)
+- `GET /api/marketplace/admin/products` (JWT admin)
+- `POST /api/marketplace/admin/inquiries/:id/status` (JWT admin)
 - `GET /api/marketplace/admin/metrics` (JWT)
 
 ## Notas
 
 - No se implementaron pagos automáticos, carrito avanzado ni vendedores externos.
+- Se dejó la estructura lista para pagos futuros manteniendo `contact_method` y `whatsapp_message` como capa de contacto inicial sin pasarela.
 - La pantalla `/app/tienda` ahora consume productos reales desde API.

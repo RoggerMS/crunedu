@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   NotFoundException,
 } from "@nestjs/common";
 import { ProductStatus } from "@prisma/client";
@@ -127,6 +128,29 @@ export class MarketplaceService {
     return { items: items.slice(0, safeLimit), nextCursor };
   }
 
+  async adminListProducts() {
+    return this.prisma.product.findMany({
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      include: { category: true },
+    });
+  }
+
+  async adminUpdateInquiryStatus(id: number, status: string) {
+    const allowedStatuses = ["NEW", "CONTACTED", "CLOSED", "CANCELLED"];
+    if (!allowedStatuses.includes(status)) {
+      throw new BadRequestException("Estado de consulta no válido.");
+    }
+
+    return this.prisma.productInquiry.update({
+      where: { id },
+      data: { status },
+      include: {
+        product: { select: { id: true, title: true } },
+        user: { select: { id: true, email: true } },
+      },
+    });
+  }
+
   async adminUpsertProduct(user: { sub: number; role: string }, payload: CreateProductDto | UpdateProductDto) {
     const isUpdate = "id" in payload && payload.id;
 
@@ -164,7 +188,7 @@ export class MarketplaceService {
   }
 
   async getConversionMetrics() {
-    const [products, inquiriesByStatus] = await Promise.all([
+    const [products, inquiriesByStatus, totalInquiries] = await Promise.all([
       this.prisma.product.findMany({
         select: { id: true, title: true, viewCount: true, contactClickCount: true },
         orderBy: { createdAt: "desc" },
@@ -173,6 +197,7 @@ export class MarketplaceService {
         by: ["status"],
         _count: { _all: true },
       }),
+      this.prisma.productInquiry.count(),
     ]);
 
     const inquiriesMap: Record<string, number> = {};
@@ -185,6 +210,11 @@ export class MarketplaceService {
       inquirySummary: {
         total: Object.values(inquiriesMap).reduce((sum, value) => sum + value, 0),
         completed: inquiriesMap["CLOSED"] ?? 0,
+      },
+      totals: {
+        views: products.reduce((sum, item) => sum + item.viewCount, 0),
+        contactClicks: products.reduce((sum, item) => sum + item.contactClickCount, 0),
+        inquiries: totalInquiries,
       },
     };
   }

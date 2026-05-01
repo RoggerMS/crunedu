@@ -51,6 +51,14 @@ export type CatalogResponse = {
   context: { faculty: string; career: string };
 };
 export type ProductDetailResponse = StoreProduct & { contactMethod?: string; stock?: number; viewCount?: number };
+export type AdminStoreInquiry = StoreInquiryResponse & {
+  contactName: string;
+  contactPhone: string;
+  message: string;
+  preferredContactMethod: "whatsapp" | "email";
+  product: { id: number; title: string };
+  user: { id: number; email: string };
+};
 
 export function login(email: string, password: string) {
   return apiRequest<LoginResponse>("/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
@@ -115,4 +123,27 @@ export function getStoreCategories() {
 
 export function createAdminProduct(payload: Record<string, unknown>, token: string) {
   return apiRequest("/marketplace/admin/products", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+}
+
+export function getAdminStoreProducts(token: string) {
+  return apiRequest<Array<StoreProduct & { status: string }>>("/marketplace/admin/products", { headers: { Authorization: `Bearer ${token}` } });
+}
+
+export function getAdminStoreInquiries(token: string) {
+  return apiRequest<{ items: AdminStoreInquiry[]; nextCursor: number | null }>("/marketplace/admin/inquiries", { headers: { Authorization: `Bearer ${token}` } });
+}
+
+export function updateAdminStoreInquiryStatus(inquiryId: number, status: string, token: string) {
+  return apiRequest(`/marketplace/admin/inquiries/${inquiryId}/status`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function getAdminStoreMetrics(token: string) {
+  return apiRequest<{
+    totals: { views: number; contactClicks: number; inquiries: number };
+    inquirySummary: { total: number; completed: number };
+  }>("/marketplace/admin/metrics", { headers: { Authorization: `Bearer ${token}` } });
 }
