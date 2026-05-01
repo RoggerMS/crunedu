@@ -5,6 +5,7 @@ import { CommunitiesModule } from "./modules/communities/communities.module";
 import { CacheModule } from "./modules/cache/cache.module";
 import { JobsModule } from "./modules/jobs/jobs.module";
 import { DocumentsModule } from "./modules/documents/documents.module";
+import { DebatesModule } from "./modules/debates/debates.module";
 import { HealthModule } from "./modules/health/health.module";
 import { MarketplaceModule } from "./modules/marketplace/marketplace.module";
 import { PostsModule } from "./modules/posts/posts.module";
@@ -30,6 +31,7 @@ import { DevSecurityService } from "./modules/core/dev-security.service";
     CommunitiesModule,
     QuestionsModule,
     DocumentsModule,
+    DebatesModule,
     MarketplaceModule,
     ReportsModule,
     SearchModule,
