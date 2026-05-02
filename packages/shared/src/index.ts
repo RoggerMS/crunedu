@@ -33,6 +33,7 @@ export const MAIN_NAVIGATION = [
   { label: "Momentos", href: "/app/momentos" },
   { label: "Tienda", href: "/app/tienda" },
   { label: "Perfil", href: "/app/perfil" },
+  { label: "Admin", href: "/app/admin" },
   { label: "Admin tienda", href: "/app/admin/tienda" },
   { label: "Admin reportes", href: "/app/admin/reportes" },
 ] as const;
