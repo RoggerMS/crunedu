@@ -1,7 +1,7 @@
 import { IsString, IsNumber, IsOptional, IsBoolean, IsEnum, MinLength, MaxLength, Min, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 
-const PRODUCT_STATUSES = ["DRAFT", "ACTIVE", "ARCHIVED"] as const;
+const PRODUCT_STATUSES = ["DRAFT", "ACTIVE", "HIDDEN", "SOLD_OUT", "DELETED"] as const;
 type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 
 export class CreateProductDto {

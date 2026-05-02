@@ -6,7 +6,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { PAGINATION_LIMITS } from "../common/pagination.constants";
 import { CreateProductInquiryDto, CreateProductDto, UpdateProductDto } from "./dtos";
-type ProductStatus = "DRAFT" | "ACTIVE" | "ARCHIVED";
+type ProductStatus = "DRAFT" | "ACTIVE" | "HIDDEN" | "SOLD_OUT" | "DELETED";
 type InquiryStatus = "PENDING" | "CONTACTED" | "RESOLVED" | "CANCELLED";
 const DEFAULT_PRODUCT_STATUS: ProductStatus = "ACTIVE";
 
