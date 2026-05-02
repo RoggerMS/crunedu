@@ -156,7 +156,6 @@ export class CommunitiesService {
         OR: [
           { description: { contains: profile?.careerId ? "carrera" : undefined, mode: "insensitive" } },
           { description: { contains: profile?.facultyId ? "facultad" : undefined, mode: "insensitive" } },
-          { name: { contains: "Cachimbos", mode: "insensitive" } },
         ],
       },
       take: 5,
