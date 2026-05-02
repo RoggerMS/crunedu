@@ -60,6 +60,26 @@ export class CommunitiesService {
     return { ...community, membersCount: community._count.members, postsCount: community._count.posts };
   }
 
+
+  async membershipStatus(communityId: number, userId: number) {
+    await this.ensureCommunityExists(communityId);
+
+    const community = await this.prisma.community.findUnique({
+      where: { id: communityId },
+      select: { createdBy: true },
+    });
+
+    const membership = await this.prisma.communityMember.findUnique({
+      where: { communityId_userId: { communityId, userId } },
+      select: { role: true },
+    });
+
+    return {
+      isJoined: Boolean(membership),
+      role: membership?.role?.toLowerCase() ?? null,
+      isCreator: community?.createdBy === userId,
+    };
+  }
   async communityPosts(communityId: number, cursor?: number, limit?: number) {
     await this.ensureCommunityExists(communityId);
     const safeLimit = Number.isFinite(limit) && (limit as number) > 0 ? Math.min(Math.floor(limit as number), PAGINATION_LIMITS.communityPosts.max) : PAGINATION_LIMITS.communityPosts.default;
