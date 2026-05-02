@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from "../prisma/prisma.service";
 import { HotReadCacheService } from "../cache/hot-read-cache.service";
 import { PAGINATION_LIMITS } from "../common/pagination.constants";
+import { CreateCommunityDto } from "./dto/create-community.dto";
 
 @Injectable()
 export class CommunitiesService {
@@ -108,6 +109,32 @@ export class CommunitiesService {
     return { message: "Te uniste a la comunidad.", role: membership.role.toLowerCase() };
   }
 
+  async create(dto: CreateCommunityDto, userId: number) {
+    const baseSlug = this.toSlug(dto.name);
+    const uniqueSlug = await this.ensureUniqueSlug(baseSlug);
+
+    const community = await this.prisma.community.create({
+      data: {
+        name: dto.name.trim(),
+        slug: uniqueSlug,
+        description: dto.description?.trim() || null,
+        rules: dto.rules?.trim() || null,
+        avatarUrl: dto.avatarUrl?.trim() || null,
+        coverUrl: dto.coverUrl?.trim() || null,
+        createdBy: userId,
+      },
+      select: {
+        id: true, name: true, slug: true, description: true, rules: true, avatarUrl: true, coverUrl: true, status: true, createdAt: true,
+      },
+    });
+
+    await this.prisma.communityMember.create({
+      data: { communityId: community.id, userId, role: "MODERATOR" },
+    });
+
+    return { ...community, membersCount: 1, postsCount: 0 };
+  }
+
   async leaveCommunity(communityId: number, userId: number) {
     await this.ensureCommunityExists(communityId);
     const membership = await this.prisma.communityMember.findUnique({ where: { communityId_userId: { communityId, userId } } });
@@ -137,6 +164,7 @@ export class CommunitiesService {
     });
 
     const response = communities.map((community: any) => ({ ...community, membersCount: community._count.members, postsCount: community._count.posts }));
+    return response;
   }
 
   async hidePost(communityId: number, postId: number, userId: number, reason?: string) {
@@ -168,5 +196,28 @@ export class CommunitiesService {
   private async ensureCommunityExists(communityId: number) {
     const community = await this.prisma.community.findFirst({ where: { id: communityId, status: "PUBLISHED" }, select: { id: true } });
     if (!community) throw new NotFoundException("Comunidad no encontrada.");
+  }
+
+  private toSlug(name: string) {
+    return name
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 60) || `comunidad-${Date.now()}`;
+  }
+
+  private async ensureUniqueSlug(initialSlug: string) {
+    let slug = initialSlug;
+    let suffix = 1;
+    while (await this.prisma.community.findUnique({ where: { slug }, select: { id: true } })) {
+      slug = `${initialSlug}-${suffix}`;
+      suffix += 1;
+    }
+    return slug;
   }
 }
