@@ -36,7 +36,7 @@ export function StatusMessage({ type, children }: { type: "error" | "success" | 
     info: "border-indigo-200 bg-indigo-50 text-indigo-700",
   };
 
-  return <p className={`rounded-2xl border px-3 py-2 text-sm ${styles[type]}`}>{children}</p>;
+  return <p className={`whitespace-pre-wrap break-words rounded-2xl border px-3 py-2 font-mono text-xs ${styles[type]}`}>{children}</p>;
 }
 
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
@@ -70,7 +70,7 @@ export function PageState({
   return (
     <Card className={styles[type]}>
       <h3 className="text-base font-bold text-slate-900">{title}</h3>
-      <p className="mt-2 text-sm text-slate-700">{description}</p>
+      <p className="mt-2 whitespace-pre-wrap break-words rounded-xl border border-dashed border-current/30 bg-black/5 p-3 font-mono text-xs text-slate-800">{description}</p>
       {action ? <div className="mt-4">{action}</div> : null}
     </Card>
   );
