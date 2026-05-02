@@ -10,7 +10,6 @@ export class DocumentsService {
   async index(query: GetDocumentsQueryDto) {
     const items = await this.prisma.document.findMany({
       where: {
-        status: "PUBLISHED",
         ...(query.course ? { course: { equals: query.course.trim(), mode: "insensitive" } } : {}),
         ...(query.cycle ? { cycle: { equals: query.cycle.trim(), mode: "insensitive" } } : {}),
       },
