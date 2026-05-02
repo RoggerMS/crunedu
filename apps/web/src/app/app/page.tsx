@@ -1,7 +1,7 @@
 "use client";
 
 import type { Community, CreateFeedPostPayload, CreatePostImagePayload, PostComment } from "@crunedu/shared";
-import { Bell, Loader2, UsersRound } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
@@ -32,14 +32,6 @@ function parseJwtPayload(token: string): { sub?: number } | null {
   }
 }
 
-type DailyValueBlockKey = "community-posts" | "new-replies" | "friends-activity";
-
-const DAILY_BLOCK_STORAGE_KEY = "crunedu_daily_block_metrics";
-
-function calculateRecencyScore(createdAt: string) {
-  const hoursSinceCreation = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
-  return Math.max(0, 72 - hoursSinceCreation);
-}
 
 export default function AppPage() {
   const { communities } = useCommunities();
@@ -78,38 +70,6 @@ export default function AppPage() {
   }, [accessToken]);
 
   const canSubmit = useMemo(() => content.trim() && communityId.trim() && isAuthenticated, [content, communityId, isAuthenticated]);
-
-  const affinityPosts = useMemo(() => {
-    return [...posts]
-      .map((post) => {
-        const socialScore = authenticatedUserId && post.author.id === authenticatedUserId ? 50 : 20;
-        const communityScore = post.community ? 30 : 10;
-        const recencyScore = calculateRecencyScore(post.createdAt);
-
-        return {
-          ...post,
-          affinityScore: socialScore + communityScore + recencyScore,
-        };
-      })
-      .sort((a, b) => b.affinityScore - a.affinityScore)
-      .slice(0, 4);
-  }, [authenticatedUserId, posts]);
-
-  function trackDailyBlockInteraction(block: DailyValueBlockKey, action: string) {
-    const currentMetrics = typeof window === "undefined"
-      ? {}
-      : JSON.parse(window.localStorage.getItem(DAILY_BLOCK_STORAGE_KEY) ?? "{}");
-
-    const key = `${block}:${action}`;
-    const nextMetrics = {
-      ...currentMetrics,
-      [key]: Number(currentMetrics[key] ?? 0) + 1,
-    };
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(DAILY_BLOCK_STORAGE_KEY, JSON.stringify(nextMetrics));
-    }
-  }
 
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -347,9 +307,6 @@ export default function AppPage() {
             <SecondaryButton asChild className="w-full justify-center">
               <Link href="/app/preguntas">Publicar pregunta</Link>
             </SecondaryButton>
-            <SecondaryButton asChild className="w-full justify-center">
-              <Link href="/app/reutilizable" className="inline-flex items-center gap-2"><UsersRound size={16} />Interacción y notificaciones</Link>
-            </SecondaryButton>
           </div>
         </Card>
 
@@ -414,16 +371,6 @@ export default function AppPage() {
             </form>
           </Card>
         ) : null}
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-600">¿Quieres ver bloques de valor diario y acciones reutilizables?</p>
-            <SecondaryButton asChild onClick={() => trackDailyBlockInteraction("friends-activity", "abrir_reutilizable")}>
-              <Link href="/app/reutilizable"><Bell size={16} />Abrir vista reutilizable</Link>
-            </SecondaryButton>
-          </div>
-          {affinityPosts.length > 0 ? <p className="mt-2 text-xs text-slate-500">Tip: hoy tienes contenido relevante para revisar en comunidades y amistades.</p> : null}
-        </section>
 
         <div className="mt-6 space-y-4">
           {loading ? <StatusMessage type="loading">Cargando publicaciones...</StatusMessage> : null}
