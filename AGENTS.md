@@ -444,6 +444,7 @@ Keep this section updated when new execution plans are created in `docs/*.md`.
 |---|---|---|---|
 | `docs/PAGE_QA_MATRIX.md` | QA page-by-page verification before merge | In progress | Matrix created; keep PASS/FAIL execution logs per release. |
 | `docs/DEBATES_SPEC.md` | Debates module product definition (general, specialty, extras) | In progress | MVP spec created; next step is backend persistence and UI compose/respond flow. |
+| `docs/UI_POLISH_PLAN.md` | Home compact actions, reusable section, notifications entry points | In progress | Added `/app/reutilizable`, `/app/notificaciones`, compact buttons and header icons. |
 
 Status values:
 - `Pending`: not started
