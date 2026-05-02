@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards
 import { Request } from "express";
 import { JwtAuthGuard, JwtPayload } from "../auth/guards/jwt-auth.guard";
 import { CommunitiesService } from "./communities.service";
+import { CreateCommunityDto } from "./dto/create-community.dto";
 
 interface AuthenticatedRequest extends Request {
   user: JwtPayload;
@@ -20,6 +21,12 @@ export class CommunitiesController {
   @UseGuards(JwtAuthGuard)
   recommended(@Req() request: AuthenticatedRequest) {
     return this.service.recommendedForUser(request.user.sub);
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  create(@Body() body: CreateCommunityDto, @Req() request: AuthenticatedRequest) {
+    return this.service.create(body, request.user.sub);
   }
 
   @Get(":id")

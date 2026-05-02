@@ -76,6 +76,11 @@ export function getRecommendedCommunities(token: string) {
   return apiRequest<Community[]>("/communities/recommended", { headers: { Authorization: `Bearer ${token}` } });
 }
 
+
+export function createCommunity(payload: { name: string; description?: string; rules?: string; avatarUrl?: string; coverUrl?: string }, token: string) {
+  return apiRequest<Community>("/communities", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+}
+
 export function createQuestion(payload: { title: string; content: string; communityId?: number }, token: string) {
   return apiRequest<Question>("/questions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
 }
