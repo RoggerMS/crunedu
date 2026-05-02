@@ -31,8 +31,8 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(port);
-  console.log(`CrunEdu API running on http://localhost:${port}/api`);
+  await app.listen(port, "0.0.0.0");
+  console.log(`CrunEdu API running on http://0.0.0.0:${port}/api`);
 }
 
 bootstrap();

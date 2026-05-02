@@ -199,7 +199,7 @@ export class PostsService {
     return this.mapPostResponse(post);
   }
 
-  async uploadImage(file: Express.Multer.File): Promise<UploadPostImageResponseDto> {
+  async uploadImage(file: any): Promise<UploadPostImageResponseDto> {
     const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
     const maxSizeBytes = 3 * 1024 * 1024;
     if (!file) throw new BadRequestException("Debes adjuntar una imagen.");
