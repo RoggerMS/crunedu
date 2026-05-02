@@ -22,3 +22,8 @@ Adaptar la página de Debates a una navegación escalable por filtros y ventanas
 - Imagen opcional en creación de debate.
 - Ranking persistente por ventana temporal.
 - Modo histórico/reutilizable (anual/all-time) en `/app/reutilizable`.
+
+
+## Estado 2026-05-02
+- Implementado: listado compacto con navegación a detalle (`/app/debates/[id]`).
+- Pendiente: votos apoyo/no apoyo, imagen opcional, audio en vivo y ranking persistente por ventana temporal.

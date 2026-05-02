@@ -10,21 +10,13 @@ import { Card, EmptyState, PrimaryButton, SecondaryButton, StatusMessage, TextAr
 type DebateScope = "academic" | "non-academic";
 type DebateWindow = "daily" | "weekly" | "monthly";
 
-type DebateResponse = {
-  id: number;
-  content: string;
-  createdAt: string;
-  authorId: number;
-};
-
 type DebateItem = {
   id: number;
   courseKey: string;
   weeklyTopic: string;
   stance: string;
   createdAt: string;
-  authorId: number;
-  responses: DebateResponse[];
+  responses: { id: number }[];
 };
 
 function getIsoWeekLabel(date: Date): string {
@@ -52,8 +44,6 @@ export default function DebatesPage() {
   const [stance, setStance] = useState("");
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
-  const [replyByDebate, setReplyByDebate] = useState<Record<number, string>>({});
-  const [replyLoadingId, setReplyLoadingId] = useState<number | null>(null);
   const { accessToken, isAuthenticated } = useAccessToken();
 
   const courseSections = useMemo(() => {
@@ -65,9 +55,7 @@ export default function DebatesPage() {
       ];
     }
 
-    return [
-      { key: "university", label: "Vida universitaria y otros", items: sections },
-    ];
+    return [{ key: "university", label: "Vida universitaria y otros", items: sections }];
   }, [scope]);
 
   const availableCourses = useMemo(() => courseSections.flatMap((section) => section.items), [courseSections]);
@@ -151,39 +139,11 @@ export default function DebatesPage() {
     }
   }
 
-  async function handleReply(debateId: number) {
-    const content = replyByDebate[debateId]?.trim() ?? "";
-    if (!content) return;
-    if (!isAuthenticated) {
-      setError("Inicia sesión para responder debates.");
-      return;
-    }
-
-    setReplyLoadingId(debateId);
-    setError(null);
-    try {
-      await apiRequest(`/debates/${debateId}/responses`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ content }),
-      });
-      setReplyByDebate((prev) => ({ ...prev, [debateId]: "" }));
-      await loadDebates();
-    } catch (err) {
-      setError(mapApiError(err, "No se pudo responder el debate."));
-    } finally {
-      setReplyLoadingId(null);
-    }
-  }
-
   return (
     <main className="mx-auto max-w-5xl space-y-4 px-4 py-6">
       <Card className="space-y-3">
         <h1 className="text-2xl font-black">Debates en tendencia</h1>
-        <p className="text-sm text-slate-600">Explora debates diarios, semanales o mensuales. Filtra por académico o no académico y entra directo al tema.</p>
+        <p className="text-sm text-slate-600">Vista compacta para explorar debates. Haz clic en uno para entrar al detalle completo.</p>
 
         <div className="flex flex-wrap gap-2">
           <button className={`rounded-md px-3 py-2 text-sm ${scope === "academic" ? "bg-black text-white" : "bg-gray-100"}`} onClick={() => setScope("academic")}>Académico</button>
@@ -224,7 +184,6 @@ export default function DebatesPage() {
             <p className="text-xs text-slate-500">Canal seleccionado: {selectedCourseKey}</p>
             <TextArea value={weeklyTopic} onChange={(event) => setWeeklyTopic(event.target.value)} rows={2} maxLength={160} placeholder="Título o tema del debate" required />
             <TextArea value={stance} onChange={(event) => setStance(event.target.value)} rows={4} maxLength={1500} placeholder="Describe tu postura y los argumentos iniciales" required />
-            <p className="text-xs text-slate-500">Próximo paso: añadiremos imagen opcional y votación de apoyo/no apoyo.</p>
             <PrimaryButton type="submit" disabled={saving}>{saving ? "Guardando..." : "Publicar debate"}</PrimaryButton>
           </form>
         </Card>
@@ -236,31 +195,21 @@ export default function DebatesPage() {
       {loading ? <StatusMessage type="loading">Cargando debates...</StatusMessage> : null}
       {!loading && filteredDebates.length === 0 ? <EmptyState title="Sin debates para este rango" description="Cambia de canal o inicia un nuevo debate para activar la conversación." /> : null}
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {filteredDebates.map((debate) => (
-          <Card key={debate.id} className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">{debate.courseKey} · {new Date(debate.createdAt).toLocaleString("es-PE")}</p>
-            <h3 className="text-lg font-bold">{debate.weeklyTopic}</h3>
-            <p className="text-slate-700">{debate.stance}</p>
-
-            <div className="rounded-xl border border-slate-200 p-3">
-              <p className="text-sm font-semibold">Respuestas ({debate.responses.length})</p>
-              <div className="mt-2 space-y-2">
-                {debate.responses.map((response) => (
-                  <div key={response.id} className="rounded-lg bg-slate-50 p-2 text-sm">
-                    <p>{response.content}</p>
-                    <p className="mt-1 text-xs text-slate-500">Usuario #{response.authorId} · {new Date(response.createdAt).toLocaleString("es-PE")}</p>
-                  </div>
-                ))}
-                {debate.responses.length === 0 ? <p className="text-sm text-slate-500">Aún no hay respuestas.</p> : null}
+          <Link key={debate.id} href={`/app/debates/${debate.id}?courseKey=${encodeURIComponent(debate.courseKey)}`}>
+            <Card className="space-y-2 transition hover:border-indigo-300">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">{debate.courseKey}</p>
+                  <h3 className="text-base font-bold">{debate.weeklyTopic}</h3>
+                </div>
+                <p className="whitespace-nowrap text-xs text-slate-500">{new Date(debate.createdAt).toLocaleDateString("es-PE")}</p>
               </div>
-
-              <div className="mt-3 space-y-2">
-                <TextArea value={replyByDebate[debate.id] ?? ""} onChange={(event) => setReplyByDebate((prev) => ({ ...prev, [debate.id]: event.target.value }))} rows={2} maxLength={800} placeholder="Escribe tu respuesta al debate" />
-                <PrimaryButton type="button" onClick={() => void handleReply(debate.id)} disabled={replyLoadingId === debate.id}>{replyLoadingId === debate.id ? "Enviando..." : "Responder"}</PrimaryButton>
-              </div>
-            </div>
-          </Card>
+              <p className="line-clamp-2 text-sm text-slate-700">{debate.stance}</p>
+              <p className="text-xs text-slate-500">{debate.responses.length} respuestas · Entrar al debate</p>
+            </Card>
+          </Link>
         ))}
       </div>
     </main>

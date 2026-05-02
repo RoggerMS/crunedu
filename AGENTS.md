@@ -449,7 +449,7 @@ Keep this section updated when new execution plans are created in `docs/*.md`.
 
 | `docs/API_ROUTES.md` | Backend API technical route catalog (NestJS controllers + DTOs + auth) | Completed | Added endpoint-by-endpoint PowerShell usage docs. Alta: 2026-05-02. |
 
-| `docs/DEBATES_TRENDS_UI_PLAN.md` | Debates UI por tendencias (diario/semanal/mensual) y filtros académicos/no académicos | In progress | Alta: 2026-05-02. Primera implementación UI aplicada en `apps/web/src/app/app/debates/page.tsx`. |
+| `docs/DEBATES_TRENDS_UI_PLAN.md` | Debates UI por tendencias (diario/semanal/mensual) y filtros académicos/no académicos | In progress | Alta: 2026-05-02. Listado compacto + ruta detalle implementados en `apps/web/src/app/app/debates/page.tsx` y `apps/web/src/app/app/debates/[id]/page.tsx`. |
 
 Status values:
 - `Pending`: not started
