@@ -34,6 +34,12 @@ export class CommunitiesController {
     return this.service.findOne(id);
   }
 
+  @Get(":id/membership")
+  @UseGuards(JwtAuthGuard)
+  membership(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
+    return this.service.membershipStatus(id, request.user.sub);
+  }
+
   @Get(":id/posts")
   communityPosts(
     @Param("id", ParseIntPipe) id: number,

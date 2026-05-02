@@ -13,11 +13,29 @@ type CommunityDetail = {
   coverUrl?: string | null;
 };
 
+type CommunityMembership = {
+  isJoined: boolean;
+  role: string | null;
+  isCreator: boolean;
+};
+
 type CommunityPost = { id: number; title: string; content: string };
 type CommunityPostsResponse = {
   items: CommunityPost[];
   nextCursor: number | null;
 };
+
+function parseJwtRole(token: string): string | null {
+  try {
+    const [, payloadBase64] = token.split(".");
+    if (!payloadBase64) return null;
+    const payloadJson = atob(payloadBase64.replace(/-/g, "+").replace(/_/g, "/"));
+    const payload = JSON.parse(payloadJson) as { role?: string };
+    return payload.role ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export default function CommunityDetailPage({
   params,
@@ -30,12 +48,14 @@ export default function CommunityDetailPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isJoined, setIsJoined] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   const communityId = Number(params.id);
+  const isAdmin = useMemo(() => (accessToken ? parseJwtRole(accessToken) === "ADMIN" : false), [accessToken]);
 
   async function load(cursor?: number) {
     setLoading(true);
@@ -49,6 +69,17 @@ export default function CommunityDetailPage({
       ]);
       setCommunity(communityResponse);
       setFeed(postsResponse);
+
+      if (accessToken) {
+        const membership = await apiRequest<CommunityMembership>(`/communities/${communityId}/membership`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        setIsJoined(membership.isJoined);
+        setIsCreator(membership.isCreator);
+      } else {
+        setIsJoined(false);
+        setIsCreator(false);
+      }
     } catch (err) {
       setError(mapApiError(err, "No se pudo cargar la comunidad."));
     } finally {
@@ -57,12 +88,15 @@ export default function CommunityDetailPage({
   }
 
   async function joinOrLeave(action: "join" | "leave") {
+    if (!accessToken) {
+      setError("Inicia sesión para gestionar tu suscripción a esta comunidad.");
+      return;
+    }
     try {
       await apiRequest(`/communities/${communityId}/${action}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      setIsJoined(action === "join");
       await load();
     } catch (err) {
       setError(
@@ -85,7 +119,7 @@ export default function CommunityDetailPage({
 
   useEffect(() => {
     if (!Number.isNaN(communityId)) void load();
-  }, [communityId]);
+  }, [communityId, accessToken]);
 
   if (loading) return <p className="text-slate-600">Cargando comunidad...</p>;
   if (error) return <p className="text-rose-700">{error}</p>;
@@ -130,20 +164,26 @@ export default function CommunityDetailPage({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {isJoined ? (
-                <button
-                  onClick={() => void joinOrLeave("leave")}
-                  className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
-                >
-                  Salir
-                </button>
+              {!isCreator ? (
+                isJoined ? (
+                  <button
+                    onClick={() => void joinOrLeave("leave")}
+                    className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
+                  >
+                    Salir
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => void joinOrLeave("join")}
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Unirme
+                  </button>
+                )
               ) : (
-                <button
-                  onClick={() => void joinOrLeave("join")}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
-                >
-                  Unirme
-                </button>
+                <span className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                  Eres creador de esta comunidad
+                </span>
               )}
               <button
                 onClick={() => setShowSearch((prev) => !prev)}
@@ -185,6 +225,28 @@ export default function CommunityDetailPage({
                   ? "Desactivar notificaciones"
                   : "Activar notificaciones"}
               </button>
+              {isAdmin ? (
+                <>
+                  <button
+                    onClick={() => alert("Próximamente podrás editar nombre y descripción desde aquí.")}
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-left text-sm"
+                  >
+                    Editar comunidad
+                  </button>
+                  <button
+                    onClick={() => alert("Próximamente podrás cambiar la portada desde aquí.")}
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-left text-sm"
+                  >
+                    Editar portada
+                  </button>
+                  <button
+                    onClick={() => alert("Próximamente podrás cambiar entre pública y privada.")}
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-left text-sm"
+                  >
+                    Cambiar privacidad (pública/privada)
+                  </button>
+                </>
+              ) : null}
               <button
                 onClick={() =>
                   alert("Reporte enviado. Gracias por ayudarnos a moderar.")
