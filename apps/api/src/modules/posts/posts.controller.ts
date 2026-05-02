@@ -47,7 +47,7 @@ export class PostsController {
   @Post("images")
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor("image"))
-  uploadImage(@UploadedFile() file: Express.Multer.File, @Req() request: AuthenticatedRequest) {
+  uploadImage(@UploadedFile() file: any, @Req() request: AuthenticatedRequest) {
     if (!request.user?.sub) throw new UnauthorizedException();
     return this.service.uploadImage(file);
   }
