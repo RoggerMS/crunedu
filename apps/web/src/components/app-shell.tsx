@@ -1,7 +1,7 @@
 "use client";
 
 import { MAIN_NAVIGATION } from "@crunedu/shared";
-import { ChevronLeft, ChevronRight, GraduationCap, Search } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, GraduationCap, Search, UserCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -171,6 +171,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               )}
               {isQuickActionsOpen ? "Cerrar panel" : "Abrir panel"}
             </button>
+            <Link
+              href="/app/notificaciones"
+              className="hidden shrink-0 rounded-xl border border-slate-200 bg-white p-2 text-slate-700 hover:bg-slate-50 lg:inline-flex"
+              aria-label="Abrir notificaciones"
+            >
+              <Bell size={18} />
+            </Link>
+            <Link
+              href="/app/perfil"
+              className="hidden shrink-0 rounded-xl border border-slate-200 bg-white p-2 text-slate-700 hover:bg-slate-50 lg:inline-flex"
+              aria-label="Ir a perfil"
+            >
+              <UserCircle2 size={18} />
+            </Link>
           </div>
 
           {hasQuery ? (

@@ -42,6 +42,7 @@ export default function Page() {
       <div className="rounded-2xl border border-slate-200 bg-white p-5">
         <h1 className="text-2xl font-black tracking-tight">Comunidades</h1>
         <p className="mt-2 text-slate-600">Espacios por carrera, facultad, curso, trámite o tema.</p>
+        <PrimaryButton type="button" className="mt-4">Crear comunidad</PrimaryButton>
       </div>
 
       {recommendedError ? <p className="text-sm text-red-700">{recommendedError}</p> : null}
