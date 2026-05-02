@@ -1,25 +1,42 @@
-# Debates — Especificación MVP
+# DEBATES_SPEC
 
 ## Objetivo
-Crear un espacio de debate académico por curso y por tema semanal para fomentar participación argumentada entre estudiantes.
 
-## Diferencia contra Feed / Preguntas
-- **Feed (Posts):** publicación libre de novedades/opiniones generales.
-- **Preguntas:** resolver dudas puntuales con respuestas útiles.
-- **Debates:** discusión estructurada por **curso + tema semanal**, con posturas/opiniones y réplicas.
+Crear un módulo de debates académicos y extracurriculares donde estudiantes puedan conversar por curso, semana y tema común.
 
-## Reglas de participación
-1. Respetar a los demás; no insultos ni ataques personales.
-2. Argumentar la postura con claridad y enfoque académico.
-3. Evitar spam y contenido fuera del tema semanal.
-4. No compartir datos personales sensibles.
-5. Moderación puede ocultar contenido que incumpla normas.
+## Alcance MVP de Debates
 
-## Modelo mínimo Debate
-- `courseKey`: clave del curso.
-- `weeklyTopic`: tema semanal vigente.
-- `stance`: postura/opinión inicial del autor.
-- `responses`: respuestas al debate.
+1. Debates por categoría:
+   - Generales
+   - Especialidad
+   - Extras (fuera de cursos formales)
+2. Publicación de postura (`stance`) por tema semanal.
+3. Respuestas a cada debate.
+4. Filtro por curso (`courseKey`) y semana ISO (`YYYY-Www`).
 
-## Audio (fuera de alcance)
-El MVP solo incluye texto. Se deja preparado a nivel de arquitectura un campo opcional `audioNoteUrl` para futura extensión sin activar carga/reproducción de audio en esta fase.
+## Diferencia frente a otros módulos
+
+- **Feed**: publicaciones abiertas de comunidad.
+- **Preguntas**: dudas puntuales con respuestas.
+- **Debates**: discusión argumentada sobre un tema/curso semanal.
+- **Momentos**: contenido destacado o tendencia del campus.
+
+## Contrato funcional mínimo
+
+- `GET /api/debates?courseKey=...&week=YYYY-Www`
+- `POST /api/debates` (JWT)
+- `POST /api/debates/:id/responses` (JWT)
+
+## Reglas de UX
+
+1. El usuario elige categoría y curso antes de crear debate.
+2. Si no hay debates en el curso, mostrar estado vacío con CTA para crear el primero.
+3. Los formularios de crear debate y responder deben ser colapsables.
+4. Copy visible en español y mensajes de error claros.
+
+## Backlog siguiente (post-MVP)
+
+- Reacciones en debates.
+- Moderación específica por curso.
+- Vinculación con contenidos de Momentos.
+- Audio en debates (no implementar ahora).
