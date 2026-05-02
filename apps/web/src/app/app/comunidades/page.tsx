@@ -8,22 +8,6 @@ import { mapApiError } from "@/lib/http-client";
 import { getRecommendedCommunities } from "@/lib/api-helpers";
 import { PageState, PrimaryButton } from "@/components/ui";
 
-const mockCluneduCommunity = {
-  id: 999999,
-  name: "ClunEDU",
-  description:
-    "Comunidad de muestra para validar diseño visual antes de publicar cambios reales.",
-  rules: null,
-  avatarUrl:
-    "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=300&q=80",
-  coverUrl:
-    "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80",
-  membersCount: 124,
-  postsCount: 18,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
 export default function Page() {
   const { communities, loading, error, reload } = useCommunities();
   const { accessToken, isAuthenticated } = useAccessToken();
@@ -79,22 +63,6 @@ export default function Page() {
         >
           Crear comunidad
         </a>
-      </div>
-
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-        <h2 className="text-lg font-bold text-emerald-900">
-          Vista previa visual (borrable)
-        </h2>
-        <p className="mt-1 text-sm text-emerald-800">
-          Esta tarjeta es solo de demostración en código y no se guarda en la
-          base de datos.
-        </p>
-        <div className="mt-4 max-w-sm">
-          <CommunityCard
-            community={mockCluneduCommunity as any}
-            href="/app/comunidades/demo-clunedu"
-          />
-        </div>
       </div>
 
       {recommendedError ? (
