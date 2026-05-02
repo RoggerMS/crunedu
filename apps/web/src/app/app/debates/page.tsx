@@ -7,7 +7,7 @@ import { useAccessToken } from "@/hooks/useAccessToken";
 import { apiRequest, mapApiError } from "@/lib/http-client";
 import { Card, EmptyState, PrimaryButton, SecondaryButton, StatusMessage, TextArea } from "@/components/ui";
 
-type DebateScope = "academic" | "non-academic";
+type DebateScope = "all" | "academic" | "non-academic";
 type DebateWindow = "daily" | "weekly" | "monthly";
 
 type DebateItem = {
@@ -33,8 +33,9 @@ function isSameUtcDay(a: Date, b: Date): boolean {
 }
 
 export default function DebatesPage() {
-  const [scope, setScope] = useState<DebateScope>("academic");
-  const [selectedCourseKey, setSelectedCourseKey] = useState<string>("comunicacion-academica");
+  const [scope, setScope] = useState<DebateScope>("all");
+  const [selectedCourseKeys, setSelectedCourseKeys] = useState<string[]>([]);
+  const [selectedSections, setSelectedSections] = useState<string[]>([]);
   const [timeWindow, setTimeWindow] = useState<DebateWindow>("weekly");
   const [debates, setDebates] = useState<DebateItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,35 +45,46 @@ export default function DebatesPage() {
   const [stance, setStance] = useState("");
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
   const { accessToken, isAuthenticated } = useAccessToken();
 
   const courseSections = useMemo(() => {
-    const sections = debateCourseCatalog.filter((item) => item.scope === scope);
-    if (scope === "academic") {
-      return [
-        { key: "general", label: "Cursos generales", items: sections.filter((item) => item.section === "general") },
-        { key: "specialty", label: "Cursos de especialidad", items: sections.filter((item) => item.section === "specialty") },
-      ];
-    }
-
-    return [{ key: "university", label: "Vida universitaria y otros", items: sections }];
+    const sections = debateCourseCatalog.filter((item) => (scope === "all" ? true : item.scope === scope));
+    return [
+      { key: "general", label: "Cursos generales", items: sections.filter((item) => item.section === "general") },
+      { key: "specialty", label: "Cursos de especialidad", items: sections.filter((item) => item.section === "specialty") },
+      { key: "university", label: "Vida universitaria y otros", items: sections.filter((item) => item.section === "university") },
+    ].filter((section) => section.items.length > 0);
   }, [scope]);
 
   const availableCourses = useMemo(() => courseSections.flatMap((section) => section.items), [courseSections]);
 
+  const visibleCourses = useMemo(() => {
+    if (selectedSections.length === 0) return availableCourses;
+    return availableCourses.filter((course) => selectedSections.includes(course.section));
+  }, [availableCourses, selectedSections]);
+
   useEffect(() => {
-    if (!availableCourses.some((course) => course.key === selectedCourseKey)) {
-      setSelectedCourseKey(availableCourses[0]?.key ?? "");
-    }
-  }, [availableCourses, selectedCourseKey]);
+    setSelectedCourseKeys((prev) => prev.filter((key) => availableCourses.some((course) => course.key === key)));
+    setSelectedSections((prev) => prev.filter((section) => courseSections.some((item) => item.key === section)));
+  }, [availableCourses, courseSections]);
 
   async function loadDebates() {
-    if (!selectedCourseKey) return;
+    const courseKeysToQuery = selectedCourseKeys.length > 0 ? selectedCourseKeys : visibleCourses.map((course) => course.key);
+    if (courseKeysToQuery.length === 0) {
+      setDebates([]);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const data = await apiRequest<{ items: DebateItem[] }>(`/debates?courseKey=${encodeURIComponent(selectedCourseKey)}`);
-      setDebates(data.items ?? []);
+      const responses = await Promise.all(
+        courseKeysToQuery.map((courseKey) => apiRequest<{ items: DebateItem[] }>(`/debates?courseKey=${encodeURIComponent(courseKey)}`)),
+      );
+      const merged = responses.flatMap((response) => response.items ?? []);
+      const deduped = merged.filter((item, index, arr) => arr.findIndex((candidate) => candidate.id === item.id) === index);
+      setDebates(deduped);
     } catch (err) {
       setError(mapApiError(err, "No se pudieron cargar los debates."));
     } finally {
@@ -82,7 +94,7 @@ export default function DebatesPage() {
 
   useEffect(() => {
     void loadDebates();
-  }, [selectedCourseKey]);
+  }, [selectedCourseKeys, visibleCourses]);
 
   const filteredDebates = useMemo(() => {
     const now = new Date();
@@ -111,6 +123,12 @@ export default function DebatesPage() {
       return;
     }
 
+    const courseKeyForCreate = selectedCourseKeys[0] ?? visibleCourses[0]?.key;
+    if (!courseKeyForCreate) {
+      setError("Selecciona al menos un campo para publicar.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -122,7 +140,7 @@ export default function DebatesPage() {
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
-          courseKey: selectedCourseKey,
+          courseKey: courseKeyForCreate,
           weeklyTopic,
           stance,
         }),
@@ -146,24 +164,36 @@ export default function DebatesPage() {
         <p className="text-sm text-slate-600">Vista compacta para explorar debates. Haz clic en uno para entrar al detalle completo.</p>
 
         <div className="flex flex-wrap gap-2">
+          <button className={`rounded-md px-3 py-2 text-sm ${scope === "all" ? "bg-black text-white" : "bg-gray-100"}`} onClick={() => setScope("all")}>Todo</button>
           <button className={`rounded-md px-3 py-2 text-sm ${scope === "academic" ? "bg-black text-white" : "bg-gray-100"}`} onClick={() => setScope("academic")}>Académico</button>
           <button className={`rounded-md px-3 py-2 text-sm ${scope === "non-academic" ? "bg-black text-white" : "bg-gray-100"}`} onClick={() => setScope("non-academic")}>No académico</button>
         </div>
 
-        <div className="space-y-2">
-          {courseSections.map((section) => (
-            <details key={section.key} open className="rounded-xl border border-slate-200 bg-white p-3">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-800">{section.label}</summary>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {section.items.map((course) => (
-                  <button key={course.key} onClick={() => setSelectedCourseKey(course.key)} className={`rounded-full border px-3 py-1 text-sm ${selectedCourseKey === course.key ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-300 bg-white text-slate-700"}`}>
-                    {course.label}
-                  </button>
-                ))}
-              </div>
-            </details>
-          ))}
+        <div className="flex justify-end">
+          <button className="rounded-md border border-slate-300 px-3 py-1 text-sm" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? "Ocultar filtros" : "Filtros"}</button>
         </div>
+
+        {showFilters ? (
+          <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Categorías</p>
+            <div className="flex flex-wrap gap-2">
+              {courseSections.map((section) => (
+                <button key={section.key} onClick={() => setSelectedSections((prev) => prev.includes(section.key) ? prev.filter((item) => item !== section.key) : [...prev, section.key])} className={`rounded-full border px-3 py-1 text-sm ${selectedSections.includes(section.key) ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-300 bg-white text-slate-700"}`}>
+                  {section.label}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Campos</p>
+            <div className="flex flex-wrap gap-2">
+              {visibleCourses.map((course) => (
+                <button key={course.key} onClick={() => setSelectedCourseKeys((prev) => prev.includes(course.key) ? prev.filter((item) => item !== course.key) : [...prev, course.key])} className={`rounded-full border px-3 py-1 text-sm ${selectedCourseKeys.includes(course.key) ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-300 bg-white text-slate-700"}`}>
+                  {course.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap gap-2">
           <button className={`rounded-md px-3 py-2 text-sm ${timeWindow === "daily" ? "bg-indigo-600 text-white" : "bg-gray-100"}`} onClick={() => setTimeWindow("daily")}>Debates del día</button>
@@ -181,7 +211,7 @@ export default function DebatesPage() {
         <Card>
           <form className="space-y-3" onSubmit={handleCreateDebate}>
             <h2 className="text-lg font-black">Nuevo debate</h2>
-            <p className="text-xs text-slate-500">Canal seleccionado: {selectedCourseKey}</p>
+            <p className="text-xs text-slate-500">Canal seleccionado: {selectedCourseKeys[0] ?? visibleCourses[0]?.key ?? "Sin canal"}</p>
             <TextArea value={weeklyTopic} onChange={(event) => setWeeklyTopic(event.target.value)} rows={2} maxLength={160} placeholder="Título o tema del debate" required />
             <TextArea value={stance} onChange={(event) => setStance(event.target.value)} rows={4} maxLength={1500} placeholder="Describe tu postura y los argumentos iniciales" required />
             <PrimaryButton type="submit" disabled={saving}>{saving ? "Guardando..." : "Publicar debate"}</PrimaryButton>
