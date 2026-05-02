@@ -1,7 +1,7 @@
 "use client";
 
 import type { Community, CreateFeedPostPayload, CreatePostImagePayload, PostComment } from "@crunedu/shared";
-import { Loader2 } from "lucide-react";
+import { Bell, Loader2, UsersRound } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
@@ -332,7 +332,8 @@ export default function AppPage() {
     <div className="space-y-5">
         <Card className="space-y-4">
           <h1 className="text-2xl font-black tracking-tight sm:text-3xl">¿Qué quieres hacer hoy en CrunEdu?</h1>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <p className="text-sm text-slate-600">Usa acciones rápidas compactas para mantenerte al día con tu comunidad.</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <PrimaryButton
               type="button"
               onClick={() => setIsCreateFormOpen((prev) => !prev)}
@@ -342,6 +343,12 @@ export default function AppPage() {
             </PrimaryButton>
             <SecondaryButton asChild className="w-full justify-center">
               <Link href="/app/comunidades">Explorar comunidades</Link>
+            </SecondaryButton>
+            <SecondaryButton asChild className="w-full justify-center">
+              <Link href="/app/preguntas">Publicar pregunta</Link>
+            </SecondaryButton>
+            <SecondaryButton asChild className="w-full justify-center">
+              <Link href="/app/reutilizable" className="inline-flex items-center gap-2"><UsersRound size={16} />Interacción y notificaciones</Link>
             </SecondaryButton>
           </div>
         </Card>
@@ -408,64 +415,14 @@ export default function AppPage() {
           </Card>
         ) : null}
 
-        <section className="space-y-3">
-          <h2 className="text-xl font-black text-slate-900">Valor diario para ti</h2>
-          <div className="grid gap-3 lg:grid-cols-3">
-            <Card className="space-y-3">
-              <h3 className="text-base font-bold">Nuevas publicaciones en tus comunidades</h3>
-              {affinityPosts.length > 0 ? (
-                <>
-                  <p className="text-sm text-slate-600">Se prioriza por afinidad (comunidad, relación social y recencia).</p>
-                  <p className="text-sm text-slate-700">{affinityPosts[0]?.title || affinityPosts[0]?.content.slice(0, 80)}</p>
-                  <SecondaryButton asChild onClick={() => trackDailyBlockInteraction("community-posts", "ver_comunidad")}>
-                    <Link href="/app/comunidades">Ver comunidad</Link>
-                  </SecondaryButton>
-                </>
-              ) : (
-                <EmptyState
-                  title="Aún no hay publicaciones"
-                  description="Únete a una comunidad para recibir contenido nuevo cada día."
-                  action={<SecondaryButton asChild onClick={() => trackDailyBlockInteraction("community-posts", "explorar_comunidades")}><Link href="/app/comunidades">Explorar comunidades</Link></SecondaryButton>}
-                />
-              )}
-            </Card>
-
-            <Card className="space-y-3">
-              <h3 className="text-base font-bold">Respuestas nuevas a tus preguntas/posts</h3>
-              {posts.some((post) => post.commentsCount > 0) ? (
-                <>
-                  <p className="text-sm text-slate-600">Tienes publicaciones con nuevas respuestas listas para revisar.</p>
-                  <PrimaryButton type="button" onClick={() => trackDailyBlockInteraction("new-replies", "responder")}>
-                    Responder
-                  </PrimaryButton>
-                </>
-              ) : (
-                <EmptyState
-                  title="Sin respuestas nuevas por ahora"
-                  description="Crea una publicación con una pregunta para iniciar conversación."
-                  action={<PrimaryButton type="button" onClick={() => { trackDailyBlockInteraction("new-replies", "publicar_pregunta"); setIsCreateFormOpen(true); }}>Publicar pregunta</PrimaryButton>}
-                />
-              )}
-            </Card>
-
-            <Card className="space-y-3">
-              <h3 className="text-base font-bold">Actividad de tus amigos</h3>
-              {isAuthenticated ? (
-                <>
-                  <p className="text-sm text-slate-600">Mira publicaciones recientes de personas con quienes interactúas.</p>
-                  <PrimaryButton type="button" onClick={() => trackDailyBlockInteraction("friends-activity", "comentar")}>
-                    Comentar
-                  </PrimaryButton>
-                </>
-              ) : (
-                <EmptyState
-                  title="Inicia sesión para ver actividad"
-                  description="Cuando entres con tu cuenta, mostraremos la actividad de tus amigos y contactos."
-                  action={<SecondaryButton asChild onClick={() => trackDailyBlockInteraction("friends-activity", "ir_login")}><Link href="/login">Iniciar sesión</Link></SecondaryButton>}
-                />
-              )}
-            </Card>
+        <section className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-slate-600">¿Quieres ver bloques de valor diario y acciones reutilizables?</p>
+            <SecondaryButton asChild onClick={() => trackDailyBlockInteraction("friends-activity", "abrir_reutilizable")}>
+              <Link href="/app/reutilizable"><Bell size={16} />Abrir vista reutilizable</Link>
+            </SecondaryButton>
           </div>
+          {affinityPosts.length > 0 ? <p className="mt-2 text-xs text-slate-500">Tip: hoy tienes contenido relevante para revisar en comunidades y amistades.</p> : null}
         </section>
 
         <div className="mt-6 space-y-4">
