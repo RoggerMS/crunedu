@@ -447,6 +447,8 @@ Keep this section updated when new execution plans are created in `docs/*.md`.
 | `docs/UI_POLISH_PLAN.md` | Home compact actions, reusable section, notifications entry points | In progress | Added `/app/reutilizable`, `/app/notificaciones`, compact buttons and header icons. |
 | `docs/DEBATES_IMPLEMENTATION_PLAN.md` | Debates usable flow: create, list by week, respond, status handling | In progress | Implemented frontend interaction; pending persistence and moderation. |
 
+| `docs/API_ROUTES.md` | Backend API technical route catalog (NestJS controllers + DTOs + auth) | Completed | Added endpoint-by-endpoint PowerShell usage docs. Alta: 2026-05-02. |
+
 Status values:
 - `Pending`: not started
 - `In progress`: partially implemented
