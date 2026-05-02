@@ -1,6 +1,8 @@
 import { IsString, IsNumber, IsOptional, IsBoolean, IsEnum, MinLength, MaxLength, Min, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ProductStatus } from '@prisma/client';
+
+const PRODUCT_STATUSES = ["DRAFT", "ACTIVE", "ARCHIVED"] as const;
+type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 
 export class CreateProductDto {
   @IsString()
@@ -25,7 +27,7 @@ export class CreateProductDto {
   categoryId: number;
 
   @IsOptional()
-  @IsEnum(ProductStatus, { message: 'Estado no válido.' })
+  @IsEnum(PRODUCT_STATUSES, { message: 'Estado no válido.' })
   status?: ProductStatus;
 
   @IsOptional()

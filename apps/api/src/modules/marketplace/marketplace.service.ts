@@ -3,10 +3,12 @@ import {
   BadRequestException,
   NotFoundException,
 } from "@nestjs/common";
-import { ProductStatus, InquiryStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { PAGINATION_LIMITS } from "../common/pagination.constants";
 import { CreateProductInquiryDto, CreateProductDto, UpdateProductDto } from "./dtos";
+type ProductStatus = "DRAFT" | "ACTIVE" | "ARCHIVED";
+type InquiryStatus = "PENDING" | "CONTACTED" | "RESOLVED" | "CANCELLED";
+const DEFAULT_PRODUCT_STATUS: ProductStatus = "ACTIVE";
 
 type CatalogContext = {
   faculty?: string;
@@ -161,7 +163,7 @@ export class MarketplaceService {
           description: payload.description,
           price: payload.price,
           categoryId: payload.categoryId,
-          status: payload.status ?? ProductStatus.ACTIVE,
+          status: payload.status ?? DEFAULT_PRODUCT_STATUS,
           isFeatured: Boolean(payload.isFeatured),
           stock: payload.stock ?? 1,
           contactMethod: payload.contactMethod ?? "whatsapp",
@@ -176,7 +178,7 @@ export class MarketplaceService {
         description: payload.description,
         price: payload.price,
         categoryId: payload.categoryId,
-        status: payload.status ?? ProductStatus.ACTIVE,
+        status: payload.status ?? DEFAULT_PRODUCT_STATUS,
         isFeatured: Boolean(payload.isFeatured),
         stock: payload.stock ?? 1,
         createdBy: user.sub,
@@ -211,8 +213,8 @@ export class MarketplaceService {
         completed: inquiriesMap["CLOSED"] ?? 0,
       },
       totals: {
-        views: products.reduce((sum, item) => sum + item.viewCount, 0),
-        contactClicks: products.reduce((sum, item) => sum + item.contactClickCount, 0),
+        views: products.reduce((sum: number, item: { viewCount: number }) => sum + item.viewCount, 0),
+        contactClicks: products.reduce((sum: number, item: { contactClickCount: number }) => sum + item.contactClickCount, 0),
         inquiries: totalInquiries,
       },
     };

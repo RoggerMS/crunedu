@@ -2,8 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+import { apiRequest, mapApiError } from "@/lib/http-client";
 
 type ProfileForm = {
   firstName: string;
@@ -51,11 +50,14 @@ export default function PerfilPage() {
   useEffect(() => { if (isAuthenticated) loadProfile(); else setLoading(false); }, [isAuthenticated, accessToken]);
 
   async function loadProfile() {
-    const response = await fetch(`${apiBaseUrl}/users/me`, { headers: { Authorization: `Bearer ${accessToken}` } });
-    if (!response.ok) return setLoading(false);
-    const data = (await response.json()) as ProfileForm;
-    setForm({ ...EMPTY_FORM, ...data });
-    setLoading(false);
+    try {
+      const data = await apiRequest<ProfileForm>("/users/me", { headers: { Authorization: `Bearer ${accessToken}` } });
+      setForm({ ...EMPTY_FORM, ...data });
+    } catch {
+      // Preserve current behavior: if profile cannot be loaded, keep empty form.
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadSocialProfile() {
@@ -63,11 +65,10 @@ export default function PerfilPage() {
     setSocialLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${apiBaseUrl}/users/${targetUserId}`);
-      if (!response.ok) throw new Error("No se pudo cargar el perfil público.");
-      setSocialProfile((await response.json()) as SocialProfile);
+      const profile = await apiRequest<SocialProfile>(`/users/${targetUserId}`);
+      setSocialProfile(profile);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ocurrió un error inesperado.");
+      setError(mapApiError(err, "No se pudo cargar el perfil público."));
     } finally { setSocialLoading(false); }
   }
 
@@ -75,11 +76,10 @@ export default function PerfilPage() {
     if (!targetUserId) return;
     setFriendsLoading(true);
     try {
-      const response = await fetch(`${apiBaseUrl}/users/${targetUserId}/friends`);
-      if (!response.ok) throw new Error("No se pudo cargar la lista de amigos.");
-      setFriends((await response.json()) as SocialUser[]);
+      const data = await apiRequest<SocialUser[]>(`/users/${targetUserId}/friends`);
+      setFriends(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ocurrió un error inesperado.");
+      setError(mapApiError(err, "No se pudo cargar la lista de amigos."));
       setFriends([]);
     } finally {
       setFriendsLoading(false);
@@ -89,20 +89,17 @@ export default function PerfilPage() {
   async function toggleFollow() {
     if (!isAuthenticated || !socialProfile) return;
     const method = socialProfile.relationship.isFollowing ? "DELETE" : "POST";
-    const response = await fetch(`${apiBaseUrl}/follows/${socialProfile.id}`, { method, headers: { Authorization: `Bearer ${accessToken}` } });
-    if (!response.ok) throw new Error("No se pudo actualizar seguimiento.");
-    const relation = (await response.json()) as SocialProfile["relationship"];
+    const relation = await apiRequest<SocialProfile["relationship"]>(`/follows/${socialProfile.id}`, { method, headers: { Authorization: `Bearer ${accessToken}` } });
     setSocialProfile({ ...socialProfile, relationship: relation });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSaving(true); setError(null); setSuccess(null);
     try {
-      const response = await fetch(`${apiBaseUrl}/users/me`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(form) });
-      if (!response.ok) throw new Error("No se pudo guardar tu perfil.");
-      setForm({ ...EMPTY_FORM, ...((await response.json()) as ProfileForm) });
+      const profile = await apiRequest<ProfileForm>("/users/me", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(form) });
+      setForm({ ...EMPTY_FORM, ...profile });
       setSuccess("Perfil actualizado correctamente.");
-    } catch (err) { setError(err instanceof Error ? err.message : "Ocurrió un error inesperado."); }
+    } catch (err) { setError(mapApiError(err, "No se pudo guardar tu perfil.")); }
     finally { setSaving(false); }
   }
 
