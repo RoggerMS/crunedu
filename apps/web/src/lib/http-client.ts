@@ -11,8 +11,13 @@ export const ERROR_MESSAGES = {
 } as const;
 
 export class HttpClientError extends Error {
-  constructor(message: string, public readonly status?: number, public readonly requestId?: string) {
-    super(requestId ? `${message} (ID: ${requestId})` : message);
+  constructor(
+    message: string,
+    public readonly status?: number,
+    public readonly requestId?: string,
+    public readonly debugDetails?: string,
+  ) {
+    super(message);
     this.name = "HttpClientError";
   }
 }
@@ -22,27 +27,23 @@ export function buildApiUrl(path: string): string {
   return `${API_BASE_URL}${normalizedPath}`;
 }
 
+function formatHttpDebug(error: HttpClientError): string {
+  const details = [
+    error.status ? `HTTP ${error.status}` : "HTTP sin estado",
+    error.requestId ? `requestId=${error.requestId}` : null,
+    error.debugDetails ? `detalle=${error.debugDetails}` : null,
+  ].filter(Boolean);
+
+  return `${error.message}\n${details.join(" | ")}`;
+}
+
 export function mapApiError(error: unknown, fallbackMessage?: string): string {
   if (error instanceof HttpClientError) {
-    if (error.status === 401) return ERROR_MESSAGES.unauthorized;
-    if (error.status === 403) return ERROR_MESSAGES.forbidden;
-    if (!error.status) return ERROR_MESSAGES.network;
-
-    const safeMessage = error.message.replace(/\s*\(ID:[^)]+\)\s*/gi, "").trim();
-    if (
-      safeMessage &&
-      safeMessage !== ERROR_MESSAGES.generic &&
-      safeMessage !== ERROR_MESSAGES.server &&
-      safeMessage !== ERROR_MESSAGES.network
-    ) {
-      return safeMessage;
-    }
-
-    return fallbackMessage ?? ERROR_MESSAGES.generic;
+    return formatHttpDebug(error);
   }
 
   if (error instanceof TypeError) {
-    return ERROR_MESSAGES.network;
+    return `${ERROR_MESSAGES.network}\nDetalle: ${error.message}`;
   }
 
   return fallbackMessage ?? ERROR_MESSAGES.generic;
@@ -58,16 +59,28 @@ function messageByStatus(status: number): string {
 }
 
 async function extractApiError(response: Response): Promise<HttpClientError> {
-  const body = (await response.json().catch(() => null)) as {
+  const textBody = await response.text().catch(() => "");
+  let parsedBody: {
     message?: string | string[];
     error?: string | { message?: string | string[] };
     requestId?: string;
-  } | null;
-  const rawMessage = body?.message ?? (typeof body?.error === "object" ? body.error.message : undefined);
+  } | null = null;
+
+  if (textBody) {
+    try {
+      parsedBody = JSON.parse(textBody) as typeof parsedBody;
+    } catch {
+      parsedBody = null;
+    }
+  }
+
+  const rawMessage = parsedBody?.message ?? (typeof parsedBody?.error === "object" ? parsedBody.error.message : parsedBody?.error);
   const message = Array.isArray(rawMessage) ? rawMessage.join(" ") : rawMessage;
   const fallback = messageByStatus(response.status);
-  const requestId = body?.requestId ?? response.headers.get("x-request-id") ?? undefined;
-  return new HttpClientError(message?.trim() ? message : fallback, response.status, requestId);
+  const requestId = parsedBody?.requestId ?? response.headers.get("x-request-id") ?? undefined;
+  const debugDetails = textBody.trim() ? textBody.trim() : response.statusText;
+
+  return new HttpClientError(message?.trim() ? message.trim() : fallback, response.status, requestId, debugDetails);
 }
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
@@ -84,7 +97,7 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
     return (await response.json()) as T;
   } catch (error) {
     if (error instanceof HttpClientError) throw error;
-    if (error instanceof TypeError) throw new HttpClientError(ERROR_MESSAGES.network);
+    if (error instanceof TypeError) throw new HttpClientError(ERROR_MESSAGES.network, undefined, undefined, error.message);
     throw new HttpClientError(ERROR_MESSAGES.generic);
   }
 }
