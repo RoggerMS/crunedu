@@ -25,7 +25,7 @@ export default function QuestionsPage() {
         <h1 className="text-2xl font-black tracking-tight">Preguntas</h1>
         <p className="mt-2 text-slate-600">Foro educativo para resolver tareas y dudas paso a paso.</p>
         <div className="mt-4 flex justify-end">
-          <Link href="/app/preguntas/nuevo" target="_blank" rel="noopener noreferrer">
+          <Link href="/app/preguntas/nuevo">
             <PrimaryButton type="button">Preguntar</PrimaryButton>
           </Link>
         </div>
