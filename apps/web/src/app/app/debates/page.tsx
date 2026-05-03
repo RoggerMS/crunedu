@@ -34,9 +34,12 @@ function isSameUtcDay(a: Date, b: Date): boolean {
 
 export default function DebatesPage() {
   const [scope, setScope] = useState<DebateScope>("all");
-  const [selectedCourseKeys, setSelectedCourseKeys] = useState<string[]>([]);
-  const [selectedSections, setSelectedSections] = useState<string[]>([]);
+  const [appliedCourseKeys, setAppliedCourseKeys] = useState<string[]>([]);
+  const [appliedSections, setAppliedSections] = useState<string[]>([]);
+  const [draftCourseKeys, setDraftCourseKeys] = useState<string[]>([]);
+  const [draftSections, setDraftSections] = useState<string[]>([]);
   const [timeWindow, setTimeWindow] = useState<DebateWindow>("weekly");
+  const [searchTerm, setSearchTerm] = useState("");
   const [debates, setDebates] = useState<DebateItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,17 +63,19 @@ export default function DebatesPage() {
   const availableCourses = useMemo(() => courseSections.flatMap((section) => section.items), [courseSections]);
 
   const visibleCourses = useMemo(() => {
-    if (selectedSections.length === 0) return availableCourses;
-    return availableCourses.filter((course) => selectedSections.includes(course.section));
-  }, [availableCourses, selectedSections]);
+    if (appliedSections.length === 0) return availableCourses;
+    return availableCourses.filter((course) => appliedSections.includes(course.section));
+  }, [availableCourses, appliedSections]);
 
   useEffect(() => {
-    setSelectedCourseKeys((prev) => prev.filter((key) => availableCourses.some((course) => course.key === key)));
-    setSelectedSections((prev) => prev.filter((section) => courseSections.some((item) => item.key === section)));
+    setAppliedCourseKeys((prev) => prev.filter((key) => availableCourses.some((course) => course.key === key)));
+    setAppliedSections((prev) => prev.filter((section) => courseSections.some((item) => item.key === section)));
+    setDraftCourseKeys((prev) => prev.filter((key) => availableCourses.some((course) => course.key === key)));
+    setDraftSections((prev) => prev.filter((section) => courseSections.some((item) => item.key === section)));
   }, [availableCourses, courseSections]);
 
   async function loadDebates() {
-    const courseKeysToQuery = selectedCourseKeys.length > 0 ? selectedCourseKeys : visibleCourses.map((course) => course.key);
+    const courseKeysToQuery = appliedCourseKeys.length > 0 ? appliedCourseKeys : visibleCourses.map((course) => course.key);
     if (courseKeysToQuery.length === 0) {
       setDebates([]);
       return;
@@ -94,12 +99,13 @@ export default function DebatesPage() {
 
   useEffect(() => {
     void loadDebates();
-  }, [selectedCourseKeys, visibleCourses]);
+  }, [appliedCourseKeys, visibleCourses]);
 
   const filteredDebates = useMemo(() => {
     const now = new Date();
     const currentWeek = getIsoWeekLabel(now);
     const currentMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+    const normalizedQuery = searchTerm.trim().toLowerCase();
 
     return debates
       .filter((debate) => {
@@ -108,13 +114,24 @@ export default function DebatesPage() {
         if (timeWindow === "weekly") return getIsoWeekLabel(created) === currentWeek;
         return `${created.getUTCFullYear()}-${String(created.getUTCMonth() + 1).padStart(2, "0")}` === currentMonth;
       })
+      .filter((debate) => {
+        if (!normalizedQuery) return true;
+        const source = `${debate.weeklyTopic} ${debate.stance} ${debate.courseKey}`.toLowerCase();
+        return source.includes(normalizedQuery);
+      })
       .sort((a, b) => {
         const scoreA = a.responses.length;
         const scoreB = b.responses.length;
         if (scoreB !== scoreA) return scoreB - scoreA;
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       });
-  }, [debates, timeWindow]);
+  }, [debates, searchTerm, timeWindow]);
+
+  function handleApplyFilters() {
+    setAppliedSections(draftSections);
+    setAppliedCourseKeys(draftCourseKeys);
+    setShowFilters(false);
+  }
 
   async function handleCreateDebate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -123,7 +140,7 @@ export default function DebatesPage() {
       return;
     }
 
-    const courseKeyForCreate = selectedCourseKeys[0] ?? visibleCourses[0]?.key;
+    const courseKeyForCreate = appliedCourseKeys[0] ?? visibleCourses[0]?.key;
     if (!courseKeyForCreate) {
       setError("Selecciona al menos un campo para publicar.");
       return;
@@ -169,32 +186,6 @@ export default function DebatesPage() {
           <button className={`rounded-md px-3 py-2 text-sm ${scope === "non-academic" ? "bg-black text-white" : "bg-gray-100"}`} onClick={() => setScope("non-academic")}>No académico</button>
         </div>
 
-        <div className="flex justify-end">
-          <button className="rounded-md border border-slate-300 px-3 py-1 text-sm" onClick={() => setShowFilters((prev) => !prev)}>{showFilters ? "Ocultar filtros" : "Filtros"}</button>
-        </div>
-
-        {showFilters ? (
-          <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Categorías</p>
-            <div className="flex flex-wrap gap-2">
-              {courseSections.map((section) => (
-                <button key={section.key} onClick={() => setSelectedSections((prev) => prev.includes(section.key) ? prev.filter((item) => item !== section.key) : [...prev, section.key])} className={`rounded-full border px-3 py-1 text-sm ${selectedSections.includes(section.key) ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-300 bg-white text-slate-700"}`}>
-                  {section.label}
-                </button>
-              ))}
-            </div>
-
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Campos</p>
-            <div className="flex flex-wrap gap-2">
-              {visibleCourses.map((course) => (
-                <button key={course.key} onClick={() => setSelectedCourseKeys((prev) => prev.includes(course.key) ? prev.filter((item) => item !== course.key) : [...prev, course.key])} className={`rounded-full border px-3 py-1 text-sm ${selectedCourseKeys.includes(course.key) ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-300 bg-white text-slate-700"}`}>
-                  {course.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
         <div className="flex flex-wrap gap-2">
           <button className={`rounded-md px-3 py-2 text-sm ${timeWindow === "daily" ? "bg-indigo-600 text-white" : "bg-gray-100"}`} onClick={() => setTimeWindow("daily")}>Debates del día</button>
           <button className={`rounded-md px-3 py-2 text-sm ${timeWindow === "weekly" ? "bg-indigo-600 text-white" : "bg-gray-100"}`} onClick={() => setTimeWindow("weekly")}>Debates de la semana</button>
@@ -211,7 +202,7 @@ export default function DebatesPage() {
         <Card>
           <form className="space-y-3" onSubmit={handleCreateDebate}>
             <h2 className="text-lg font-black">Nuevo debate</h2>
-            <p className="text-xs text-slate-500">Canal seleccionado: {selectedCourseKeys[0] ?? visibleCourses[0]?.key ?? "Sin canal"}</p>
+            <p className="text-xs text-slate-500">Canal seleccionado: {appliedCourseKeys[0] ?? visibleCourses[0]?.key ?? "Sin canal"}</p>
             <TextArea value={weeklyTopic} onChange={(event) => setWeeklyTopic(event.target.value)} rows={2} maxLength={160} placeholder="Título o tema del debate" required />
             <TextArea value={stance} onChange={(event) => setStance(event.target.value)} rows={4} maxLength={1500} placeholder="Describe tu postura y los argumentos iniciales" required />
             <PrimaryButton type="submit" disabled={saving}>{saving ? "Guardando..." : "Publicar debate"}</PrimaryButton>
@@ -221,6 +212,48 @@ export default function DebatesPage() {
 
       {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
       {success ? <StatusMessage type="success">{success}</StatusMessage> : null}
+
+      <Card className="space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Buscar debates por tema, contenido o campo"
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          />
+          <button className="rounded-md border border-slate-300 px-3 py-2 text-sm sm:w-auto" onClick={() => setShowFilters((prev) => !prev)}>
+            {showFilters ? "Ocultar filtros" : "Filtros"}
+          </button>
+        </div>
+
+        {showFilters ? (
+          <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Categorías</p>
+            <div className="flex flex-wrap gap-2">
+              {courseSections.map((section) => (
+                <button key={section.key} onClick={() => setDraftSections((prev) => prev.includes(section.key) ? prev.filter((item) => item !== section.key) : [...prev, section.key])} className={`rounded-full border px-3 py-1 text-sm ${draftSections.includes(section.key) ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-300 bg-white text-slate-700"}`}>
+                  {section.label}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Campos</p>
+            <div className="flex flex-wrap gap-2">
+              {availableCourses
+                .filter((course) => draftSections.length === 0 || draftSections.includes(course.section))
+                .map((course) => (
+                  <button key={course.key} onClick={() => setDraftCourseKeys((prev) => prev.includes(course.key) ? prev.filter((item) => item !== course.key) : [...prev, course.key])} className={`rounded-full border px-3 py-1 text-sm ${draftCourseKeys.includes(course.key) ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-300 bg-white text-slate-700"}`}>
+                    {course.label}
+                  </button>
+                ))}
+            </div>
+
+            <div className="flex justify-end">
+              <PrimaryButton type="button" onClick={handleApplyFilters}>Aplicar filtros</PrimaryButton>
+            </div>
+          </div>
+        ) : null}
+      </Card>
 
       {loading ? <StatusMessage type="loading">Cargando debates...</StatusMessage> : null}
       {!loading && filteredDebates.length === 0 ? <EmptyState title="Sin debates para este rango" description="Cambia de canal o inicia un nuevo debate para activar la conversación." /> : null}
