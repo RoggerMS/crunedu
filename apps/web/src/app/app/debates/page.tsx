@@ -186,14 +186,8 @@ export default function DebatesPage() {
           <button className={`rounded-md px-3 py-2 text-sm ${scope === "non-academic" ? "bg-black text-white" : "bg-gray-100"}`} onClick={() => setScope("non-academic")}>No académico</button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button className={`rounded-md px-3 py-2 text-sm ${timeWindow === "daily" ? "bg-indigo-600 text-white" : "bg-gray-100"}`} onClick={() => setTimeWindow("daily")}>Debates del día</button>
-          <button className={`rounded-md px-3 py-2 text-sm ${timeWindow === "weekly" ? "bg-indigo-600 text-white" : "bg-gray-100"}`} onClick={() => setTimeWindow("weekly")}>Debates de la semana</button>
-          <button className={`rounded-md px-3 py-2 text-sm ${timeWindow === "monthly" ? "bg-indigo-600 text-white" : "bg-gray-100"}`} onClick={() => setTimeWindow("monthly")}>Debates del mes</button>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <PrimaryButton type="button" onClick={() => setIsCreateOpen((prev) => !prev)}>{isCreateOpen ? "Cerrar" : "Crear debate"}</PrimaryButton>
+        <div className="flex flex-wrap justify-end gap-2">
+          <PrimaryButton type="button" onClick={() => setIsCreateOpen((prev) => !prev)}>{isCreateOpen ? "Cerrar" : "+ Crear debate"}</PrimaryButton>
           {!isAuthenticated ? <SecondaryButton asChild><Link href="/login">Iniciar sesión</Link></SecondaryButton> : null}
         </div>
       </Card>
@@ -254,6 +248,12 @@ export default function DebatesPage() {
           </div>
         ) : null}
       </Card>
+
+      <div className="flex flex-wrap gap-2">
+        <button className={`rounded-md px-3 py-2 text-sm ${timeWindow === "daily" ? "bg-indigo-600 text-white" : "bg-gray-100"}`} onClick={() => setTimeWindow("daily")}>Debates del día</button>
+        <button className={`rounded-md px-3 py-2 text-sm ${timeWindow === "weekly" ? "bg-indigo-600 text-white" : "bg-gray-100"}`} onClick={() => setTimeWindow("weekly")}>Debates de la semana</button>
+        <button className={`rounded-md px-3 py-2 text-sm ${timeWindow === "monthly" ? "bg-indigo-600 text-white" : "bg-gray-100"}`} onClick={() => setTimeWindow("monthly")}>Debates del mes</button>
+      </div>
 
       {loading ? <StatusMessage type="loading">Cargando debates...</StatusMessage> : null}
       {!loading && filteredDebates.length === 0 ? <EmptyState title="Sin debates para este rango" description="Cambia de canal o inicia un nuevo debate para activar la conversación." /> : null}
