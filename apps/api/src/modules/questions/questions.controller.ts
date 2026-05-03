@@ -19,6 +19,11 @@ export class QuestionsController {
     return this.service.index(query);
   }
 
+  @Get(":id")
+  findOne(@Param("id", ParseIntPipe) id: number) {
+    return this.service.findOne(id);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard)
   create(@Body() dto: CreateQuestionDto, @Req() request: AuthenticatedRequest) {
