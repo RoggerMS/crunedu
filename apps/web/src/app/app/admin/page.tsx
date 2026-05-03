@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Shield, Store, Flag, Layers } from "lucide-react";
+import { Shield, Store, Flag, Layers, FileText } from "lucide-react";
 import { Card, PrimaryButton, SecondaryButton } from "@/components/ui";
 
 export default function AdminPage() {
@@ -21,6 +21,12 @@ export default function AdminPage() {
           <h2 className="text-base font-bold">Admin reportes</h2>
           <p className="text-sm text-slate-600">Revisa reportes de contenido y aplica decisiones de moderación.</p>
           <PrimaryButton asChild><Link href="/app/admin/reportes"><Flag size={16} />Ir a admin reportes</Link></PrimaryButton>
+        </Card>
+
+        <Card className="space-y-3">
+          <h2 className="text-base font-bold">Admin trámites</h2>
+          <p className="text-sm text-slate-600">Publica trámites oficiales de La Cantuta para que estudiantes puedan comentar.</p>
+          <PrimaryButton asChild><Link href="/app/admin/tramites/nuevo"><FileText size={16} />Publicar trámite</Link></PrimaryButton>
         </Card>
 
         <Card className="space-y-3">
