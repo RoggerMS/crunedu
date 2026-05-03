@@ -28,7 +28,7 @@ export default function NewNotePage() {
       await apiRequest("/apuntes", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ title, description, course, cycle: cycle || undefined, fileUrl }),
+        body: JSON.stringify({ title, description: description.trim() || undefined, course, cycle: cycle || undefined, fileUrl }),
       });
       router.push("/app/apuntes");
       router.refresh();
@@ -45,7 +45,7 @@ export default function NewNotePage() {
 
       <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
         <input required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Título del apunte" />
-        <textarea required value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-24 w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Descripción del apunte" />
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-24 w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Descripción del apunte (opcional)" />
         <div className="grid gap-3 md:grid-cols-2">
           <input required value={course} onChange={(e) => setCourse(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Curso (ej. Cálculo I)" />
           <input value={cycle} onChange={(e) => setCycle(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Ciclo (ej. 2026-I)" />

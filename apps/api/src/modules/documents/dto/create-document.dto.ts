@@ -7,10 +7,11 @@ export class CreateDocumentDto {
   @MaxLength(120)
   title: string;
 
+  @IsOptional()
   @IsString()
   @MinLength(10)
   @MaxLength(1200)
-  description: string;
+  description?: string;
 
   @IsString()
   @MinLength(2)

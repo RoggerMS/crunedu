@@ -49,7 +49,7 @@ export class DocumentsService {
     const created = await this.prisma.document.create({
       data: {
         title: dto.title.trim(),
-        description: dto.description.trim(),
+        description: dto.description?.trim() || null,
         course: dto.course.trim(),
         cycle: dto.cycle?.trim() || null,
         fileUrl,
