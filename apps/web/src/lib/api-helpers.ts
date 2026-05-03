@@ -89,6 +89,10 @@ export function createAnswer(questionId: number, content: string, token: string)
   return apiRequest(`/questions/${questionId}/answers`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ content }) });
 }
 
+export function getQuestionById(questionId: number) {
+  return apiRequest<Question>(`/questions/${questionId}`);
+}
+
 function buildStoreCatalogParams(params: StoreCatalogParams = {}) {
   const searchParams = new URLSearchParams();
 

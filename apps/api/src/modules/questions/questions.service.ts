@@ -95,6 +95,18 @@ export class QuestionsService {
     };
   }
 
+
+  async findOne(id: number) {
+    const question = await this.prisma.question.findFirst({
+      where: { id, status: "PUBLISHED" },
+      select: this.questionSelect,
+    });
+
+    if (!question) throw new NotFoundException("Pregunta no encontrada.");
+
+    return this.mapQuestion(question);
+  }
+
   async create(dto: CreateQuestionDto, userId: number) {
     if (dto.communityId !== undefined) {
       const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true } });
