@@ -1,11 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { debateCourseCatalog } from "@/modules/debates/courseCatalog";
+import { debateTaxonomy } from "@/modules/debates/debateTaxonomy";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { apiRequest, mapApiError } from "@/lib/http-client";
-import { Card, EmptyState, PrimaryButton, SecondaryButton, StatusMessage, TextArea } from "@/components/ui";
+import { Card, EmptyState, PrimaryButton, SecondaryButton, StatusMessage } from "@/components/ui";
 
 type DebateScope = "all" | "academic" | "non-academic";
 type DebateWindow = "daily" | "weekly" | "monthly";
@@ -43,13 +44,8 @@ export default function DebatesPage() {
   const [debates, setDebates] = useState<DebateItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [weeklyTopic, setWeeklyTopic] = useState("");
-  const [stance, setStance] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const { accessToken, isAuthenticated } = useAccessToken();
+  const { isAuthenticated } = useAccessToken();
 
   const courseSections = useMemo(() => {
     const sections = debateCourseCatalog.filter((item) => (scope === "all" ? true : item.scope === scope));
@@ -133,47 +129,6 @@ export default function DebatesPage() {
     setShowFilters(false);
   }
 
-  async function handleCreateDebate(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!isAuthenticated) {
-      setError("Inicia sesión para crear debates.");
-      return;
-    }
-
-    const courseKeyForCreate = appliedCourseKeys[0] ?? visibleCourses[0]?.key;
-    if (!courseKeyForCreate) {
-      setError("Selecciona al menos un campo para publicar.");
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      await apiRequest("/debates", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          courseKey: courseKeyForCreate,
-          weeklyTopic,
-          stance,
-        }),
-      });
-      setWeeklyTopic("");
-      setStance("");
-      setSuccess("Debate creado correctamente.");
-      setIsCreateOpen(false);
-      await loadDebates();
-    } catch (err) {
-      setError(mapApiError(err, "No se pudo crear el debate."));
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
     <main className="mx-auto max-w-5xl space-y-4 px-4 py-6">
       <Card className="space-y-3">
@@ -187,25 +142,12 @@ export default function DebatesPage() {
         </div>
 
         <div className="flex flex-wrap justify-end gap-2">
-          <PrimaryButton type="button" onClick={() => setIsCreateOpen((prev) => !prev)}>{isCreateOpen ? "Cerrar" : "+ Crear debate"}</PrimaryButton>
+          <PrimaryButton asChild><Link href="/app/debates/crear">+ Crear debate</Link></PrimaryButton>
           {!isAuthenticated ? <SecondaryButton asChild><Link href="/login">Iniciar sesión</Link></SecondaryButton> : null}
         </div>
       </Card>
 
-      {isCreateOpen ? (
-        <Card>
-          <form className="space-y-3" onSubmit={handleCreateDebate}>
-            <h2 className="text-lg font-black">Nuevo debate</h2>
-            <p className="text-xs text-slate-500">Canal seleccionado: {appliedCourseKeys[0] ?? visibleCourses[0]?.key ?? "Sin canal"}</p>
-            <TextArea value={weeklyTopic} onChange={(event) => setWeeklyTopic(event.target.value)} rows={2} maxLength={160} placeholder="Título o tema del debate" required />
-            <TextArea value={stance} onChange={(event) => setStance(event.target.value)} rows={4} maxLength={1500} placeholder="Describe tu postura y los argumentos iniciales" required />
-            <PrimaryButton type="submit" disabled={saving}>{saving ? "Guardando..." : "Publicar debate"}</PrimaryButton>
-          </form>
-        </Card>
-      ) : null}
-
       {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
-      {success ? <StatusMessage type="success">{success}</StatusMessage> : null}
 
       <Card className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -216,13 +158,13 @@ export default function DebatesPage() {
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
           />
           <button className="rounded-md border border-slate-300 px-3 py-2 text-sm sm:w-auto" onClick={() => setShowFilters((prev) => !prev)}>
-            {showFilters ? "Ocultar filtros" : "Filtros"}
+            {showFilters ? "Ocultar filtros" : "Filtros por categorías"}
           </button>
         </div>
 
         {showFilters ? (
           <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Categorías</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Tipo</p>
             <div className="flex flex-wrap gap-2">
               {courseSections.map((section) => (
                 <button key={section.key} onClick={() => setDraftSections((prev) => prev.includes(section.key) ? prev.filter((item) => item !== section.key) : [...prev, section.key])} className={`rounded-full border px-3 py-1 text-sm ${draftSections.includes(section.key) ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-300 bg-white text-slate-700"}`}>
@@ -231,16 +173,25 @@ export default function DebatesPage() {
               ))}
             </div>
 
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Campos</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Categorías disponibles</p>
             <div className="flex flex-wrap gap-2">
-              {availableCourses
-                .filter((course) => draftSections.length === 0 || draftSections.includes(course.section))
-                .map((course) => (
+              {debateTaxonomy.filter((category) => scope === "all" || category.scope === scope).map((category) => (
+                <span key={category.key} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">{category.label}</span>
+              ))}
+            </div>
+
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Subcategorías</p>
+            {draftSections.length === 0 ? (
+              <p className="text-xs text-slate-500">Selecciona primero una categoría para ver sus subcategorías.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {availableCourses.filter((course) => draftSections.includes(course.section)).map((course) => (
                   <button key={course.key} onClick={() => setDraftCourseKeys((prev) => prev.includes(course.key) ? prev.filter((item) => item !== course.key) : [...prev, course.key])} className={`rounded-full border px-3 py-1 text-sm ${draftCourseKeys.includes(course.key) ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-300 bg-white text-slate-700"}`}>
                     {course.label}
                   </button>
                 ))}
-            </div>
+              </div>
+            )}
 
             <div className="flex justify-end">
               <PrimaryButton type="button" onClick={handleApplyFilters}>Aplicar filtros</PrimaryButton>
