@@ -452,6 +452,7 @@ Keep this section updated when new execution plans are created in `docs/*.md`.
 | `docs/DEBATES_TRENDS_UI_PLAN.md` | Debates UI por tendencias (diario/semanal/mensual) y filtros académicos/no académicos | In progress | Alta: 2026-05-02. Listado compacto + ruta detalle implementados en `apps/web/src/app/app/debates/page.tsx` y `apps/web/src/app/app/debates/[id]/page.tsx`. |
 
 | `docs/QUESTIONS_FORUM_PLAN.md` | Preguntas as educational forum (list, create, detail, voting UX) | In progress | Alta: 2026-05-03. Implemented `/app/preguntas`, `/app/preguntas/nuevo`, `/app/preguntas/[id]` and `GET /api/questions/:id`. |
+| `docs/MOMENTOS_PLAN.md` | Momentos MVP (compose, image, boost toggle, future integration) | In progress | Alta: 2026-05-03. Implemented collapsable composer + image preview + empty feed + visual boost toggle in `apps/web/src/app/app/momentos/page.tsx`. |
 
 Status values:
 - `Pending`: not started
