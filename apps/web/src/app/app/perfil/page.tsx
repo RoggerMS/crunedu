@@ -62,10 +62,27 @@ export default function MiPerfilPage() {
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft">
-      <div className="h-40 bg-gradient-to-r from-indigo-700 via-blue-600 to-cyan-500" />
+      <div className="relative h-40 bg-gradient-to-r from-indigo-700 via-blue-600 to-cyan-500">
+        <button
+          type="button"
+          aria-label="Cambiar portada"
+          className="absolute bottom-3 right-3 rounded-full border border-white/60 bg-black/35 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm"
+        >
+          📷 Portada
+        </button>
+      </div>
       <div className="relative px-6 pb-6">
-        <div className="-mt-14 flex h-28 w-28 items-center justify-center rounded-full border-4 border-white bg-indigo-100 text-3xl font-black text-indigo-700">
-          {displayName.charAt(0).toUpperCase()}
+        <div className="relative -mt-14 h-28 w-28">
+          <div className="flex h-28 w-28 items-center justify-center rounded-full border-4 border-white bg-indigo-100 text-3xl font-black text-indigo-700">
+            {displayName.charAt(0).toUpperCase()}
+          </div>
+          <button
+            type="button"
+            aria-label="Cambiar foto de perfil"
+            className="absolute bottom-0 right-0 rounded-full border-2 border-white bg-slate-900 px-2 py-1 text-xs font-semibold text-white"
+          >
+            📷
+          </button>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
