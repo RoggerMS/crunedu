@@ -454,6 +454,8 @@ Keep this section updated when new execution plans are created in `docs/*.md`.
 | `docs/QUESTIONS_FORUM_PLAN.md` | Preguntas as educational forum (list, create, detail, voting UX) | In progress | Alta: 2026-05-03. Implemented `/app/preguntas`, `/app/preguntas/nuevo`, `/app/preguntas/[id]` and `GET /api/questions/:id`. |
 | `docs/MOMENTOS_PLAN.md` | Momentos MVP (compose, image, boost toggle, future integration) | In progress | Alta: 2026-05-03. Implemented collapsable composer + image preview + empty feed + visual boost toggle in `apps/web/src/app/app/momentos/page.tsx`. |
 
+| `docs/STORE_CORE_PLAN.md` | Tienda núcleo (MVP gestionado por CrunEdu + base para marketplace futuro) | In progress | Alta: 2026-05-04. Define fases, endpoints y apertura futura para sellers externos sin habilitarlos aún. |
+
 Status values:
 - `Pending`: not started
 - `In progress`: partially implemented
