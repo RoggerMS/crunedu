@@ -20,7 +20,6 @@ interface FeedEventPayload {
 
 type PostWithRelations = {
   id: number;
-  title: string;
   content: string;
   createdAt: Date;
   user: { id: number; email: string; profile: { firstName: string | null; lastName: string | null } | null };
@@ -41,7 +40,6 @@ export class PostsService {
 
   private readonly postSelect = {
     id: true,
-    title: true,
     content: true,
     createdAt: true,
     user: {
@@ -82,7 +80,7 @@ export class PostsService {
   private readonly commentSelect = { id: true, content: true, createdAt: true, user: { select: { id: true, email: true, profile: { select: { firstName: true, lastName: true } } } } } as const;
 
   private mapPostResponse(post: PostWithRelations): PostResponseDto {
-    return { id: post.id, title: post.title, content: post.content, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, commentsCount: post._count?.comments ?? 0, images: post.images };
+    return { id: post.id, content: post.content, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, commentsCount: post._count?.comments ?? 0, images: post.images };
   }
 
   private mapCommentResponse(comment: any): PostCommentResponseDto {
@@ -188,9 +186,7 @@ export class PostsService {
     this.validateUsefulContent(dto.content, 20, "El contenido de la publicación debe aportar más contexto útil.");
     this.validateExtremeSize(dto.content, this.MAX_POST_LENGTH, "La publicación es demasiado extensa para el MVP.");
     await this.preventRepeatedPostContent(userId, dto.content);
-    const title = dto.title?.trim() ?? "";
-
-    const post = await this.prisma.post.create({ data: { title, content: dto.content.trim(), communityId: dto.communityId, userId, images: dto.images?.length ? { create: dto.images.slice(0,4).map((image, index) => ({ imageUrl: image.imageUrl, storageKey: image.storageKey, mimeType: image.mimeType, sizeBytes: image.sizeBytes, position: index })) } : undefined }, select: this.postSelect });
+    const post = await this.prisma.post.create({ data: { title: "", content: dto.content.trim(), communityId: dto.communityId, userId, images: dto.images?.length ? { create: dto.images.slice(0,4).map((image, index) => ({ imageUrl: image.imageUrl, storageKey: image.storageKey, mimeType: image.mimeType, sizeBytes: image.sizeBytes, position: index })) } : undefined }, select: this.postSelect });
     this.cache.invalidate("hot:feed:initial");
     await this.jobs.enqueueNotification({ type: "POST_CREATED", userId, postId: post.id, communityId: dto.communityId });
     await this.jobs.enqueueRankingRecalculation({ trigger: "POST_CREATED", postId: post.id });
@@ -221,7 +217,7 @@ export class PostsService {
     return this.mapPostResponse(post);
   }
 
-  async update(id: number, dto: UpdatePostDto, userId: number): Promise<PostResponseDto> { const existingPost = await this.prisma.post.findUnique({ where: { id }, select: { id: true, userId: true } }); if (!existingPost) throw new NotFoundException("Publicación no encontrada."); if (existingPost.userId !== userId) throw new ForbiddenException("No tienes permisos para editar esta publicación."); if (dto.communityId) { const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true } }); if (!community) throw new BadRequestException("La comunidad seleccionada no existe."); } const updatedPost = await this.prisma.post.update({ where: { id }, data: { ...(dto.title !== undefined ? { title: dto.title.trim() } : {}), ...(dto.content !== undefined ? { content: dto.content.trim() } : {}), ...(dto.communityId !== undefined ? { communityId: dto.communityId } : {}) }, select: this.postSelect }); return this.mapPostResponse(updatedPost); }
+  async update(id: number, dto: UpdatePostDto, userId: number): Promise<PostResponseDto> { const existingPost = await this.prisma.post.findUnique({ where: { id }, select: { id: true, userId: true } }); if (!existingPost) throw new NotFoundException("Publicación no encontrada."); if (existingPost.userId !== userId) throw new ForbiddenException("No tienes permisos para editar esta publicación."); if (dto.communityId) { const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true } }); if (!community) throw new BadRequestException("La comunidad seleccionada no existe."); } const updatedPost = await this.prisma.post.update({ where: { id }, data: { ...(dto.content !== undefined ? { content: dto.content.trim() } : {}), ...(dto.communityId !== undefined ? { communityId: dto.communityId } : {}) }, select: this.postSelect }); return this.mapPostResponse(updatedPost); }
 
   async remove(id: number, userId: number, role: string): Promise<{ message: string }> { const existingPost = await this.prisma.post.findUnique({ where: { id }, select: { id: true, userId: true } }); if (!existingPost) throw new NotFoundException("Publicación no encontrada."); const isAuthor = existingPost.userId === userId; const isAdmin = role === "ADMIN"; if (!isAuthor && !isAdmin) throw new ForbiddenException("No tienes permisos para eliminar esta publicación."); await this.prisma.post.update({ where: { id }, data: { status: "DELETED" } }); return { message: "Publicación eliminada correctamente." }; }
 

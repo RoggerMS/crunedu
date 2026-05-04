@@ -2,12 +2,6 @@ import { Type } from "class-transformer";
 import { IsArray, IsInt, IsOptional, IsString, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
 
 export class CreatePostDto {
-  @IsOptional()
-  @IsString()
-  @MinLength(3)
-  @MaxLength(120)
-  title?: string;
-
   @IsString()
   @MinLength(5)
   @MaxLength(5000)
