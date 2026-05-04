@@ -7,7 +7,8 @@ import { PageState } from "@/components/ui";
 
 type CampusMoment = {
   id: number;
-  content: string;
+  title: string;
+  description?: string;
   createdAt: string;
   imageUrl?: string;
   sourceLabel?: string;
@@ -15,7 +16,8 @@ type CampusMoment = {
 };
 
 export default function MomentsPage() {
-  const [content, setContent] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [showComposer, setShowComposer] = useState(false);
   const [submitted, setSubmitted] = useState<string | null>(null);
@@ -29,11 +31,12 @@ export default function MomentsPage() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!content.trim()) return;
+    if (!title.trim()) return;
 
     const nextMoment: CampusMoment = {
       id: Date.now(),
-      content: content.trim(),
+      title: title.trim(),
+      description: description.trim() || undefined,
       createdAt: new Date().toLocaleString("es-PE", {
         dateStyle: "short",
         timeStyle: "short",
@@ -43,7 +46,8 @@ export default function MomentsPage() {
 
     setMoments((currentMoments) => [nextMoment, ...currentMoments]);
     setSubmitted("Tu momento quedó publicado.");
-    setContent("");
+    setTitle("");
+    setDescription("");
     setImageFile(null);
     setShowComposer(false);
   }
@@ -76,12 +80,25 @@ export default function MomentsPage() {
 
         {showComposer ? (
           <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-slate-200 p-4">
-            <textarea
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-              className="min-h-24 w-full rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="¿Qué está pasando hoy en tu facultad?"
-            />
+            <label className="block text-sm font-semibold text-slate-700">
+              Título del momento <span className="text-rose-600">*</span>
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3"
+                placeholder="Ejemplo: Feria académica en la facultad"
+                required
+              />
+            </label>
+            <label className="block text-sm font-semibold text-slate-700">
+              Descripción (opcional)
+              <textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                className="mt-2 min-h-24 w-full rounded-2xl border border-slate-300 px-4 py-3"
+                placeholder="Comparte más contexto sobre tu momento..."
+              />
+            </label>
             <label className="block text-sm font-semibold text-slate-700">
               Agregar imagen
               <input
@@ -114,7 +131,8 @@ export default function MomentsPage() {
           {moments.map((moment) => (
             <article key={moment.id} className="rounded-2xl border border-slate-200 p-4">
               <p className="text-sm text-slate-500">{moment.createdAt}</p>
-              <p className="mt-1 text-sm text-slate-700">{moment.content}</p>
+              <h3 className="mt-1 text-base font-bold text-slate-900">{moment.title}</h3>
+              {moment.description ? <p className="mt-1 text-sm text-slate-700">{moment.description}</p> : null}
               {moment.imageUrl ? (
                 <Image
                   src={moment.imageUrl}
