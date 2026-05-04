@@ -38,7 +38,6 @@ export default function AppPage() {
   const { posts, sections, loading, error, reload } = usePosts();
   const { accessToken, isAuthenticated } = useAccessToken();
 
-  const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [communityId, setCommunityId] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -48,7 +47,6 @@ export default function AppPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [editingPostId, setEditingPostId] = useState<number | null>(null);
-  const [editingTitle, setEditingTitle] = useState("");
   const [editingContent, setEditingContent] = useState("");
   const [editingCommunityId, setEditingCommunityId] = useState("");
   const [postActionLoadingId, setPostActionLoadingId] = useState<number | null>(null);
@@ -84,7 +82,6 @@ export default function AppPage() {
     setSuccessMessage(null);
 
     const payload: CreateFeedPostPayload = {
-      title: title.trim() || undefined,
       content: content.trim(),
       communityId: Number(communityId),
       images: attachedImages,
@@ -100,7 +97,6 @@ export default function AppPage() {
         body: JSON.stringify(payload),
       });
 
-      setTitle("");
       setContent("");
       setCommunityId("");
       setAttachedImages([]);
@@ -138,10 +134,9 @@ export default function AppPage() {
     }
   }
 
-  function startEditing(postId: number, initialTitle: string, initialContent: string, initialCommunityId: number | null) {
+  function startEditing(postId: number, initialContent: string, initialCommunityId: number | null) {
     setEditingPostId(postId);
-    setEditingTitle(initialTitle);
-    setEditingContent(initialContent);
+      setEditingContent(initialContent);
     setEditingCommunityId(initialCommunityId ? String(initialCommunityId) : "");
     setPostActionError(null);
     setPostActionSuccess(null);
@@ -162,7 +157,6 @@ export default function AppPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({
-          title: editingTitle.trim() || undefined,
           content: editingContent.trim(),
           communityId: Number(editingCommunityId),
         }),
@@ -327,13 +321,6 @@ export default function AppPage() {
               required
             /></FormField>
 
-            <FormField><p className="text-sm font-semibold text-slate-700">Título (opcional)</p><Input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              maxLength={120}
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none ring-indigo-200 transition focus:ring"
-              placeholder="Título (opcional)"
-            /></FormField>
 
             <FormField><p className="text-sm font-semibold text-slate-700">Selecciona una comunidad</p><Select
               value={communityId}
@@ -402,8 +389,7 @@ export default function AppPage() {
                   {section.items.map((post) => (
                 <article key={post.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft">
                   <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">{post.community?.name ?? "General"} · {post.commentsCount} comentarios</p>
-                  {post.title ? <h2 className="mt-2 text-xl font-bold">{post.title}</h2> : null}
-                  <p className="mt-2 text-slate-600">{post.content}</p>
+                                    <p className="mt-2 text-slate-600">{post.content}</p>
                   {post.images?.length ? (<div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{post.images.map((image) => (<Image key={image.id} src={image.imageUrl} alt="Imagen de publicación" width={320} height={200} loading="lazy" className="h-32 w-full rounded-xl object-cover" />))}</div>) : null}
                   <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-slate-500">
                     <span>Autor: {buildAuthorName(post.author.firstName, post.author.lastName, post.author.email)}</span>
@@ -449,7 +435,6 @@ export default function AppPage() {
                     <div className="mt-4 space-y-3">
                       {editingPostId === post.id ? (
                         <div className="space-y-3 rounded-2xl border border-slate-200 p-4">
-                          <input value={editingTitle} onChange={(event) => setEditingTitle(event.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2" placeholder="Título (opcional)" />
                           <textarea value={editingContent} onChange={(event) => setEditingContent(event.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2" rows={4} />
                           <select value={editingCommunityId} onChange={(event) => setEditingCommunityId(event.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2">
                             <option value="">Selecciona una comunidad</option>
@@ -466,7 +451,7 @@ export default function AppPage() {
                         </div>
                       ) : (
                         <div className="flex gap-2">
-                          <button type="button" onClick={() => startEditing(post.id, post.title, post.content, post.community?.id ?? null)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Editar</button>
+                          <button type="button" onClick={() => startEditing(post.id, post.content, post.community?.id ?? null)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">Editar</button>
                           <button type="button" onClick={() => handleDeletePost(post.id)} disabled={postActionLoadingId === post.id} className="rounded-xl border border-red-300 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-60">Eliminar</button>
                         </div>
                       )}

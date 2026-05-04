@@ -37,7 +37,7 @@ export default function ReutilizablePage() {
           <h2 className="text-base font-bold">Nuevas publicaciones en comunidades</h2>
           {affinityPosts.length > 0 ? (
             <>
-              <p className="text-sm text-slate-700">{affinityPosts[0].title || affinityPosts[0].content.slice(0, 90)}</p>
+              <p className="text-sm text-slate-700">{affinityPosts[0].content.slice(0, 90)}</p>
               <SecondaryButton asChild><Link href="/app/comunidades">Explorar comunidades</Link></SecondaryButton>
             </>
           ) : (
