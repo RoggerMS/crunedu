@@ -5,6 +5,7 @@ import { useAccessToken } from "@/hooks/useAccessToken";
 import { apiRequest, mapApiError } from "@/lib/http-client";
 
 type ProfileForm = {
+  username: string;
   firstName: string;
   lastName: string;
   bio: string;
@@ -32,7 +33,7 @@ type SocialUser = {
   isFriend: boolean;
 };
 
-const EMPTY_FORM: ProfileForm = { firstName: "", lastName: "", bio: "", faculty: "", career: "", cycle: "" };
+const EMPTY_FORM: ProfileForm = { username: "", firstName: "", lastName: "", bio: "", faculty: "", career: "", cycle: "" };
 
 export function ProfileSettingsPanel() {
   const { accessToken, isAuthenticated } = useAccessToken();
@@ -96,7 +97,8 @@ export function ProfileSettingsPanel() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSaving(true); setError(null); setSuccess(null);
     try {
-      const profile = await apiRequest<ProfileForm>("/users/me", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(form) });
+      const { username: _username, ...profilePayload } = form;
+      const profile = await apiRequest<ProfileForm>("/users/me", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(profilePayload) });
       setForm({ ...EMPTY_FORM, ...profile });
       setSuccess("Perfil actualizado correctamente.");
     } catch (err) { setError(mapApiError(err, "No se pudo guardar tu perfil.")); }
@@ -106,11 +108,26 @@ export function ProfileSettingsPanel() {
   if (!isAuthenticated) return <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">Inicia sesión para editar tu perfil.</p>;
 
   return <section className="mx-auto max-w-3xl space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-soft"><div><h1 className="text-2xl font-black">Configuración de perfil</h1><p className="mt-1 text-sm text-slate-600">Edita tus datos para mantener tu perfil al día.</p></div>
+    <p className="rounded-2xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+      La foto de perfil y la portada se editan desde <strong>Mi perfil</strong> con los botones de cámara.
+    </p>
     {loading ? <p className="text-slate-600">Cargando perfil...</p> : null}
     {error ? <p className="rounded-2xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
     {success ? <p className="rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-700">{success}</p> : null}
 
-    <form className="grid gap-4" onSubmit={handleSubmit}>{([ ["firstName", "Nombres"], ["lastName", "Apellidos"], ["faculty", "Facultad"], ["career", "Carrera"], ["cycle", "Ciclo"], ] as const).map(([field, label]) => (<label key={field} className="grid gap-1 text-sm font-semibold text-slate-700">{label}<input className="rounded-2xl border border-slate-200 px-4 py-2" value={form[field]} onChange={(e) => setForm((prev) => ({ ...prev, [field]: e.target.value }))} /></label>))}
+    <form className="grid gap-4" onSubmit={handleSubmit}>
+      <label className="grid gap-1 text-sm font-semibold text-slate-700">
+        Nombre de usuario
+        <input
+          className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-2 text-slate-500"
+          value={form.username ? `@${form.username}` : ""}
+          placeholder="@proximamente"
+          disabled
+          readOnly
+        />
+        <span className="text-xs font-medium text-slate-500">Próximamente: cuando activemos el sistema de @usuario.</span>
+      </label>
+      {([ ["firstName", "Nombres"], ["lastName", "Apellidos"], ["faculty", "Facultad"], ["career", "Carrera"], ["cycle", "Ciclo"], ] as const).map(([field, label]) => (<label key={field} className="grid gap-1 text-sm font-semibold text-slate-700">{label}<input className="rounded-2xl border border-slate-200 px-4 py-2" value={form[field]} onChange={(e) => setForm((prev) => ({ ...prev, [field]: e.target.value }))} /></label>))}
       <label className="grid gap-1 text-sm font-semibold text-slate-700">Biografía<textarea className="min-h-28 rounded-2xl border border-slate-200 px-4 py-2" value={form.bio} onChange={(e) => setForm((prev) => ({ ...prev, bio: e.target.value }))} /></label>
       <button type="submit" disabled={saving || loading} className="mt-2 w-fit rounded-2xl bg-indigo-600 px-5 py-2 font-semibold text-white">{saving ? "Guardando..." : "Guardar cambios"}</button>
     </form>
