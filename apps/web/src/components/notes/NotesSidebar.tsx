@@ -1,0 +1,5 @@
+import type { NoteItem } from "./types";
+
+export function NotesSidebar({ notes, onCourseClick, onNoteClick, onGuide }: { notes: NoteItem[]; onCourseClick: (course: string) => void; onNoteClick: (id: string) => void; onGuide: () => void }) {
+  return <aside className="space-y-3"><div className="rounded-2xl border bg-white p-4"><h3 className="font-semibold">Cómo compartir un buen apunte</h3><button className="mt-2 text-sm text-indigo-700" onClick={onGuide}>Ver guía completa</button></div><div className="rounded-2xl border bg-white p-4"><h3 className="font-semibold">Apuntes destacados</h3>{notes.slice(0,5).map((n)=><button key={n.id} className="mt-2 block text-left text-sm text-slate-700" onClick={()=>onNoteClick(n.id)}>{n.title}</button>)}</div><div className="rounded-2xl border bg-white p-4"><h3 className="font-semibold">Cursos con más apuntes</h3>{[...new Set(notes.map((n)=>n.course))].slice(0,5).map((c)=><button key={c} className="mt-2 block text-sm" onClick={()=>onCourseClick(c)}>{c}</button>)}</div></aside>;
+}

@@ -1,0 +1,9 @@
+import type { NoteItem } from "./types";
+
+export const NOTE_COURSES = ["Matemática", "Estadística", "Física", "Programación", "Comunicación", "Historia", "Inglés", "Educación", "Otros"];
+
+export const noteSeed: NoteItem[] = [
+  { id: "n1", title: "Resumen de Distribuciones de Probabilidad", description: "Incluye distribución binomial, Poisson y normal con ejemplos.", course: "Estadística", materialType: "Resumen", authorName: "María Quispe", createdAt: "2026-05-08T12:10:00Z", status: "verificado", tags: ["probabilidad", "parcial"], file: { id: "f1", name: "distribuciones.pdf", size: 2_300_000, type: "application/pdf", fileType: "pdf", pages: 24 }, rating: { average: 4.8, count: 91 }, stats: { downloads: 340, saves: 122, comments: 21, views: 960 }, viewerState: { saved: false } },
+  { id: "n2", title: "Pack de ejercicios de Cálculo I", description: "Colección de problemas de límites y derivadas.", course: "Matemática", materialType: "Pack de ejercicios", authorName: "Luis Ramos", createdAt: "2026-05-07T16:30:00Z", status: "popular", tags: ["cálculo", "ejercicios"], file: { id: "f2", name: "calculo-pack.zip", size: 14_200_000, type: "application/zip", fileType: "zip", exercises: 80 }, rating: { average: 4.7, count: 74 }, stats: { downloads: 510, saves: 201, comments: 33, views: 1404 }, viewerState: { saved: true, isMine: true } },
+  { id: "n3", title: "Presentación: La independencia del Perú", description: "Diapositivas para exposición grupal.", course: "Historia", materialType: "Presentación", authorName: "Ana Flores", createdAt: "2026-05-06T09:05:00Z", status: "para_parcial", tags: ["historia", "ppt"], file: { id: "f3", name: "independencia.pptx", size: 5_100_000, type: "application/vnd.openxmlformats-officedocument.presentationml.presentation", fileType: "ppt", slides: 18 }, rating: { average: 4.3, count: 32 }, stats: { downloads: 120, saves: 44, comments: 6, views: 333 }, viewerState: { saved: false } },
+];
