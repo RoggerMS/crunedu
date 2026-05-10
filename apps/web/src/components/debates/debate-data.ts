@@ -1,0 +1,18 @@
+import { DebateItem, DebateMode } from "./types";
+
+export const debateCategories: Record<DebateMode, string[]> = {
+  academicos: ["Matemática", "Historia", "Física", "Programación", "Filosofía"],
+  generales: ["Vida universitaria", "Tecnología", "Opinión", "Hábitos", "Campus"],
+};
+
+export const weeklyTopics: Record<DebateMode, string[]> = {
+  academicos: ["Teoremas de series", "Revolución de independencia", "Ley de Ohm y circuitos", "Algoritmos de ordenamiento", "Ética en la inteligencia artificial"],
+  generales: ["Inteligencia artificial y educación", "Salud mental estudiantil", "Costo de vida en la universidad", "Oportunidades de empleo", "Movilidad y transporte"],
+};
+
+export const mockDebates: DebateItem[] = [
+  { id: "d1", mode: "academicos", title: "¿Qué método es más claro para demostrar este teorema: inducción o contradicción?", description: "En Cálculo II estamos discutiendo qué enfoque ayuda más a comprender el razonamiento formal.", category: "Matemática", authorName: "Camila R.", createdAt: new Date().toISOString(), status: "en_curso", isFeatured: true, isWeekly: true, sideA: { id: "a", label: "Inducción", description: "Paso base + paso inductivo facilita estructura.", argumentsCount: 18 }, sideB: { id: "b", label: "Contradicción", description: "Muestra claramente por qué no puede fallar.", argumentsCount: 13 }, stats: { responses: 31, participants: 22, views: 284 }, highlightedArguments: [{ id: "ha1", authorName: "Luis M.", side: "a", content: "La inducción evita saltos lógicos en series." }, { id: "ha2", authorName: "Paola T.", side: "b", content: "Contradicción ayuda a detectar supuestos ocultos." }] },
+  { id: "d2", mode: "academicos", title: "¿La evaluación por competencias refleja mejor el aprendizaje?", description: "Debatimos el impacto en Educación y evaluación universitaria.", category: "Filosofía", authorName: "Bruno A.", createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), status: "sin_resolver", sideA: { id: "a", label: "Sí, es más integral", description: "Mide desempeño aplicado y criterio.", argumentsCount: 8 }, sideB: { id: "b", label: "No, es subjetiva", description: "La rúbrica puede variar demasiado.", argumentsCount: 9 }, stats: { responses: 17, participants: 14, views: 170 }, highlightedArguments: [] },
+  { id: "d3", mode: "generales", title: "¿Debería permitirse el uso de ChatGPT en todas las tareas universitarias?", description: "Se discuten límites, ética académica y mejora del aprendizaje.", category: "Tecnología", authorName: "Sofía L.", createdAt: new Date(Date.now() - 86400000 * 4).toISOString(), status: "en_curso", isWeekly: true, sideA: { id: "a", label: "Sí, como apoyo", description: "Acelera comprensión si se usa responsablemente.", argumentsCount: 23 }, sideB: { id: "b", label: "No, con restricciones", description: "Puede afectar la autoría y pensamiento crítico.", argumentsCount: 20 }, stats: { responses: 43, participants: 35, views: 412 }, highlightedArguments: [{ id: "ha3", authorName: "Jorge P.", side: "a", content: "Con prompts correctos se aprende más rápido." }] },
+  { id: "d4", mode: "generales", title: "¿Las clases virtuales deberían mantenerse como opción permanente?", description: "Balance entre flexibilidad, acceso y calidad de aprendizaje.", category: "Vida universitaria", authorName: "Daniela Q.", createdAt: new Date(Date.now() - 86400000 * 12).toISOString(), status: "cerrado", sideA: { id: "a", label: "Sí, opción híbrida", description: "Favorece a quienes trabajan o viven lejos.", argumentsCount: 14 }, sideB: { id: "b", label: "No, presencial primero", description: "La interacción en aula sigue siendo clave.", argumentsCount: 15 }, stats: { responses: 29, participants: 27, views: 520 }, highlightedArguments: [] },
+];

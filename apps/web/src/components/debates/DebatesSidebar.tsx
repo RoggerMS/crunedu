@@ -1,0 +1,8 @@
+import { Card, SecondaryButton } from "@/components/ui";
+import { DebateMode } from "./types";
+import { weeklyTopics } from "./debate-data";
+
+export function DebatesSidebar({ mode, onSwitch, onTopic }: { mode: DebateMode; onSwitch: () => void; onTopic: (topic: string) => void }) {
+  const areas = mode === "academicos" ? ["Matemáticas", "Historia del Perú", "Física I", "Programación I", "Filosofía"] : ["Vida universitaria", "Tecnología", "Hábitos de estudio", "Opinión", "Campus"];
+  return <aside className="space-y-3"><Card><p className="font-bold">Modo de debates</p><p className="text-sm text-slate-600 mt-1">{mode==="academicos"?"Debates por curso, clase o tema de estudio.":"Conversaciones generales de interés estudiantil."}</p><SecondaryButton className="mt-2" onClick={onSwitch}>Cambiar a {mode==="academicos"?"Generales":"Académicos"}</SecondaryButton></Card><Card><p className="font-bold">Cómo debatir mejor</p><ul className="mt-2 list-disc pl-5 text-sm text-slate-600"><li>Fundamenta tu postura con argumentos.</li><li>Cita fuentes, ejemplos o referencias.</li><li>Respeta opiniones diferentes.</li></ul></Card><Card><p className="font-bold">Temas de la semana</p><div className="mt-2 space-y-1">{weeklyTopics[mode].map((t)=><button key={t} className="block text-left text-sm text-indigo-700" onClick={()=>onTopic(t)}>{t}</button>)}</div></Card><Card><p className="font-bold">Áreas más debatidas</p><div className="mt-2 space-y-2">{areas.map((a,i)=><div key={a}><div className="flex justify-between text-xs"><span>{a}</span><span>{100-i*15}%</span></div><div className="h-2 rounded bg-slate-100"><div className="h-2 rounded bg-indigo-500" style={{width:`${100-i*15}%`}}/></div></div>)}</div></Card></aside>;
+}

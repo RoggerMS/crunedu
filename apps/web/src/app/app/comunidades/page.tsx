@@ -84,9 +84,9 @@ export default function Page() {
   if (error) return <PageState type="error" title="No pudimos cargar las comunidades" description={mapApiError(error, "No se pudieron cargar las comunidades.")} action={<PrimaryButton type="button" onClick={() => void reload()}>Reintentar</PrimaryButton>} />;
 
   return (
-    <section className="space-y-4">
+    <section className="mx-auto max-w-[1500px] space-y-4 px-4 lg:px-6">
       {toast ? <div className={`fixed bottom-5 right-5 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <main className="space-y-4">
           <CommunitiesHeader search={search} onSearchChange={setSearch} onCreateCommunity={onCreateCommunity} stats={stats} />
           <CommunityFilters activeFilter={activeFilter} onFilterChange={(filter) => { setActiveFilter(filter); setVisibleCount(PAGE_SIZE); }} sort={sort} onSortChange={setSort} />
