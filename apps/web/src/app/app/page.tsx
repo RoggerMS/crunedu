@@ -87,7 +87,10 @@ export default function AppPage() {
   async function loadComments(postId: number) { /* unchanged */
     setCommentLoadingByPost((prev) => ({ ...prev, [postId]: true }));
     setCommentErrorByPost((prev) => ({ ...prev, [postId]: null }));
-    try { setCommentsByPost((prev) => ({ ...prev, [postId]: await apiRequest<PostComment[]>(`/posts/${postId}/comments`) })); }
+    try {
+      const comments = await apiRequest<PostComment[]>(`/posts/${postId}/comments`);
+      setCommentsByPost((prev) => ({ ...prev, [postId]: comments }));
+    }
     catch (err) { setCommentErrorByPost((prev) => ({ ...prev, [postId]: mapApiError(err, "No se pudieron cargar los comentarios.") })); }
     finally { setCommentLoadingByPost((prev) => ({ ...prev, [postId]: false })); }
   }
