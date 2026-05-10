@@ -3,18 +3,21 @@
 import { MAIN_NAVIGATION } from "@crunedu/shared";
 import { Bell, ChevronLeft, ChevronRight, GraduationCap, Search, UserCircle2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useSearch } from "@/hooks/useSearch";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { isAuthenticated, setAccessToken } = useAccessToken();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const [searchType, setSearchType] = useState<"all" | "posts" | "questions" | "communities" | "products">("all");
   const [searchPage, setSearchPage] = useState(1);
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+  const searchContext = useMemo(() => getSearchContext(pathname), [pathname]);
   const { results, loading, error } = useSearch(query, searchType, searchPage);
   const hasQuery = query.trim().length > 0;
   const hasResults =
@@ -26,6 +29,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setSearchPage(1);
   }, [query, searchType]);
+
+  useEffect(() => {
+    setQuery(searchParams.get("q") ?? "");
+  }, [searchParams]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      const normalizedQuery = query.trim();
+      if (normalizedQuery.length > 0) {
+        params.set("q", normalizedQuery);
+      } else {
+        params.delete("q");
+      }
+      const target = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      router.replace(target, { scroll: false });
+    }, 250);
+    return () => window.clearTimeout(timeoutId);
+  }, [pathname, query, router, searchParams]);
 
   useEffect(() => {
     if (!hasQuery || loading || error || (results.total ?? 0) > 0 || typeof window === "undefined") {
@@ -152,7 +174,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar publicaciones, preguntas, comunidades y productos"
+                placeholder={searchContext.placeholder}
                 className="w-full bg-transparent text-slate-700 outline-none placeholder:text-slate-500"
               />
             </div>
@@ -187,7 +209,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
-          {hasQuery ? (
+          {hasQuery && searchContext.scope === "all" ? (
             <div className="mt-3 rounded-xl border border-slate-200 bg-white p-4">
               <div className="mb-3 flex flex-wrap gap-2">
                 {[
@@ -304,4 +326,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ) : null}
     </div>
   );
+}
+
+function getSearchContext(pathname: string): { scope: "all" | "questions" | "debates" | "communities" | "notes" | "procedures" | "moments" | "store"; placeholder: string } {
+  if (pathname.startsWith("/app/preguntas")) return { scope: "questions", placeholder: "Buscar preguntas, cursos, ejercicios o temas..." };
+  if (pathname.startsWith("/app/debates")) return { scope: "debates", placeholder: "Buscar debates, cursos, temas o participantes..." };
+  if (pathname.startsWith("/app/comunidades")) return { scope: "communities", placeholder: "Buscar comunidades, carreras, cursos o temas..." };
+  if (pathname.startsWith("/app/apuntes")) return { scope: "notes", placeholder: "Buscar apuntes, materiales, cursos o archivos..." };
+  if (pathname.startsWith("/app/tramites")) return { scope: "procedures", placeholder: "Buscar trámites, requisitos, convocatorias o fechas..." };
+  if (pathname.startsWith("/app/momentos")) return { scope: "moments", placeholder: "Buscar momentos, experiencias o publicaciones destacadas..." };
+  if (pathname.startsWith("/app/tienda")) return { scope: "store", placeholder: "Buscar productos, recursos o materiales..." };
+  return { scope: "all", placeholder: "Buscar publicaciones, preguntas, comunidades y productos..." };
 }
