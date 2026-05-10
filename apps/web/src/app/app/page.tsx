@@ -118,9 +118,14 @@ export default function AppPage() {
       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <PrimaryButton type="button" onClick={() => setIsCreateFormOpen(true)} className="w-full justify-center"><MessageSquarePlus size={16} /> Publicar</PrimaryButton>
-        <SecondaryButton asChild className="w-full justify-center"><Link href="/app/apuntes/nuevo"><NotebookPen size={16} /> Crear apunte</Link></SecondaryButton>
-        <SecondaryButton asChild className="w-full justify-center"><Link href="/app/preguntas/nuevo">Publicar pregunta</Link></SecondaryButton>
-        <SecondaryButton asChild className="w-full justify-center"><Link href="/app/debates/crear"><Sparkles size={16} /> Iniciar debate</Link></SecondaryButton>
+        <Link href="/app/apuntes/nuevo" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"><NotebookPen size={16} /> Crear apunte</Link>
+        <Link href="/app/preguntas/nuevo" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Publicar pregunta</Link>
+        <Link href="/app/debates/crear" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"><Sparkles size={16} /> Iniciar debate</Link>
+      </div>
+      <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-3 text-xs font-semibold text-slate-600">
+        <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700">Para ti</span>
+        <span className="rounded-full border border-slate-200 px-3 py-1">Siguiendo</span>
+        <span className="rounded-full border border-slate-200 px-3 py-1">Todas las comunidades</span>
       </div>
       <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-3 text-xs font-semibold text-slate-600">
         <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700">Para ti</span>
@@ -148,7 +153,7 @@ export default function AppPage() {
       <aside className="hidden space-y-4 xl:col-span-4 xl:block">
         <Card className="space-y-3">
           <h3 className="text-sm font-black text-slate-800">Comunidades recomendadas</h3>
-          {communities.slice(0, 4).map((community) => <div key={community.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2"><p className="text-sm font-semibold text-slate-700">{community.name}</p><SecondaryButton asChild className="px-3 py-1 text-xs"><Link href={`/app/comunidades/${community.id}`}>Unirse</Link></SecondaryButton></div>)}
+          {communities.slice(0, 4).map((community) => <div key={community.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2"><p className="text-sm font-semibold text-slate-700">{community.name}</p><Link href={`/app/comunidades/${community.id}`} className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">Unirse</Link></div>)}
         </Card>
         <Card className="space-y-3">
           <h3 className="text-sm font-black text-slate-800">Temas en tendencia</h3>
