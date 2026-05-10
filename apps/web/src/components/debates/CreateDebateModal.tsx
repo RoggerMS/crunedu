@@ -1,0 +1,10 @@
+import { FormEvent, useState } from "react";
+import { DebateMode, DebateItem } from "./types";
+import { Input, PrimaryButton, SecondaryButton, Select, TextArea } from "@/components/ui";
+
+export function CreateDebateModal({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (item: Omit<DebateItem, "id" | "createdAt" | "stats" | "highlightedArguments">) => void }) {
+  const [form, setForm] = useState({ mode: "academicos" as DebateMode, title: "", description: "", category: "", a: "", b: "" });
+  if (!open) return null;
+  const submit = (e: FormEvent) => { e.preventDefault(); if (!form.title || !form.description || !form.category || !form.a || !form.b) return; onCreate({ mode: form.mode, title: form.title, description: form.description, category: form.category, authorName: "Tú", status: "en_curso", sideA: { id: "a", label: form.a, description: "Postura inicial", argumentsCount: 0 }, sideB: { id: "b", label: form.b, description: "Postura inicial", argumentsCount: 0 }, isJoined: true }); onClose(); };
+  return <div className="fixed inset-0 z-50 bg-black/30 p-4"><form onSubmit={submit} className="mx-auto mt-10 max-w-xl space-y-2 rounded-2xl bg-white p-4"><Select value={form.mode} onChange={(e)=>setForm({...form,mode:e.target.value as DebateMode})}><option value="academicos">Académico</option><option value="generales">General</option></Select><Input placeholder="Título" value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})}/><TextArea placeholder="Descripción" value={form.description} onChange={(e)=>setForm({...form,description:e.target.value})}/><Input placeholder="Categoría" value={form.category} onChange={(e)=>setForm({...form,category:e.target.value})}/><Input placeholder="Postura A" value={form.a} onChange={(e)=>setForm({...form,a:e.target.value})}/><Input placeholder="Postura B" value={form.b} onChange={(e)=>setForm({...form,b:e.target.value})}/><div className="flex gap-2"><PrimaryButton type="submit">Crear debate</PrimaryButton><SecondaryButton type="button" onClick={onClose}>Cancelar</SecondaryButton></div></form></div>;
+}
