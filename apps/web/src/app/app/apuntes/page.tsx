@@ -1,76 +1,29 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { ModuleHeader } from "@/components/module-header";
-import { PageState, PrimaryButton } from "@/components/ui";
-import { apiRequest, mapApiError } from "@/lib/http-client";
-
-type NoteItem = {
-  id: number;
-  title: string;
-  description: string | null;
-  course: string;
-  cycle: string | null;
-  fileUrl: string;
-  createdAt: string;
-  author: { firstName: string | null; lastName: string | null; email: string };
-};
+import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CreateNoteModal } from "@/components/notes/CreateNoteModal";
+import { NoteCard } from "@/components/notes/NoteCard";
+import { NotesFilters } from "@/components/notes/NotesFilters";
+import { NotesHeader } from "@/components/notes/NotesHeader";
+import { NotesSidebar } from "@/components/notes/NotesSidebar";
+import { useNotes } from "@/hooks/useNotes";
 
 export default function NotesPage() {
-  const [items, setItems] = useState<NoteItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [courseFilter, setCourseFilter] = useState("");
-  const [cycleFilter, setCycleFilter] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const q = (searchParams.get("q") ?? "").toLowerCase();
+  const [openModal, setOpenModal] = useState(false);
+  const [courseFilter, setCourseFilter] = useState("Todos");
+  const { notes, stats, addNote, saveNote, shareNote, downloadNote, rateNote, saveDraft, pulseToast, toast } = useNotes();
 
-  async function loadNotes() {
-    try {
-      setLoading(true);
-      setError(null);
-      const params = new URLSearchParams();
-      if (courseFilter.trim()) params.set("course", courseFilter.trim());
-      if (cycleFilter.trim()) params.set("cycle", cycleFilter.trim());
-      const data = await apiRequest<NoteItem[]>(`/apuntes?${params.toString()}`);
-      setItems(data);
-    } catch (loadError) {
-      setError(mapApiError(loadError, "No se pudieron cargar los apuntes."));
-    } finally {
-      setLoading(false);
-    }
-  }
+  const filtered = useMemo(() => notes.filter((n) => (courseFilter === "Todos" || n.course === courseFilter) && (!q || [n.title, n.description, n.course, n.authorName, ...(n.tags ?? []), n.file?.name ?? "", n.file?.fileType ?? ""].join(" ").toLowerCase().includes(q))), [notes, courseFilter, q]);
 
-  useEffect(() => {
-    void loadNotes();
-  }, [courseFilter, cycleFilter]);
-
-  const featuredNotes = useMemo(() => items.slice(0, 3), [items]);
-
-  return (
-    <section className="space-y-6">
-      <ModuleHeader title="Apuntes" description="Comparte material permitido y encuentra recursos para estudiar." />
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-600">Publica tus apuntes en un formulario dedicado para mantener este módulo ordenado.</p>
-          <Link href="/app/apuntes/nuevo">
-            <PrimaryButton type="button">Publicar apunte</PrimaryButton>
-          </Link>
-        </div>
-      </div>
-
-      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2">
-        <input value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)} className="rounded-2xl border border-slate-300 px-4 py-3" placeholder="Filtrar por curso" />
-        <input value={cycleFilter} onChange={(e) => setCycleFilter(e.target.value)} className="rounded-2xl border border-slate-300 px-4 py-3" placeholder="Filtrar por ciclo" />
-      </div>
-
-      {featuredNotes.length > 0 ? <div className="rounded-2xl border border-slate-200 bg-white p-4"><h3 className="mb-3 text-base font-bold">Destacados</h3><ul className="space-y-2">{featuredNotes.map((note) => <li key={note.id} className="text-sm text-slate-700">{note.title} · {note.course}</li>)}</ul></div> : null}
-
-      {loading ? <p className="text-sm text-slate-600">Cargando apuntes...</p> : null}
-      {!loading && items.length === 0 ? <PageState type="empty" title="No hay apuntes aún" description="Publica el primer apunte para tu curso." /> : null}
-      {error ? <p className="text-sm text-rose-700">{error}</p> : null}
-
-      {items.length > 0 ? <div className="space-y-3">{items.map((note) => <article key={note.id} className="rounded-2xl border border-slate-200 bg-white p-4"><h3 className="font-bold">{note.title}</h3><p className="text-sm text-slate-700">{note.description}</p><p className="mt-2 text-xs text-slate-500">{note.course}{note.cycle ? ` · ${note.cycle}` : ""}</p><a href={note.fileUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm font-semibold text-indigo-700">Abrir archivo</a></article>)}</div> : null}
-    </section>
-  );
+  return <section className="space-y-4"><NotesHeader onOpenModal={() => setOpenModal(true)} stats={stats} />
+    <NotesFilters options={["Todos", "Matemática", "Estadística", "Física", "Programación", "Historia"]} active={courseFilter} onChange={setCourseFilter} />
+    {toast ? <p className="rounded-xl bg-slate-900 px-3 py-2 text-sm text-white">{toast}</p> : null}
+    <div className="grid gap-4 xl:grid-cols-[1fr_320px]"> <div className="space-y-3">{filtered.length === 0 ? <div className="rounded-2xl border bg-white p-6 text-sm">No encontramos apuntes con ese término.</div> : filtered.map((note) => <NoteCard key={note.id} note={note} onSave={() => { saveNote(note.id); pulseToast(note.viewerState.saved ? "Apunte quitado de guardados." : "Apunte guardado."); }} onShare={() => void shareNote(note.id)} onDownload={() => downloadNote(note.id)} onRate={(value) => { rateNote(note.id, value); pulseToast("Gracias por valorar este apunte."); }} />)}</div>
+      <NotesSidebar notes={notes} onCourseClick={(c) => setCourseFilter(c)} onGuide={() => pulseToast("Guía disponible próximamente.")} onNoteClick={(id) => router.push(`/app/apuntes/${id}`)} /></div>
+    <CreateNoteModal open={openModal} onClose={() => setOpenModal(false)} onSaveDraft={saveDraft} onPublish={(payload) => { if (!payload.title.trim()) return pulseToast("Agrega un título para publicar el apunte."); if (!payload.course) return pulseToast("Selecciona un curso o categoría."); addNote({ id: crypto.randomUUID(), title: payload.title, description: payload.description, course: payload.course, materialType: payload.materialType, authorName: "Tú", createdAt: new Date().toISOString(), status: "nuevo", tags: payload.tags, file: payload.file ? { ...payload.file, id: crypto.randomUUID() } : undefined, images: [], rating: { average: 0, count: 0 }, stats: { downloads: 0, saves: 0, comments: 0, views: 0 }, viewerState: { saved: false, isMine: true } }); setOpenModal(false); pulseToast("Apunte publicado."); }} />
+  </section>;
 }

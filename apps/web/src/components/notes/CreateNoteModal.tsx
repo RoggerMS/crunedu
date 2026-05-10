@@ -1,0 +1,11 @@
+"use client";
+import { useEffect, useState } from "react";
+import type { NoteDraftInput, NoteFileType } from "./types";
+import { NOTE_COURSES } from "./note-data";
+
+export function CreateNoteModal({ open, onClose, onPublish, onSaveDraft }: { open: boolean; onClose: () => void; onPublish: (payload: NoteDraftInput) => void; onSaveDraft: (payload: NoteDraftInput) => void }) {
+  const [form, setForm] = useState<NoteDraftInput>({ title: "", description: "", course: "", materialType: "Resumen", tags: [], visibility: "publico" });
+  useEffect(() => { const onEsc = (e: KeyboardEvent) => e.key === "Escape" && onClose(); if (open) window.addEventListener("keydown", onEsc); return () => window.removeEventListener("keydown", onEsc); }, [open, onClose]);
+  if (!open) return null;
+  return <div className="fixed inset-0 z-50 bg-black/40 p-4"><div className="mx-auto max-w-2xl rounded-2xl bg-white p-4"><h3 className="text-lg font-bold">Subir apunte</h3><input className="mt-2 w-full rounded-xl border p-2" placeholder="Ej: Resumen de Distribuciones de Probabilidad" value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} /><select className="mt-2 w-full rounded-xl border p-2" value={form.course} onChange={(e)=>setForm({...form,course:e.target.value})}><option value="">Selecciona curso</option>{NOTE_COURSES.map((c)=><option key={c}>{c}</option>)}</select><textarea className="mt-2 w-full rounded-xl border p-2" placeholder="Explica qué contiene el apunte..." value={form.description} onChange={(e)=>setForm({...form,description:e.target.value})} /><input type="file" className="mt-2 w-full" onChange={(e)=>{ const f = e.target.files?.[0]; if (!f) return; const fileType: NoteFileType = f.type.includes("pdf") ? "pdf" : f.type.includes("word") ? "word" : f.type.includes("presentation") ? "ppt" : f.type.includes("image") ? "image" : "zip"; setForm({ ...form, file: { name: f.name, size: f.size, type: f.type, fileType } }); }} /><div className="mt-3 flex justify-end gap-2"><button className="rounded-xl border px-3 py-1" onClick={onClose}>Cancelar</button><button className="rounded-xl border px-3 py-1" onClick={()=>onSaveDraft(form)}>Guardar borrador</button><button className="rounded-xl bg-indigo-600 px-3 py-1 text-white" onClick={()=>onPublish(form)}>Publicar apunte</button></div></div></div>;
+}
