@@ -4,7 +4,7 @@ import { useAccessToken } from "@/hooks/useAccessToken";
 import { useCommunities } from "@/hooks/useCommunities";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { mapApiError } from "@/lib/http-client";
+import { apiRequest, HttpClientError, mapApiError } from "@/lib/http-client";
 import { PageState, PrimaryButton } from "@/components/ui";
 import { CommunitiesHeader } from "@/components/communities/CommunitiesHeader";
 import { CommunityFilters } from "@/components/communities/CommunityFilters";
@@ -17,16 +17,17 @@ const PAGE_SIZE = 8;
 
 export default function Page() {
   const { communities, loading, error, reload } = useCommunities();
-  const { isAuthenticated } = useAccessToken();
+  const { accessToken, isAuthenticated, setAccessToken } = useAccessToken();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<CommunityFilter>("todas");
   const [sort, setSort] = useState<CommunitySort>("mas-recientes");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [joinedMap, setJoinedMap] = useState<Record<string | number, boolean>>({});
+  const [memberDelta, setMemberDelta] = useState<Record<string | number, number>>({});
   const [toast, setToast] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
 
-  const viewModels = useMemo(() => communities.map(toCommunityViewModel).map((item) => ({ ...item, isMember: joinedMap[item.id] ?? item.isMember })), [communities, joinedMap]);
+  const viewModels = useMemo(() => communities.map(toCommunityViewModel).map((item) => ({ ...item, isMember: joinedMap[item.id] ?? item.isMember, memberCount: item.memberCount + (memberDelta[item.id] ?? 0) })), [communities, joinedMap, memberDelta]);
 
   const filtered = useMemo(() => {
     let items = [...viewModels];
@@ -54,9 +55,29 @@ export default function Page() {
 
   const onCreateCommunity = () => router.push(`/app/comunidades/nueva${search ? `?name=${encodeURIComponent(search)}` : ""}`);
 
-  const onJoin = (community: CommunityViewModel) => {
-    setJoinedMap((prev) => ({ ...prev, [community.id]: true }));
-    showToast(community.isPrivate ? "Solicitud enviada correctamente." : "Te uniste a la comunidad.", "success");
+  const onJoin = async (community: CommunityViewModel, event?: React.MouseEvent<HTMLButtonElement>) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!isAuthenticated || !accessToken) {
+      showToast("Inicia sesión para unirte a una comunidad.", "info");
+      return;
+    }
+    try {
+      await apiRequest(`/communities/${community.id}/join`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setJoinedMap((prev) => ({ ...prev, [community.id]: true }));
+      setMemberDelta((prev) => ({ ...prev, [community.id]: (prev[community.id] ?? 0) + 1 }));
+      showToast(community.isPrivate ? "Solicitud enviada correctamente." : "Te uniste a la comunidad.", "success");
+    } catch (error) {
+      if (error instanceof HttpClientError && error.status === 401) {
+        setAccessToken("");
+        showToast("Tu sesión expiró. Inicia sesión nuevamente.", "error");
+        return;
+      }
+      showToast("No se pudo completar la acción. Inténtalo nuevamente.", "error");
+    }
   };
 
   if (loading) return <PageState type="loading" title="Cargando comunidades" description="Estamos preparando tus comunidades disponibles." />;
