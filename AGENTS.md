@@ -455,7 +455,7 @@ Keep this section updated when new execution plans are created in `docs/*.md`.
 | `docs/MOMENTOS_PLAN.md` | Momentos MVP (compose, image, boost toggle, future integration) | In progress | Alta: 2026-05-03. Implemented collapsable composer + image preview + empty feed + visual boost toggle in `apps/web/src/app/app/momentos/page.tsx`. |
 
 | `docs/STORE_CORE_PLAN.md` | Tienda núcleo (MVP gestionado por CrunEdu + base para marketplace futuro) | In progress | Alta: 2026-05-04. Define fases, endpoints y apertura futura para sellers externos sin habilitarlos aún. |
-| `docs/FEED_PUBLISHING_UI_PLAN.md` | Rediseño de experiencia de publicación en feed principal (`/app`) | In progress | Alta: 2026-05-10. Implementada primera versión visual del composer y accesos rápidos. |
+| `docs/FEED_PUBLISHING_UI_PLAN.md` | Rediseño de experiencia de publicación en feed principal (`/app`) | In progress | Alta: 2026-05-10. Iteración mock Fase 1/2 aplicada: chips de contexto, layout 2 columnas desktop y panel lateral de descubrimiento; pendiente toolbar rica/adjuntos documento. |
 
 Status values:
 - `Pending`: not started
