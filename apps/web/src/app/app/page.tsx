@@ -127,6 +127,11 @@ export default function AppPage() {
         <span className="rounded-full border border-slate-200 px-3 py-1">Siguiendo</span>
         <span className="rounded-full border border-slate-200 px-3 py-1">Todas las comunidades</span>
       </div>
+      <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-3 text-xs font-semibold text-slate-600">
+        <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700">Para ti</span>
+        <span className="rounded-full border border-slate-200 px-3 py-1">Siguiendo</span>
+        <span className="rounded-full border border-slate-200 px-3 py-1">Todas las comunidades</span>
+      </div>
     </Card>
     {isCreateFormOpen ? <Card className="space-y-4">
       <div className="flex items-center justify-between"><h2 className="text-lg font-black">¿Qué quieres compartir?</h2><button type="button" onClick={() => setIsCreateFormOpen(false)} className="text-sm font-semibold text-slate-500">Cerrar</button></div>
