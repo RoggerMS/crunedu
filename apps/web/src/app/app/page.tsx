@@ -1,164 +1,162 @@
 "use client";
 
-import type { Community, CreateFeedPostPayload, CreatePostImagePayload, PostComment } from "@crunedu/shared";
-import { ImagePlus, Loader2, MessageSquarePlus, NotebookPen, Sparkles } from "lucide-react";
+import type { Community, CreateFeedPostPayload, CreatePostImagePayload, FeedPost, PostComment } from "@crunedu/shared";
+import { AlignLeft, Bold, Bookmark, Code2, FileUp, ImagePlus, Italic, Link2, List, Loader2, MessageCircle, MessageSquarePlus, NotebookPen, Send, Sparkles, Underline, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { useCommunities } from "@/hooks/useCommunities";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { usePosts } from "@/hooks/usePosts";
-import { Card, EmptyState, FormField, Input, PrimaryButton, SecondaryButton, Select, StatusMessage, TextArea } from "@/components/ui";
+import { Card, EmptyState, FormField, Input, PrimaryButton, Select, StatusMessage, TextArea } from "@/components/ui";
 import { apiRequest, mapApiError } from "@/lib/http-client";
 
-function buildAuthorName(firstName: string | null, lastName: string | null, email: string) {
-  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
-  return fullName.length > 0 ? fullName : email;
-}
-
-function parseJwtPayload(token: string): { sub?: number } | null {
-  try {
-    const [, payloadBase64] = token.split(".");
-    if (!payloadBase64) return null;
-    const payloadJson = atob(payloadBase64.replace(/-/g, "+").replace(/_/g, "/"));
-    return JSON.parse(payloadJson) as { sub?: number };
-  } catch {
-    return null;
-  }
-}
-
-const publishOptions = [
-  { id: "publicacion", label: "Publicación", helper: "Comparte ideas o recursos con tu comunidad." },
-  { id: "apunte", label: "Apunte", helper: "Sube materiales de estudio en un flujo dedicado.", href: "/app/apuntes/nuevo" },
-  { id: "pregunta", label: "Pregunta", helper: "Haz una pregunta y recibe respuestas.", href: "/app/preguntas/nuevo" },
-  { id: "momento", label: "Momento", helper: "Comparte algo breve y memorable.", href: "/app/momentos" },
-  { id: "debate", label: "Debate", helper: "Inicia una conversación académica.", href: "/app/debates/crear" },
-  { id: "tramite", label: "Trámite", helper: "Comparte convocatorias o procesos.", href: "/app/tramites" },
+const typeOptions = [
+  { id: "publicacion", label: "Publicación", helper: "Comparte ideas, recursos o novedades.", icon: MessageSquarePlus },
+  { id: "apunte", label: "Apunte", helper: "Comparte apuntes y materiales de estudio.", icon: NotebookPen },
+  { id: "pregunta", label: "Pregunta", helper: "Haz una pregunta a tu comunidad.", icon: MessageCircle },
+  { id: "momento", label: "Momento memorable", helper: "Comparte experiencias que inspiran.", icon: Sparkles },
+  { id: "debate", label: "Debate", helper: "Inicia un debate sobre un tema académico.", icon: AlignLeft },
+  { id: "tramite", label: "Trámite", helper: "Comparte trámites y convocatorias.", icon: FileUp },
 ] as const;
+
+const quickActions = ["publicacion", "apunte", "pregunta", "momento", "debate", "tramite"] as const;
 
 export default function AppPage() {
   const { communities } = useCommunities();
-  const { posts, sections, loading, error, reload } = usePosts();
+  const { posts, loading, error, reload } = usePosts();
   const { accessToken, isAuthenticated } = useAccessToken();
-
+  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<(typeof typeOptions)[number]["id"]>("publicacion");
   const [content, setContent] = useState("");
   const [communityId, setCommunityId] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [visibility, setVisibility] = useState("todos");
+  const [tagInput, setTagInput] = useState("");
+  const [tags, setTags] = useState(["estadística", "parcial", "resumen"]);
   const [attachedImages, setAttachedImages] = useState<CreatePostImagePayload[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
-  const [selectedPublishOption, setSelectedPublishOption] = useState<(typeof publishOptions)[number]["id"]>("publicacion");
-  const [formError, setFormError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [commentsByPost, setCommentsByPost] = useState<Record<number, PostComment[]>>({});
-  const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
-  const [commentLoadingByPost, setCommentLoadingByPost] = useState<Record<number, boolean>>({});
-  const [commentErrorByPost, setCommentErrorByPost] = useState<Record<number, string | null>>({});
-  const [commentSuccessByPost, setCommentSuccessByPost] = useState<Record<number, string | null>>({});
-  const [activeCommentPostId, setActiveCommentPostId] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [localPosts, setLocalPosts] = useState<Array<{ id: number; title: string; content: string; author: string; meta: string; tags: string[] }>>([]);
 
-  const authenticatedUserId = useMemo(() => (accessToken ? (parseJwtPayload(accessToken)?.sub ?? null) : null), [accessToken]);
-  const canSubmit = useMemo(() => content.trim() && communityId.trim() && isAuthenticated, [content, communityId, isAuthenticated]);
+  const simulatedPosts = useMemo(() => [
+    { id: 10001, title: "Resumen de Distribuciones de Probabilidad", content: "He preparado este resumen con ejemplos resueltos para el parcial.", author: "Kevin Rojas", meta: "Estadística Aplicada · hace 2 h", tags: ["probabilidad", "resumen"] },
+    { id: 10002, title: "Método Simplex – Ejemplo paso a paso", content: "Comparto el procedimiento que usamos en clase para maximización.", author: "Diego Morales", meta: "Investigación de Operaciones · hace 4 h", tags: ["simplex", "apunte"] },
+    { id: 10003, title: "¿Cómo resolver este límite cuando x tiende a 0?", content: "No entiendo el paso de factorización, ¿alguien puede explicarlo?", author: "Valeria Torres", meta: "Cálculo I · hace 5 h", tags: ["pregunta", "cálculo"] },
+    { id: 10004, title: "Debate: ¿La IA mejora realmente el aprendizaje universitario?", content: "¿Nos ayuda a aprender mejor o solo a resolver más rápido?", author: "Ana López", meta: "Debates académicos · hace 6 h", tags: ["debate", "ia"] },
+    { id: 10005, title: "Trámite destacado: Solicitud de constancia de estudios 2026", content: "Dejo pasos y requisitos actualizados para evitar observaciones.", author: "Centro de Ayuda CrunEdu", meta: "Trámites · hace 8 h", tags: ["trámite", "constancia"] },
+  ], []);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) { /* unchanged */
-    event.preventDefault();
-    if (!isAuthenticated) return setFormError("Inicia sesión para publicar.");
-    setSubmitting(true); setFormError(null); setSuccessMessage(null);
-    const payload: CreateFeedPostPayload = { content: content.trim(), communityId: Number(communityId), images: attachedImages };
-    try {
-      await apiRequest("/posts", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(payload) });
-      setContent(""); setCommunityId(""); setAttachedImages([]); setSuccessMessage("Publicación creada correctamente."); await reload();
-      setIsCreateFormOpen(false);
-    } catch (err) { setFormError(err instanceof Error ? mapApiError(err, "No se pudo publicar. Verifica tus datos.") : "Ocurrió un error inesperado."); }
-    finally { setSubmitting(false); }
+  const canSubmit = isAuthenticated && content.trim().length > 0 && communityId;
+
+  function openComposer(type: (typeof typeOptions)[number]["id"]) {
+    setSelectedType(type);
+    setIsCreateFormOpen(true);
+  }
+
+  function addTag() {
+    const clean = tagInput.trim().toLowerCase();
+    if (!clean || tags.includes(clean)) return;
+    setTags((prev) => [...prev, clean]);
+    setTagInput("");
   }
 
   async function handleAttachImage(file: File | null) {
     if (!file || !accessToken) return;
     setUploadingImage(true);
     try {
-      const formData = new FormData(); formData.append("image", file);
+      const formData = new FormData();
+      formData.append("image", file);
       const uploaded = await apiRequest<CreatePostImagePayload>("/posts/images", { method: "POST", headers: { Authorization: `Bearer ${accessToken}` }, body: formData });
       setAttachedImages((prev) => [...prev, uploaded].slice(0, 4));
-    } catch (err) { setFormError(mapApiError(err, "No se pudo subir la imagen. Usa JPG, PNG o WEBP de hasta 3MB.")); }
-    finally { setUploadingImage(false); }
-  }
-
-  async function loadComments(postId: number) { /* unchanged */
-    setCommentLoadingByPost((prev) => ({ ...prev, [postId]: true }));
-    setCommentErrorByPost((prev) => ({ ...prev, [postId]: null }));
-    try {
-      const comments = await apiRequest<PostComment[]>(`/posts/${postId}/comments`);
-      setCommentsByPost((prev) => ({ ...prev, [postId]: comments }));
+    } catch (err) {
+      setToast(mapApiError(err, "No se pudo subir la imagen."));
+    } finally {
+      setUploadingImage(false);
     }
-    catch (err) { setCommentErrorByPost((prev) => ({ ...prev, [postId]: mapApiError(err, "No se pudieron cargar los comentarios.") })); }
-    finally { setCommentLoadingByPost((prev) => ({ ...prev, [postId]: false })); }
   }
 
-  async function handleCreateComment(postId: number) { /* unchanged */
-    if (!isAuthenticated) return setCommentErrorByPost((prev) => ({ ...prev, [postId]: "Inicia sesión para comentar." }));
-    const contentValue = commentInputs[postId]?.trim() ?? "";
-    if (!contentValue) return setCommentErrorByPost((prev) => ({ ...prev, [postId]: "Escribe un comentario antes de publicar." }));
-    setCommentLoadingByPost((prev) => ({ ...prev, [postId]: true }));
+  function handleSaveDraft() {
+    setIsCreateFormOpen(false);
+    setToast("Borrador guardado correctamente.");
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canSubmit) return;
+    setSubmitting(true);
+    const payload: CreateFeedPostPayload = { content: content.trim(), communityId: Number(communityId), images: attachedImages };
     try {
-      await apiRequest(`/posts/${postId}/comments`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ content: contentValue }) });
-      setCommentInputs((prev) => ({ ...prev, [postId]: "" }));
-      setCommentSuccessByPost((prev) => ({ ...prev, [postId]: "Comentario publicado correctamente." }));
-      await Promise.all([loadComments(postId), reload()]);
-    } catch (err) { setCommentErrorByPost((prev) => ({ ...prev, [postId]: mapApiError(err, "No se pudo publicar el comentario.") })); }
-    finally { setCommentLoadingByPost((prev) => ({ ...prev, [postId]: false })); }
+      await apiRequest("/posts", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(payload) });
+      setLocalPosts((prev) => [{ id: Date.now(), title: `${typeOptions.find((it) => it.id === selectedType)?.label}: nueva publicación`, content: content.trim(), author: "Tú", meta: "Tu comunidad · ahora", tags }, ...prev]);
+      setContent("");
+      setAttachedImages([]);
+      setCommunityId("");
+      setIsCreateFormOpen(false);
+      setToast("¡Publicación realizada correctamente!");
+      await reload();
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  return <div className="space-y-5">
-    <Card className="space-y-4">
-      <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Feed principal</h1>
-      <p className="text-sm text-slate-600">Publica apuntes, preguntas y avances desde un flujo más ordenado.</p>
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-        <button type="button" onClick={() => setIsCreateFormOpen(true)} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-500 hover:border-indigo-300">¿Qué quieres compartir con tu comunidad?</button>
+  return <div className="relative space-y-4">
+    {toast ? <div className="fixed bottom-5 right-5 z-50 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-xl">{toast}</div> : null}
+    <Card className="space-y-3 p-4">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 font-bold text-indigo-700">CR</div>
+        <button onClick={() => openComposer("publicacion")} className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-left text-sm text-slate-500 hover:border-indigo-300">¿Qué quieres compartir con tu comunidad?</button>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <PrimaryButton type="button" onClick={() => setIsCreateFormOpen(true)} className="w-full justify-center"><MessageSquarePlus size={16} /> Publicar</PrimaryButton>
-        <Link href="/app/apuntes/nuevo" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"><NotebookPen size={16} /> Crear apunte</Link>
-        <Link href="/app/preguntas/nuevo" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Publicar pregunta</Link>
-        <Link href="/app/debates/crear" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"><Sparkles size={16} /> Iniciar debate</Link>
-      </div>
-      <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-3 text-xs font-semibold text-slate-600">
-        <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700">Para ti</span>
-        <span className="rounded-full border border-slate-200 px-3 py-1">Siguiendo</span>
-        <span className="rounded-full border border-slate-200 px-3 py-1">Todas las comunidades</span>
-      </div>
-      <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-3 text-xs font-semibold text-slate-600">
-        <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700">Para ti</span>
-        <span className="rounded-full border border-slate-200 px-3 py-1">Siguiendo</span>
-        <span className="rounded-full border border-slate-200 px-3 py-1">Todas las comunidades</span>
+      <div className="flex flex-wrap gap-2">{quickActions.map((action) => {
+        const item = typeOptions.find((it) => it.id === action)!;
+        const Icon = item.icon;
+        const primary = action === "publicacion";
+        return <button key={action} onClick={() => openComposer(action)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${primary ? "bg-indigo-600 text-white" : "border border-slate-200 bg-white text-slate-700 hover:border-indigo-200"}`}><Icon size={14} />{item.label}</button>;
+      })}</div>
+      <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-xs font-semibold">
+        <div className="flex gap-2"><span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-700">Para ti</span><span className="rounded-full border px-3 py-1">Siguiendo</span><span className="rounded-full border px-3 py-1">Todas las comunidades</span></div>
+        <button className="rounded-full border px-3 py-1">Más recientes</button>
       </div>
     </Card>
-    {isCreateFormOpen ? <Card className="space-y-4">
-      <div className="flex items-center justify-between"><h2 className="text-lg font-black">¿Qué quieres compartir?</h2><button type="button" onClick={() => setIsCreateFormOpen(false)} className="text-sm font-semibold text-slate-500">Cerrar</button></div>
-      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">{publishOptions.map((option) => option.href ? <Link key={option.id} href={option.href} className="rounded-xl border border-slate-200 p-3 text-sm hover:border-indigo-300"><p className="font-bold text-slate-800">{option.label}</p><p className="mt-1 text-xs text-slate-500">{option.helper}</p></Link> : <button key={option.id} type="button" onClick={() => setSelectedPublishOption(option.id)} className={`rounded-xl border p-3 text-left text-sm ${selectedPublishOption === option.id ? "border-indigo-500 bg-indigo-50" : "border-slate-200"}`}><p className="font-bold text-slate-800">{option.label}</p><p className="mt-1 text-xs text-slate-500">{option.helper}</p></button>)}</div>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <FormField><p className="text-sm font-semibold text-slate-700">Escribe tu publicación</p><TextArea value={content} onChange={(event) => setContent(event.target.value)} rows={4} placeholder="Comparte algo útil con tu comunidad..." required /></FormField>
-        <FormField><p className="text-sm font-semibold text-slate-700">Selecciona una comunidad</p><Select value={communityId} onChange={(event) => setCommunityId(event.target.value)} required><option value="">Selecciona una comunidad</option>{communities.map((community: Community) => <option key={community.id} value={community.id}>{community.name}</option>)}</Select></FormField>
-        <FormField><p className="text-sm font-semibold text-slate-700">Agregar imágenes (opcional)</p><Input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void handleAttachImage(event.target.files?.[0] ?? null)} disabled={!isAuthenticated || uploadingImage || attachedImages.length >= 4} /><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">{attachedImages.map((image) => <img key={image.storageKey} src={image.imageUrl} alt="Vista previa" className="h-20 w-full rounded-xl object-cover" />)}</div><p className="mt-1 text-xs text-slate-500">Máximo 4 imágenes.</p></FormField>
-        {formError ? <StatusMessage type="error">{formError}</StatusMessage> : null}
-        {successMessage ? <StatusMessage type="success">{successMessage}</StatusMessage> : null}
-        <div className="flex gap-2"><SecondaryButton type="button" onClick={() => setIsCreateFormOpen(false)}>Cancelar</SecondaryButton><PrimaryButton type="submit" disabled={!canSubmit || submitting}>{submitting ? <Loader2 className="animate-spin" size={16} /> : <ImagePlus size={16} />} Publicar</PrimaryButton></div>
-      </form>
-    </Card> : null}
-    <div className="mt-6 grid gap-4 xl:grid-cols-12">{loading ? <StatusMessage type="loading">Cargando publicaciones...</StatusMessage> : null}{error ? <StatusMessage type="error">{error}</StatusMessage> : null}
-      <div className="space-y-4 xl:col-span-8">
-        {!loading && !error && posts.length === 0 ? <EmptyState title="No hay publicaciones aún" description="Comienza creando tu primera publicación." action={<PrimaryButton onClick={() => setIsCreateFormOpen(true)}>Crear primera publicación</PrimaryButton>} /> : null}
-        {!loading && !error ? sections.map((section) => <div key={section.key} className="space-y-4"><h3 className="text-lg font-bold text-slate-800">{section.title}</h3>{section.items.map((post) => <article key={post.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft"><p className="text-xs font-bold uppercase tracking-wide text-indigo-600">{post.community?.name ?? "General"} · {post.commentsCount} comentarios</p><p className="mt-2 text-slate-600">{post.content}</p>{post.images?.length ? <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{post.images.map((image) => <Image key={image.id} src={image.imageUrl} alt="Imagen de publicación" width={320} height={200} className="h-32 w-full rounded-xl object-cover" />)}</div> : null}<div className="mt-4 text-sm font-semibold text-slate-500">Autor: {buildAuthorName(post.author.firstName, post.author.lastName, post.author.email)} · {new Date(post.createdAt).toLocaleString("es-PE")}</div><div className="mt-3 rounded-2xl border border-slate-200 p-4"><button type="button" onClick={async () => { if (activeCommentPostId === post.id) return setActiveCommentPostId(null); setActiveCommentPostId(post.id); if (!commentsByPost[post.id]) await loadComments(post.id); }} className="text-sm font-bold text-indigo-600">{activeCommentPostId === post.id ? "Cerrar comentarios" : "Comentar"}</button>{activeCommentPostId === post.id ? <div className="mt-3 space-y-2">{(commentsByPost[post.id] ?? []).map((comment) => <div key={comment.id} className="rounded-xl bg-slate-50 p-3"><p className="text-sm text-slate-700">{comment.content}</p></div>)}<textarea rows={2} value={commentInputs[post.id] ?? ""} onChange={(event) => setCommentInputs((prev) => ({ ...prev, [post.id]: event.target.value }))} className="w-full rounded-xl border border-slate-300 px-3 py-2" placeholder="Escribe un comentario" /><PrimaryButton type="button" onClick={() => void handleCreateComment(post.id)} disabled={commentLoadingByPost[post.id]}>Comentar</PrimaryButton>{commentErrorByPost[post.id] ? <p className="text-sm text-red-600">{commentErrorByPost[post.id]}</p> : null}{commentSuccessByPost[post.id] ? <p className="text-sm text-emerald-600">{commentSuccessByPost[post.id]}</p> : null}</div> : null}</div>{isAuthenticated && authenticatedUserId === post.author.id ? <p className="mt-3 text-xs text-slate-500">La edición y eliminación siguen disponibles desde API; UI compacta aplicada.</p> : null}</article>)}</div>) : null}
+
+    {isCreateFormOpen ? <div className="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-sm p-4 pt-12">
+      <div className="mx-auto w-full max-w-6xl rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-black">¿Qué quieres compartir?</h2><button onClick={() => setIsCreateFormOpen(false)} className="rounded-lg p-1 text-slate-500 hover:bg-slate-100"><X size={18} /></button></div>
+        <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">{typeOptions.map((item) => { const Icon = item.icon; const active = selectedType === item.id; return <button key={item.id} onClick={() => setSelectedType(item.id)} className={`rounded-xl border p-3 text-left ${active ? "border-indigo-500 bg-indigo-50" : "border-slate-200"}`}><Icon size={16} className={active ? "text-indigo-600" : "text-slate-500"} /><p className="mt-1 text-sm font-bold">{item.label}</p><p className="text-xs text-slate-500">{item.helper}</p></button>; })}</div>
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-4">
+              <Card className="space-y-2 p-3"><p className="text-xs font-bold">Importar contenido (opcional)</p><label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-slate-300 px-4 py-4 text-sm font-semibold text-slate-600 hover:border-indigo-300">Subir archivo o arrastra aquí<Input type="file" className="hidden" /></label><p className="text-xs text-slate-500">PDF, DOCX, PPTX, imágenes o ZIP (máx. 25 MB)</p></Card>
+              <Card className="space-y-2 p-3"><p className="text-xs font-bold">Agregar imágenes</p><div className="grid grid-cols-4 gap-2">{attachedImages.map((image) => <Image key={image.storageKey} src={image.imageUrl} width={80} height={70} alt="preview" className="h-16 w-full rounded-lg object-cover" />)}<label className="flex h-16 cursor-pointer items-center justify-center rounded-lg border border-dashed border-slate-300 text-slate-500"><ImagePlus size={14} /><Input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void handleAttachImage(event.target.files?.[0] ?? null)} disabled={uploadingImage} /></label></div></Card>
+            </div>
+            <div className="space-y-3">
+              <p className="text-sm font-semibold">Escribe tu publicación</p>
+              <div className="flex flex-wrap gap-1 rounded-t-xl border border-b-0 border-slate-200 bg-slate-50 p-2 text-slate-600"><button type="button"><Bold size={14} /></button><button type="button"><Italic size={14} /></button><button type="button"><Underline size={14} /></button><button type="button"><Link2 size={14} /></button><button type="button"><List size={14} /></button><button type="button"><AlignLeft size={14} /></button><button type="button"><ImagePlus size={14} /></button><button type="button"><Code2 size={14} /></button></div>
+              <TextArea value={content} onChange={(event) => setContent(event.target.value)} rows={10} placeholder="Comparte algo con tu comunidad..." className="rounded-t-none" required />
+            </div>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <FormField><p className="mb-1 text-xs font-bold">Visibilidad</p><Select value={visibility} onChange={(event) => setVisibility(event.target.value)}><option value="todos">Todos</option><option value="comunidad">Solo mi comunidad</option><option value="privado">Privado</option></Select></FormField>
+            <FormField><p className="mb-1 text-xs font-bold">Comunidad</p><Select value={communityId} onChange={(event) => setCommunityId(event.target.value)} required><option value="">Selecciona una comunidad</option>{communities.map((community: Community) => <option key={community.id} value={community.id}>{community.name}</option>)}</Select></FormField>
+            <FormField><p className="mb-1 text-xs font-bold">Etiquetas</p><div className="rounded-xl border border-slate-200 p-2"><div className="mb-2 flex flex-wrap gap-1">{tags.map((tag) => <span key={tag} className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700">{tag}</span>)}</div><input value={tagInput} onChange={(event) => setTagInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addTag(); } }} placeholder="Agregar etiqueta" className="w-full text-sm outline-none" /></div></FormField>
+          </div>
+          <div className="flex justify-end gap-2"><button type="button" onClick={handleSaveDraft} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Guardar borrador</button><PrimaryButton type="submit" disabled={!canSubmit || submitting}>{submitting ? <Loader2 className="animate-spin" size={14} /> : <Send size={14} />} Publicar</PrimaryButton></div>
+        </form>
       </div>
-      <aside className="hidden space-y-4 xl:col-span-4 xl:block">
-        <Card className="space-y-3">
-          <h3 className="text-sm font-black text-slate-800">Comunidades recomendadas</h3>
-          {communities.slice(0, 4).map((community) => <div key={community.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2"><p className="text-sm font-semibold text-slate-700">{community.name}</p><Link href={`/app/comunidades/${community.id}`} className="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">Unirse</Link></div>)}
-        </Card>
-        <Card className="space-y-3">
-          <h3 className="text-sm font-black text-slate-800">Temas en tendencia</h3>
-          <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">#ParcialEstadística · #SesiónDeTiempo · #Cachimbos</p>
-        </Card>
+    </div> : null}
+
+    {loading ? <StatusMessage type="loading">Cargando publicaciones...</StatusMessage> : null}
+    {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
+    <div className="grid gap-4 xl:grid-cols-12">
+      <section className="space-y-3 xl:col-span-8">
+        {localPosts.map((post) => <Card key={post.id} className="space-y-3 p-4"><div className="flex items-center gap-2"><div className="h-8 w-8 rounded-full bg-indigo-100" /><div><p className="text-sm font-bold">{post.author}</p><p className="text-xs text-slate-500">{post.meta}</p></div></div><h3 className="text-base font-black text-slate-800">{post.title}</h3><p className="text-sm text-slate-600">{post.content}</p><div className="flex flex-wrap gap-1">{post.tags.map((tag) => <span key={tag} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">#{tag}</span>)}</div><div className="flex gap-4 text-xs font-semibold text-slate-500"><span>👍 12</span><span>💬 4</span><span>🔖 Guardar</span><span>↗ Compartir</span></div></Card>)}
+        {simulatedPosts.map((post) => <Card key={post.id} className="space-y-3 p-4"><div className="flex items-center gap-2"><div className="h-8 w-8 rounded-full bg-indigo-100" /><div><p className="text-sm font-bold">{post.author}</p><p className="text-xs text-slate-500">{post.meta}</p></div></div><h3 className="text-base font-black text-slate-800">{post.title}</h3><p className="text-sm text-slate-600">{post.content}</p><div className="flex flex-wrap gap-1">{post.tags.map((tag) => <span key={tag} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">#{tag}</span>)}</div><div className="flex gap-4 text-xs font-semibold text-slate-500"><span>👍 128</span><span>💬 24</span><span><Bookmark size={12} className="inline" /> Guardar</span><span>↗ Compartir</span></div></Card>)}
+        {!loading && !error && posts.length === 0 ? <EmptyState title="No hay publicaciones aún" description="Comienza creando tu primera publicación." action={<PrimaryButton onClick={() => openComposer("publicacion")}>Crear primera publicación</PrimaryButton>} /> : null}
+      </section>
+      <aside className="space-y-3 xl:col-span-4">
+        <Card className="space-y-2 p-4"><h3 className="text-sm font-black">Comunidades recomendadas</h3>{communities.slice(0, 4).map((community) => <div key={community.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2"><p className="text-sm">{community.name}</p><button className="rounded-full border px-2 py-1 text-xs">Unirse</button></div>)}</Card>
+        <Card className="space-y-2 p-4"><h3 className="text-sm font-black">Temas en tendencia</h3><p className="text-xs text-slate-600">#ParcialEstadística · #MétodoSimplex · #Constancias2026</p></Card>
+        <Card className="space-y-2 p-4"><h3 className="text-sm font-black">Actividad reciente</h3><p className="text-xs text-slate-600">Ana respondió una pregunta de Cálculo · hace 15 min</p><p className="text-xs text-slate-600">Nuevo apunte en Física General · hace 40 min</p></Card>
       </aside>
     </div>
   </div>;
