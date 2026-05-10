@@ -1,46 +1,109 @@
 import { AlignLeft, FileUp, ImagePlus, MessageCircle, MessageSquarePlus, NotebookPen, Sparkles, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
 import { AttachmentPreview } from "./AttachmentPreview";
 import type { CommunityLite, CreatePostSubmitPayload, LocalAttachmentFile, PostType } from "./types";
 
+const suggestedTags = ["recurso", "consejo", "comunidad", "universidad"];
+
 const config = {
-  publicacion: { label: "Publicación", requiresTitle: false, content: "Comparte una idea, experiencia o recurso con tu comunidad...", title: "", submit: "Publicar", suggestions: ["recurso", "consejo", "comunidad", "universidad"] },
-  apunte: { label: "Apunte", requiresTitle: true, content: "Describe brevemente qué contiene tu apunte y para quién puede ser útil...", title: "Título del apunte", submit: "Publicar apunte", suggestions: ["estadística", "resumen", "parcial", "cálculo", "física"] },
-  pregunta: { label: "Pregunta", requiresTitle: true, content: "Agrega contexto, qué intentaste y en qué parte tienes dificultad...", title: "Escribe tu pregunta", submit: "Publicar pregunta", suggestions: ["duda", "ejercicio", "cálculo", "programación", "tarea"] },
-  momento: { label: "Momento", requiresTitle: false, content: "Cuenta qué ocurrió y por qué fue importante...", title: "Título del momento", submit: "Compartir momento", suggestions: ["campus", "exposición", "logro", "experiencia"] },
-  debate: { label: "Debate", requiresTitle: true, content: "Presenta el contexto y la postura inicial para comenzar la discusión...", title: "Tema del debate", submit: "Crear debate", suggestions: ["debate", "opinión", "clase", "argumento", "académico"] },
-  tramite: { label: "Trámite", requiresTitle: true, content: "Explica requisitos, fechas, pasos o información útil...", title: "Nombre del trámite o aviso", submit: "Publicar trámite", suggestions: ["constancia", "matrícula", "beca", "solicitud", "universidad"] },
+  publicacion: { label: "Publicación", submit: "Publicar", requiresTitle: false, titleLabel: "Título", placeholder: "Comparte una idea, recurso o experiencia con tu comunidad...", subtitle: "Comparte contenido útil para tu comunidad." },
+  apunte: { label: "Apunte", submit: "Publicar apunte", requiresTitle: true, titleLabel: "Título del apunte", placeholder: "Describe qué contiene tu apunte y cómo puede ayudar.", subtitle: "Comparte material académico con orden y contexto." },
+  pregunta: { label: "Pregunta", submit: "Publicar pregunta", requiresTitle: true, titleLabel: "¿Cuál es tu duda?", placeholder: "Agrega contexto: qué intentaste, en qué parte te trabaste y qué necesitas entender.", subtitle: "Haz preguntas claras para recibir mejores respuestas." },
+  momento: { label: "Momento", submit: "Publicar momento", requiresTitle: false, titleLabel: "Título (opcional)", placeholder: "Comparte una experiencia, logro, exposición o recuerdo universitario.", subtitle: "Muestra experiencias universitarias valiosas." },
+  debate: { label: "Debate", submit: "Crear debate", requiresTitle: true, titleLabel: "Tema del debate", placeholder: "Presenta el tema, el contexto y la pregunta que quieres debatir.", subtitle: "Abre discusión con postura y argumentos." },
+  tramite: { label: "Trámite", submit: "Publicar trámite", requiresTitle: true, titleLabel: "Título del trámite", placeholder: "Explica requisitos, pasos, fechas, oficina responsable o enlace útil.", subtitle: "Ayuda con procesos universitarios importantes." },
 };
 
-const types: Array<{ id: PostType; icon: typeof MessageSquarePlus; helper: string }> = [
-  { id: "publicacion", icon: MessageSquarePlus, helper: "Ideas y recursos" }, { id: "apunte", icon: NotebookPen, helper: "Material de estudio" }, { id: "pregunta", icon: MessageCircle, helper: "Dudas y ayuda" }, { id: "momento", icon: Sparkles, helper: "Vida universitaria" }, { id: "debate", icon: AlignLeft, helper: "Discusión académica" }, { id: "tramite", icon: FileUp, helper: "Información útil" },
+const types: Array<{ id: PostType; icon: typeof MessageSquarePlus }> = [
+  { id: "publicacion", icon: MessageSquarePlus }, { id: "apunte", icon: NotebookPen }, { id: "pregunta", icon: MessageCircle }, { id: "momento", icon: Sparkles }, { id: "debate", icon: AlignLeft }, { id: "tramite", icon: FileUp },
 ];
 
-export function CreatePostModal(props: { open: boolean; initialType: PostType; communities: CommunityLite[]; isAuthenticated: boolean; onClose: () => void; onSaveDraft: (data: CreatePostSubmitPayload) => void; onSubmit: (data: CreatePostSubmitPayload) => void; onToast: (message: string, type: "success" | "error" | "info") => void; }) {
+export function CreatePostModal(props: { open: boolean; initialType: PostType; communities: CommunityLite[]; isAuthenticated: boolean; onClose: () => void; onSaveDraft: (data: CreatePostSubmitPayload) => void; onSubmit: (data: CreatePostSubmitPayload) => void; onToast: (message: string, type: "success" | "error" | "info") => void }) {
   const [type, setType] = useState<PostType>(props.initialType);
-  const [title, setTitle] = useState(""); const [content, setContent] = useState(""); const [visibility, setVisibility] = useState<"todos" | "comunidad">("todos"); const [communityId, setCommunityId] = useState("");
-  const [tagInput, setTagInput] = useState(""); const [tags, setTags] = useState<string[]>([]); const [files, setFiles] = useState<LocalAttachmentFile[]>([]); const [images, setImages] = useState<Array<{ id: string; url: string }>>([]);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [courseName, setCourseName] = useState("");
+  const [stance, setStance] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [visibility, setVisibility] = useState<"todos" | "comunidad">("todos");
+  const [communityId, setCommunityId] = useState("");
+  const [tagInput, setTagInput] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [files, setFiles] = useState<LocalAttachmentFile[]>([]);
+  const [images, setImages] = useState<Array<{ id: string; url: string }>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [hasTriedSubmit, setHasTriedSubmit] = useState(false);
+  const [touched, setTouched] = useState({ title: false, content: false });
+
+  useEffect(() => setType(props.initialType), [props.initialType, props.open]);
   const conf = config[type];
-  const canSubmit = props.isAuthenticated && (content.trim() || files.length || images.length) && (!conf.requiresTitle || title.trim()) && (visibility !== "comunidad" || communityId);
   const hasContent = Boolean(title.trim() || content.trim() || files.length || images.length || tags.length);
-  const validationText = useMemo(() => { if (!props.isAuthenticated) return "Inicia sesión para publicar contenido."; if (conf.requiresTitle && !title.trim()) return "Agrega un título para este tipo de publicación."; if (!content.trim() && !files.length && !images.length) return "Escribe un contenido antes de publicar."; if (visibility === "comunidad" && !communityId) return "Selecciona una comunidad o cambia la visibilidad a Todos."; return null; }, [props.isAuthenticated, conf.requiresTitle, title, content, files.length, images.length, visibility, communityId]);
+  const canSubmit = props.isAuthenticated && (content.trim() || files.length || images.length) && (!conf.requiresTitle || title.trim()) && (visibility !== "comunidad" || communityId);
+  const showValidation = hasTriedSubmit || touched.title || touched.content;
+  const validationText = useMemo(() => {
+    if (!showValidation) return null;
+    if (!props.isAuthenticated) return "Inicia sesión para publicar contenido.";
+    if (conf.requiresTitle && !title.trim()) return "Agrega un título para este tipo de publicación.";
+    if (!content.trim() && !files.length && !images.length) return "Agrega contenido para publicar.";
+    if (visibility === "comunidad" && !communityId) return "Selecciona una comunidad o cambia la visibilidad.";
+    return null;
+  }, [showValidation, props.isAuthenticated, conf.requiresTitle, title, content, files.length, images.length, visibility, communityId]);
+
+  const addTag = (raw: string) => {
+    const clean = raw.trim().toLowerCase().replace(/\s+/g, " ");
+    if (!clean) return;
+    if (clean.length > 24) return setError("Cada etiqueta debe tener máximo 24 caracteres.");
+    if (tags.includes(clean)) return;
+    if (tags.length >= 8) return setError("Solo puedes agregar hasta 8 etiquetas.");
+    setTags((prev) => [...prev, clean]);
+    setTagInput("");
+    setError(null);
+  };
+
   if (!props.open) return null;
-  const addTag = (value: string) => { const clean = value.trim().toLowerCase(); if (!clean || clean.length > 20 || tags.includes(clean)) return; if (tags.length >= 8) return setError("Solo puedes agregar hasta 8 etiquetas."); setTags((prev) => [...prev, clean]); setTagInput(""); setError(null); };
-  return <div className="fixed inset-0 z-40 bg-slate-950/35 p-4 backdrop-blur-sm" onClick={() => { if (!hasContent || confirm("¿Cerrar sin guardar?")) props.onClose(); }}>
-    <div role="dialog" aria-modal className="mx-auto mt-4 max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
-      <div className="flex items-start justify-between"><div><h2 className="text-xl font-black">Crear publicación</h2><p className="text-sm text-slate-500">{conf.label}: comparte contenido útil para tu comunidad.</p></div><button aria-label="Cerrar" onClick={props.onClose}><X /></button></div>
-      <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-6">{types.map((item) => { const Icon = item.icon; const active = item.id === type; return <button key={item.id} onClick={() => setType(item.id)} className={`rounded-xl border p-2 text-left ${active ? "border-indigo-500 bg-indigo-50" : "border-slate-200"}`}><Icon size={15} /><p className="text-xs font-semibold">{config[item.id].label}</p><p className="text-[11px] text-slate-500">{item.helper}</p></button>; })}</div>
-      <div className="mt-4 grid gap-4 lg:grid-cols-3"><div className="space-y-3 lg:col-span-2">{(conf.requiresTitle || type === "momento") ? <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={conf.title} className="w-full rounded-xl border px-3 py-2 text-sm" /> : null}<textarea value={content} onChange={(e) => setContent(e.target.value)} rows={7} placeholder={conf.content} className="w-full rounded-xl border px-3 py-2 text-sm" />
-      <div className="flex gap-2"><label className="rounded-xl border px-3 py-2 text-xs font-semibold">Adjuntar archivo<input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.zip" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; if (file.size > 25 * 1024 * 1024) return setError("El archivo supera el tamaño máximo permitido."); setFiles((p) => [...p, { id: crypto.randomUUID(), name: file.name, size: file.size, type: file.type, file }]); }} /></label>
-      <label className="rounded-xl border px-3 py-2 text-xs font-semibold">Adjuntar imagen<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; if (images.length >= 4) return setError("Máximo 4 imágenes."); setImages((p) => [...p, { id: crypto.randomUUID(), url: URL.createObjectURL(file) }]); }} /></label></div>
-      <AttachmentPreview files={files} images={images} onRemoveFile={(id) => setFiles((p) => p.filter((f) => f.id !== id))} onRemoveImage={(id) => setImages((p) => p.filter((img) => img.id !== id))} /></div>
-      <div className="space-y-3"><select value={visibility} onChange={(e) => setVisibility(e.target.value as "todos" | "comunidad")} className="w-full rounded-xl border px-3 py-2 text-sm"><option value="todos">Todos</option><option value="comunidad">Solo mi comunidad</option></select>
-      <select value={communityId} onChange={(e) => setCommunityId(e.target.value)} className="w-full rounded-xl border px-3 py-2 text-sm"><option value="">Sin comunidad específica</option>{props.communities.map((community) => <option key={community.id} value={String(community.id)}>{community.name}</option>)}</select>
-      <div className="rounded-xl border p-2"><div className="mb-2 flex flex-wrap gap-1">{tags.map((tag) => <button key={tag} onClick={() => setTags((prev) => prev.filter((it) => it !== tag))} className="rounded-full bg-indigo-100 px-2 py-1 text-xs text-indigo-700">#{tag} ×</button>)}</div><div className="mb-2 flex flex-wrap gap-1">{conf.suggestions.map((tag) => <button key={tag} onClick={() => addTag(tag)} className="rounded-full border px-2 py-1 text-xs">{tag}</button>)}</div><input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(tagInput); } }} placeholder="Agregar etiqueta" className="w-full text-sm outline-none" /></div></div></div>
-      {error ? <p className="mt-2 text-xs text-rose-600">{error}</p> : null}
-      {validationText ? <p className="mt-2 text-xs text-slate-500">{validationText}</p> : null}
-      <div className="mt-4 flex justify-end gap-2"><button onClick={props.onClose} className="rounded-xl border px-4 py-2 text-sm">Cancelar</button><button onClick={() => { if (!hasContent) return props.onToast("Agrega contenido para guardar borrador.", "info"); props.onSaveDraft({ type, title, content, visibility, communityId, tags, attachedFiles: files, attachedImages: images }); props.onClose(); }} className="rounded-xl border px-4 py-2 text-sm">Guardar borrador</button><button disabled={!canSubmit} onClick={() => props.onSubmit({ type, title, content, visibility, communityId, tags, attachedFiles: files, attachedImages: images })} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300">{conf.submit}</button></div>
+
+  return <div className="fixed inset-0 z-50 bg-slate-950/45 p-3 backdrop-blur-sm" onClick={props.onClose}>
+    <div role="dialog" aria-modal className="mx-auto mt-3 max-h-[93vh] w-full max-w-[1000px] overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-start justify-between"><div><h2 className="text-xl font-black">Crear publicación</h2><p className="text-sm text-slate-500">{conf.subtitle}</p></div><button aria-label="Cerrar" className="rounded-lg p-1 hover:bg-slate-100" onClick={props.onClose}><X size={18} /></button></div>
+      <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">{types.map(({ id, icon: Icon }) => <button key={id} onClick={() => setType(id)} className={`rounded-xl border px-2 py-2 text-left transition ${type === id ? "border-indigo-500 bg-indigo-50" : "border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/40"}`}><Icon size={14} /><p className="text-xs font-semibold">{config[id].label}</p></button>)}</div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <div className="space-y-3 lg:col-span-2">
+          {(conf.requiresTitle || type === "momento") ? <input value={title} onBlur={() => setTouched((t) => ({ ...t, title: true }))} onChange={(e) => setTitle(e.target.value)} placeholder={conf.titleLabel} className="w-full rounded-xl border px-3 py-2 text-sm" /> : null}
+          {type === "apunte" ? <input value={courseName} onChange={(e) => setCourseName(e.target.value)} placeholder="Curso o asignatura (opcional)" className="w-full rounded-xl border px-3 py-2 text-sm" /> : null}
+          {type === "debate" ? <select value={stance} onChange={(e) => setStance(e.target.value)} className="w-full rounded-xl border px-3 py-2 text-sm"><option value="">Postura inicial (opcional)</option><option>A favor</option><option>En contra</option><option>Neutral / quiero escuchar opiniones</option></select> : null}
+          {type === "tramite" ? <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="w-full rounded-xl border px-3 py-2 text-sm" /> : null}
+          <textarea value={content} onBlur={() => setTouched((t) => ({ ...t, content: true }))} onChange={(e) => setContent(e.target.value)} rows={8} placeholder={conf.placeholder} className="w-full rounded-xl border px-3 py-2 text-sm" />
+          {type === "pregunta" ? <p className="text-xs text-slate-500">Mientras más contexto agregues, mejores respuestas recibirás.</p> : null}
+          {type === "apunte" ? <p className="text-xs text-slate-500">Ideal para PDF, DOCX, PPT o resúmenes de clase.</p> : null}
+          <div className="flex flex-wrap gap-2">
+            <label className={`cursor-pointer rounded-xl border px-3 py-2 text-xs font-semibold ${type === "apunte" ? "border-indigo-300 bg-indigo-50" : ""}`}>Adjuntar archivo<input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; if (files.length >= 1) return setError("Solo puedes adjuntar 1 archivo por publicación."); setFiles([{ id: crypto.randomUUID(), name: f.name, size: f.size, type: f.type, file: f }]); setError(null); }} /></label>
+            <label className={`cursor-pointer rounded-xl border px-3 py-2 text-xs font-semibold ${type === "momento" ? "border-indigo-300 bg-indigo-50" : ""}`}>Adjuntar imagen<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; if (images.length >= 4) return setError("Máximo 4 imágenes."); setImages((prev) => [...prev, { id: crypto.randomUUID(), url: URL.createObjectURL(f) }]); setError(null); }} /></label>
+          </div>
+          <p className="text-xs text-slate-500">Puedes agregar hasta 4 imágenes.</p>
+          <AttachmentPreview files={files} images={images} onRemoveFile={(id) => setFiles((p) => p.filter((f) => f.id !== id))} onRemoveImage={(id) => setImages((p) => p.filter((img) => img.id !== id))} />
+          {error ? <p className="text-xs text-rose-600">{error}</p> : null}
+          {validationText ? <p className="text-xs text-rose-600">{validationText}</p> : null}
+        </div>
+
+        <div className="space-y-3">
+          <select value={communityId} onChange={(e) => setCommunityId(e.target.value)} className="w-full rounded-xl border px-3 py-2 text-sm"><option value="">Feed general</option>{props.communities.map((c) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}</select>
+          <select value={visibility} onChange={(e) => setVisibility(e.target.value as "todos" | "comunidad")} className="w-full rounded-xl border px-3 py-2 text-sm"><option value="todos">Visible para todos</option><option value="comunidad">Solo en comunidad</option></select>
+          <div className="rounded-xl border p-3">
+            <p className="text-xs font-semibold text-slate-600">Etiquetas sugeridas</p>
+            <div className="mt-2 flex flex-wrap gap-1">{suggestedTags.map((tag) => <button key={tag} onClick={() => addTag(tag)} disabled={tags.includes(tag)} className="rounded-full border border-slate-300 bg-white px-2 py-1 text-xs hover:border-indigo-300 hover:bg-indigo-50 disabled:opacity-40">{tag}</button>)}</div>
+            <p className="mt-3 text-xs font-semibold text-slate-600">Etiquetas seleccionadas</p>
+            <div className="mt-2 flex flex-wrap gap-1">{tags.map((tag) => <button key={tag} onClick={() => setTags((prev) => prev.filter((it) => it !== tag))} className="rounded-full bg-indigo-100 px-2 py-1 text-xs text-indigo-700">#{tag} ×</button>)}</div>
+            <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(tagInput); } }} placeholder="Escribe una etiqueta y presiona Enter" className="mt-2 w-full rounded-lg border px-2 py-1 text-xs" />
+          </div>
+          <div className="rounded-xl border p-3">
+            <p className="text-sm font-bold">Vista previa</p>
+            {!hasContent ? <p className="mt-2 text-xs text-slate-500">Tu vista previa aparecerá aquí.</p> : <div className="mt-2 space-y-2 text-xs"><div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 font-semibold text-indigo-700">Tú</span><div><p className="font-semibold">Tú</p><p className="text-slate-500">{conf.label} · {props.communities.find((c) => String(c.id) === communityId)?.name ?? "Feed general"}</p></div></div>{title.trim() ? <p className="font-semibold">{title}</p> : null}<p className="line-clamp-3 text-slate-600">{content || "Sin contenido todavía."}</p><div className="flex flex-wrap gap-1">{tags.map((tag) => <span key={tag} className="rounded-full bg-indigo-50 px-2 py-1 text-[11px] text-indigo-700">#{tag}</span>)}</div>{images[0] ? <Image src={images[0].url} alt="preview" width={240} height={110} className="h-20 w-full rounded-lg object-cover" /> : null}{files[0] ? <p className="rounded bg-slate-100 px-2 py-1">{files[0].name}</p> : null}</div>}
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap justify-end gap-2"><button className="rounded-xl border px-4 py-2 text-sm" onClick={props.onClose}>Cancelar</button><button className="rounded-xl border px-4 py-2 text-sm" onClick={() => { if (!hasContent) return props.onToast("No hay contenido para guardar como borrador.", "info"); props.onSaveDraft({ type, title, content, courseName, stance, deadline, visibility, communityId, tags, attachedFiles: files, attachedImages: images }); props.onClose(); }}>Guardar borrador</button><button disabled={!canSubmit} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300" onClick={() => { setHasTriedSubmit(true); if (!canSubmit) return; props.onSubmit({ type, title, content, courseName, stance, deadline, visibility, communityId, tags, attachedFiles: files, attachedImages: images }); }}>{conf.submit}</button></div>
     </div>
   </div>;
 }
