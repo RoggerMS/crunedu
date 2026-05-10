@@ -20,6 +20,9 @@ export type LocalFeedPost = {
   communityName?: string;
   createdAt: string;
   tags: string[];
+  courseName?: string;
+  stance?: string;
+  deadline?: string;
   images?: Array<{ id: string; url: string; alt?: string }>;
   files?: LocalAttachmentFile[];
   stats: { likes: number; comments: number; saves: number };
@@ -32,6 +35,9 @@ export type PostDraft = {
   type: PostType;
   title: string;
   content: string;
+  courseName?: string;
+  stance?: string;
+  deadline?: string;
   visibility: "todos" | "comunidad";
   communityId?: string;
   tags: string[];
@@ -42,6 +48,9 @@ export interface CreatePostSubmitPayload {
   type: PostType;
   title: string;
   content: string;
+  courseName?: string;
+  stance?: string;
+  deadline?: string;
   visibility: "todos" | "comunidad";
   communityId: string;
   tags: string[];
@@ -49,6 +58,8 @@ export interface CreatePostSubmitPayload {
   attachedImages: Array<{ id: string; url: string; uploaded?: CreatePostImagePayload }>;
 }
 
-export interface FeedPostCard extends Omit<FeedPost, "id"> { id: string | number }
+export interface FeedPostCard extends Omit<FeedPost, "id"> {
+  id: string | number;
+}
 
 export type CommunityLite = Pick<Community, "id" | "name">;
