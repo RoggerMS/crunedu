@@ -1,140 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
-import { useAccessToken } from "@/hooks/useAccessToken";
-import { apiRequest, mapApiError } from "@/lib/http-client";
-import { Card, PrimaryButton, SecondaryButton, StatusMessage, TextArea } from "@/components/ui";
-
-type DebateResponse = {
-  id: number;
-  content: string;
-  createdAt: string;
-  authorId: number;
-};
-
-type DebateItem = {
-  id: number;
-  courseKey: string;
-  weeklyTopic: string;
-  stance: string;
-  createdAt: string;
-  authorId: number;
-  responses: DebateResponse[];
-};
+import { useMemo, useState } from "react";
+import { useParams } from "next/navigation";
+import { mockDebates } from "@/components/debates";
 
 export default function DebateDetailPage() {
   const params = useParams<{ id: string }>();
-  const searchParams = useSearchParams();
-  const courseKey = searchParams.get("courseKey") ?? "";
-  const debateId = Number(params.id);
+  const debate = useMemo(() => mockDebates.find((item) => item.id === params.id), [params.id]);
+  const [saved, setSaved] = useState(Boolean(debate?.isSaved));
+  if (!debate) return <main className="mx-auto max-w-[1540px] px-4 py-6">No encontramos este debate.</main>;
 
-  const [debate, setDebate] = useState<DebateItem | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [reply, setReply] = useState("");
-  const [sending, setSending] = useState(false);
-  const { accessToken, isAuthenticated } = useAccessToken();
-
-  async function loadDebate() {
-    if (!courseKey || Number.isNaN(debateId)) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await apiRequest<{ items: DebateItem[] }>(`/debates?courseKey=${encodeURIComponent(courseKey)}`);
-      const found = (data.items ?? []).find((item) => item.id === debateId);
-      if (!found) {
-        setError("Debate no encontrado para este canal.");
-        setDebate(null);
-        return;
-      }
-      setDebate(found);
-    } catch (err) {
-      setError(mapApiError(err, "No se pudo cargar el detalle del debate."));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void loadDebate();
-  }, [courseKey, debateId]);
-
-  async function handleReply(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const content = reply.trim();
-    if (!content) return;
-    if (!isAuthenticated) {
-      setError("Inicia sesión para responder debates.");
-      return;
-    }
-
-    setSending(true);
-    setError(null);
-    try {
-      await apiRequest(`/debates/${debateId}/responses`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ content }),
-      });
-      setReply("");
-      await loadDebate();
-    } catch (err) {
-      setError(mapApiError(err, "No se pudo enviar la respuesta."));
-    } finally {
-      setSending(false);
-    }
-  }
-
-  const headerLabel = useMemo(() => {
-    if (!debate) return "Detalle del debate";
-    return `${debate.courseKey} · Debate #${debate.id}`;
-  }, [debate]);
-
-  return (
-    <main className="mx-auto max-w-4xl space-y-4 px-4 py-6">
-      <Card className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">{headerLabel}</p>
-          <SecondaryButton asChild><Link href="/app/debates">Volver a debates</Link></SecondaryButton>
-        </div>
-
-        {loading ? <StatusMessage type="loading">Cargando debate...</StatusMessage> : null}
-        {error ? <StatusMessage type="error">{error}</StatusMessage> : null}
-
-        {debate ? (
-          <>
-            <h1 className="text-2xl font-black">{debate.weeklyTopic}</h1>
-            <p className="text-sm text-slate-500">Publicado: {new Date(debate.createdAt).toLocaleString("es-PE")}</p>
-            <p className="text-slate-700">{debate.stance}</p>
-
-            <div className="rounded-xl border border-slate-200 p-3">
-              <p className="text-sm font-semibold">Respuestas ({debate.responses.length})</p>
-              <div className="mt-2 space-y-2">
-                {debate.responses.map((response) => (
-                  <div key={response.id} className="rounded-lg bg-slate-50 p-2 text-sm">
-                    <p>{response.content}</p>
-                    <p className="mt-1 text-xs text-slate-500">Usuario #{response.authorId} · {new Date(response.createdAt).toLocaleString("es-PE")}</p>
-                  </div>
-                ))}
-                {debate.responses.length === 0 ? <p className="text-sm text-slate-500">Aún no hay respuestas.</p> : null}
-              </div>
-            </div>
-
-            <form className="space-y-2" onSubmit={handleReply}>
-              <TextArea value={reply} onChange={(event) => setReply(event.target.value)} rows={3} maxLength={800} placeholder="Escribe tu respuesta al debate" />
-              <div className="flex flex-wrap gap-2">
-                <PrimaryButton type="submit" disabled={sending}>{sending ? "Enviando..." : "Responder"}</PrimaryButton>
-                {!isAuthenticated ? <SecondaryButton asChild><Link href="/login">Iniciar sesión</Link></SecondaryButton> : null}
-              </div>
-            </form>
-          </>
-        ) : null}
-      </Card>
-    </main>
-  );
+  return (<main className="mx-auto max-w-[1540px] space-y-4 px-4 py-6 sm:px-6 lg:px-8"><div className="rounded-2xl border bg-white p-4"><div className="flex flex-wrap gap-2"><Link className="text-indigo-600" href="/app/debates">Volver a debates</Link><button onClick={() => setSaved((v) => !v)}>{saved ? "Guardado" : "Guardar"}</button><button onClick={async () => navigator.clipboard.writeText(`${window.location.origin}/app/debates/${debate.id}`)}>Compartir</button></div><h1 className="mt-2 text-2xl font-black">{debate.title}</h1><p className="mt-1 text-slate-600">{debate.description}</p><div className="mt-3 grid gap-2 md:grid-cols-2"><div className="rounded bg-emerald-50 p-3"><p className="font-bold">Postura A: {debate.sideA.label}</p><p className="text-sm">{debate.sideA.description}</p></div><div className="rounded bg-rose-50 p-3"><p className="font-bold">Postura B: {debate.sideB.label}</p><p className="text-sm">{debate.sideB.description}</p></div></div><h2 className="mt-4 font-bold">Argumentos</h2><div className="space-y-2">{debate.highlightedArguments.map((a)=><div key={a.id} className="rounded border p-2 text-sm"><b>{a.authorName}</b> ({a.side.toUpperCase()}): {a.content}</div>)}</div>{debate.highlightedArguments.length===0?<p className="text-sm text-slate-500">El resumen estará disponible cuando haya suficientes argumentos.</p>:null}</div></main>);
 }
