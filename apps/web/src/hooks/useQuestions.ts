@@ -1,63 +1,21 @@
-import { useEffect, useState } from "react";
-import type { FeedQuestion } from "@crunedu/shared";
-import { mapApiError } from "@/lib/http-client";
-import { apiRequest } from "@/lib/http-client";
+import { useMemo, useState } from "react";
+import { initialQuestions } from "@/components/questions/question-data";
+import type { QuestionItem } from "@/components/questions/types";
 
-interface UseQuestionsResult {
-  questions: FeedQuestion[];
-  loading: boolean;
-  loadingMore: boolean;
-  hasMore: boolean;
-  error: string | null;
-  reload: () => Promise<void>;
-  loadMore: () => Promise<void>;
-}
+export function useQuestions() {
+  const [questions, setQuestions] = useState<QuestionItem[]>(initialQuestions);
+  const [toast, setToast] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const stats = useMemo(() => ({ active: questions.length, answers: questions.reduce((s, q) => s + q.stats.answers, 0), solved: questions.filter((q) => q.bestAnswer || q.status === "resuelta").length }), [questions]);
+  const notify = (message: string, type: "success" | "error" | "info" = "info") => { setToast({ message, type }); setTimeout(() => setToast(null), 3000); };
 
-type QuestionsResponse = { items: FeedQuestion[]; nextCursor: number | null };
-
-export function useQuestions(): UseQuestionsResult {
-  const [questions, setQuestions] = useState<FeedQuestion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [nextCursor, setNextCursor] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function fetchQuestions(cursor?: number) {
-    const params = new URLSearchParams({ limit: "10" });
-    if (cursor) params.set("cursor", String(cursor));
-    return apiRequest<QuestionsResponse>(`/questions?${params.toString()}`);
+  function addQuestion(payload: Pick<QuestionItem, "title" | "description" | "course" | "tags" | "images" | "files">) {
+    const next: QuestionItem = { id: `q${Date.now()}`, title: payload.title, description: payload.description, course: payload.course, tags: payload.tags, images: payload.images, files: payload.files, createdAt: new Date().toISOString(), authorName: "Tú", status: "sin_responder", stats: { answers: 0, votes: 0, views: 0, saves: 0 }, viewerState: { voted: false, saved: false, isMine: true } };
+    setQuestions((prev) => [next, ...prev]);
+    notify("Pregunta publicada correctamente.", "success");
   }
-
-  async function loadInitial() {
-    try {
-      setError(null);
-      const data = await fetchQuestions();
-      setQuestions(data.items ?? []);
-      setNextCursor(data.nextCursor ?? null);
-    } catch (err) {
-      setError(mapApiError(err, "No se pudieron cargar las preguntas."));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadMore() {
-    if (!nextCursor || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const data = await fetchQuestions(nextCursor);
-      setQuestions((prev) => [...prev, ...(data.items ?? [])]);
-      setNextCursor(data.nextCursor ?? null);
-    } catch (err) {
-      setError(mapApiError(err, "No se pudieron cargar más preguntas."));
-    } finally {
-      setLoadingMore(false);
-    }
-  }
-
-  useEffect(() => {
-    void loadInitial();
-  }, []);
-
-  return { questions, loading, loadingMore, hasMore: nextCursor !== null, error, loadMore, reload: async () => { setLoading(true); await loadInitial(); } };
+  const vote = (id: string) => setQuestions((prev) => prev.map((q) => q.id !== id ? q : ({ ...q, viewerState: { ...q.viewerState, voted: !q.viewerState.voted }, stats: { ...q.stats, votes: q.stats.votes + (q.viewerState.voted ? -1 : 1) } })));
+  const save = (id: string) => setQuestions((prev) => prev.map((q) => q.id !== id ? q : ({ ...q, viewerState: { ...q.viewerState, saved: !q.viewerState.saved }, stats: { ...q.stats, saves: q.stats.saves + (q.viewerState.saved ? -1 : 1) } })));
+  const addAnswer = (id: string, content: string) => { if (!content.trim()) return notify("La respuesta no puede estar vacía.", "error"); setQuestions((prev) => prev.map((q) => q.id !== id ? q : ({ ...q, status: q.status === "sin_responder" ? "respondida" : q.status, stats: { ...q.stats, answers: q.stats.answers + 1 }, answersPreview: [{ id: `a${Date.now()}`, authorName: "Tú", content, votes: 0, createdAt: new Date().toISOString() }, ...(q.answersPreview ?? [])] }))); notify("Respuesta publicada.", "success"); };
+  return { questions, setQuestions, stats, toast, notify, addQuestion, vote, save, addAnswer, expanded, setExpanded };
 }

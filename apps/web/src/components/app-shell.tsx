@@ -223,7 +223,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ) : null}
         </header>
 
-        <div className="mx-auto max-w-4xl px-5 py-6">
+        <div className="mx-auto max-w-[1540px] px-5 py-6">
           {children}
 
           <div className="mt-8 border-t border-slate-200 pt-3 lg:hidden">

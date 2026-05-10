@@ -1,0 +1,3 @@
+export function QuestionsHeader({ onAsk, onUnanswered }: { onAsk: () => void; onUnanswered: () => void }) {
+  return <div className="rounded-2xl border bg-white p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-3xl font-black">Preguntas</h1><p className="text-slate-600">Publica tus dudas, ejercicios o tareas y recibe ayuda de otros estudiantes.</p></div><div className="flex gap-2"><button onClick={onAsk} className="rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white">Hacer pregunta</button><button onClick={onUnanswered} className="rounded-xl border px-4 py-2 font-semibold">Ver preguntas sin responder</button></div></div></div>;
+}

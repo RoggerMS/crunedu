@@ -39,7 +39,7 @@ function formatHttpDebug(error: HttpClientError): string {
 
 export function mapApiError(error: unknown, fallbackMessage?: string): string {
   if (error instanceof HttpClientError) {
-    return formatHttpDebug(error);
+    return error.message;
   }
 
   if (error instanceof TypeError) {
