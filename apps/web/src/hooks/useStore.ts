@@ -48,4 +48,32 @@ export function useStore(initialQuery = "") {
   return { listings, filteredListings, savedListings, myListings, hiddenListings, selectedNeed, selectedCategory, selectedSort, selectedDeliveryType, query, toast, loading, error, setError, setQuery, setSelectedSort, setSelectedDeliveryType, createListing, saveListing, contactSeller, shareListing, reportListing, reserveListing, hideListing, saveDraft, filterByNeed, filterByCategory, filterBySearch, sortListings, getListingById, getSimilarListings };
 }
 
-export function sortListings(data: StoreListing[], sort: StoreSort) { const arr=[...data]; if (sort==="low_price") arr.sort((a,b)=>(a.price??99999)-(b.price??99999)); else if (sort==="high_price") arr.sort((a,b)=>(b.price??0)-(a.price??0)); else if (sort==="verified") arr.sort((a,b)=Number(!!b.seller.verified)-Number(!!a.seller.verified)); else if (sort==="campus") return arr.filter((l)=>l.deliveryType==="campus"||l.deliveryType==="safe_point"); else if (sort==="off_campus") return arr.filter((l)=>l.deliveryType==="off_campus"); return arr; }
+export function sortListings(data: StoreListing[], sort: StoreSort) {
+  const arr = [...data];
+
+  if (sort === "low_price") {
+    return arr.sort((a, b) => (a.price ?? 99999) - (b.price ?? 99999));
+  }
+
+  if (sort === "high_price") {
+    return arr.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+  }
+
+  if (sort === "verified") {
+    return arr.sort(
+      (a, b) => Number(Boolean(b.seller.verified)) - Number(Boolean(a.seller.verified)),
+    );
+  }
+
+  if (sort === "campus") {
+    return arr.filter(
+      (listing) => listing.deliveryType === "campus" || listing.deliveryType === "safe_point",
+    );
+  }
+
+  if (sort === "off_campus") {
+    return arr.filter((listing) => listing.deliveryType === "off_campus");
+  }
+
+  return arr;
+}
