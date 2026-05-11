@@ -8,6 +8,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useSearch } from "@/hooks/useSearch";
 
+function isNavActive(itemHref: string, pathname: string) {
+  if (itemHref === "/app") return pathname === "/app";
+  if (itemHref === "/app/universidad") {
+    return pathname.startsWith("/app/universidad") || pathname.startsWith("/app/tramites");
+  }
+  return pathname.startsWith(itemHref);
+}
+
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -106,15 +115,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
 
           <nav className="mt-8 space-y-1">
-            {MAIN_NAVIGATION.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {MAIN_NAVIGATION.map((item) => {
+              const active = isNavActive(item.href, pathname);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`block rounded-xl px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${active ? "bg-indigo-50 text-indigo-700" : "text-slate-700 hover:bg-slate-100"}`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
 
           <div className="mt-auto border-t border-slate-200 pt-3">
