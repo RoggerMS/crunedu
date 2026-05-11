@@ -6,4 +6,4 @@ export type StoreSort = "recent"|"low_price"|"high_price"|"near_me"|"verified"|"
 
 export type StoreListing = { id:string; type:StoreListingType; title:string; description:string; price?:number; currency:"PEN"|"USD"; priceLabel?:string; category:StoreCategory; condition?:"new"|"like_new"|"used"|"needs_repair"; status:StoreListingStatus; badges:string[]; images:{id:string;url?:string;alt?:string}[]; seller:{id:string;name:string;avatarUrl?:string;rating?:number;verified?:boolean;sales?:number}; location?:string; deliveryType:StoreDeliveryType; deliveryMethod?:string; course?:string; faculty?:string; tags:string[]; createdAt:string; stats:{views:number;saves:number;contacts:number}; viewerState:{saved:boolean;isMine?:boolean};};
 
-export type StoreNeed = { id:string; label:string; icon:string; matcher:(l:StoreListing)=>boolean };
+export type StoreNeed = { id:string; label:string; subtitle:string; icon:string; matcher:(l:StoreListing)=>boolean };

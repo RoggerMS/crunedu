@@ -21,14 +21,14 @@ export const storeListingsSeed: StoreListing[] = [
 ];
 
 export const storeNeeds: StoreNeed[] = [
-{id:"study",label:"Estudiar para una clase",icon:"📚",matcher:(l)=>["books","printed_notes"].includes(l.category)},
-{id:"print",label:"Imprimir / Anillar",icon:"🖨️",matcher:(l)=>l.title.toLowerCase().includes("impresi")||l.tags.some(t=>t.includes("imp"))},
-{id:"materials",label:"Comprar materiales",icon:"🎒",matcher:(l)=>["materials","uniforms"].includes(l.category)},
-{id:"calculator",label:"Conseguir calculadora",icon:"🧮",matcher:(l)=>l.category==="calculators"},
-{id:"book",label:"Buscar libro",icon:"📘",matcher:(l)=>l.category==="books"},
-{id:"food",label:"Comer en campus",icon:"🍽️",matcher:(l)=>l.category==="food"},
-{id:"free",label:"Gratis / Donaciones",icon:"🎁",matcher:(l)=>l.type==="donation"||l.category==="free"},
-{id:"exchange",label:"Intercambios",icon:"🔁",matcher:(l)=>l.type==="exchange"},
-{id:"services",label:"Servicios académicos",icon:"🛠️",matcher:(l)=>l.type==="service"},
-{id:"business",label:"Emprendimientos estudiantiles",icon:"🚀",matcher:(l)=>l.type==="student_business"},
+{id:"study",label:"Estudiar",subtitle:"para una clase",icon:"📚",matcher:(l)=>["books","printed_notes"].includes(l.category)},
+{id:"print",label:"Imprimir / Anillar",subtitle:"servicios rápidos",icon:"🖨️",matcher:(l)=>l.title.toLowerCase().includes("impresi")||l.tags.some(t=>t.includes("imp"))},
+{id:"materials",label:"Comprar materiales",subtitle:"laboratorio y cursos",icon:"🎒",matcher:(l)=>["materials","uniforms"].includes(l.category)},
+{id:"calculator",label:"Conseguir calculadora",subtitle:"para exámenes",icon:"🧮",matcher:(l)=>l.category==="calculators"},
+{id:"book",label:"Buscar libro",subtitle:"por curso",icon:"📘",matcher:(l)=>l.category==="books"},
+{id:"food",label:"Comer en campus",subtitle:"pedidos y menú",icon:"🍽️",matcher:(l)=>l.category==="food"},
+{id:"free",label:"Gratis / Donaciones",subtitle:"apoyo entre estudiantes",icon:"🎁",matcher:(l)=>l.type==="donation"||l.category==="free"},
+{id:"exchange",label:"Intercambios",subtitle:"cambia sin pagar",icon:"🔁",matcher:(l)=>l.type==="exchange"},
+{id:"services",label:"Servicios académicos",subtitle:"reforzamiento y apoyo",icon:"🛠️",matcher:(l)=>l.type==="service"},
+{id:"business",label:"Emprendimientos",subtitle:"negocios estudiantiles",icon:"🚀",matcher:(l)=>l.type==="student_business"},
 ];

@@ -1,4 +1,50 @@
-import { Book, Calculator, Gift, Laptop, Repeat, Rocket, Shirt, ShoppingBag, Ticket, Utensils, Wrench } from "lucide-react";
+import {
+  Backpack,
+  BookOpen,
+  BriefcaseBusiness,
+  Calculator,
+  FileText,
+  Gift,
+  Laptop,
+  Package,
+  RefreshCw,
+  Rocket,
+  Shirt,
+  Ticket,
+  Utensils,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { StoreCategory } from "./types";
-const config: Record<StoreCategory,{icon:any;bg:string;label:string}> = { books:{icon:Book,bg:"from-blue-500 to-violet-500",label:"Libros"}, printed_notes:{icon:Book,bg:"from-cyan-500 to-purple-500",label:"Apuntes"}, calculators:{icon:Calculator,bg:"from-orange-400 to-yellow-500",label:"Calculadoras"}, technology:{icon:Laptop,bg:"from-blue-600 to-indigo-600",label:"Tecnología"}, uniforms:{icon:Shirt,bg:"from-slate-400 to-blue-500",label:"Uniformes"}, materials:{icon:ShoppingBag,bg:"from-emerald-500 to-sky-500",label:"Materiales"}, food:{icon:Utensils,bg:"from-amber-400 to-orange-500",label:"Comida"}, services:{icon:Wrench,bg:"from-indigo-500 to-purple-600",label:"Servicios"}, business:{icon:Rocket,bg:"from-pink-500 to-orange-500",label:"Emprendimientos"}, events:{icon:Ticket,bg:"from-rose-500 to-orange-500",label:"Eventos"}, exchange:{icon:Repeat,bg:"from-violet-500 to-blue-500",label:"Intercambios"}, free:{icon:Gift,bg:"from-emerald-400 to-teal-500",label:"Gratis"} };
-export function StoreListingFallbackMedia({category}:{category:StoreCategory}){const c=config[category]; const Icon=c.icon; return <div className={`h-40 rounded-2xl bg-gradient-to-br ${c.bg} p-4 text-white`}><Icon className="h-7 w-7"/><p className="mt-16 text-sm font-semibold">{c.label}</p></div>;}
+
+const categoryConfig: Record<StoreCategory, { icon: LucideIcon; label: string; gradient: string }> = {
+  books: { icon: BookOpen, label: "Libros", gradient: "from-indigo-100 via-white to-blue-100" },
+  printed_notes: { icon: FileText, label: "Separatas", gradient: "from-sky-100 via-white to-indigo-100" },
+  calculators: { icon: Calculator, label: "Calculadoras", gradient: "from-amber-100 via-white to-orange-100" },
+  technology: { icon: Laptop, label: "Tecnología", gradient: "from-slate-100 via-white to-indigo-100" },
+  uniforms: { icon: Shirt, label: "Uniformes", gradient: "from-blue-100 via-white to-cyan-100" },
+  materials: { icon: Backpack, label: "Materiales", gradient: "from-emerald-100 via-white to-sky-100" },
+  food: { icon: Utensils, label: "Comida", gradient: "from-rose-100 via-white to-amber-100" },
+  services: { icon: BriefcaseBusiness, label: "Servicios", gradient: "from-violet-100 via-white to-indigo-100" },
+  business: { icon: Rocket, label: "Emprendimientos", gradient: "from-fuchsia-100 via-white to-rose-100" },
+  events: { icon: Ticket, label: "Eventos", gradient: "from-orange-100 via-white to-rose-100" },
+  exchange: { icon: RefreshCw, label: "Intercambios", gradient: "from-violet-100 via-white to-blue-100" },
+  free: { icon: Gift, label: "Gratis", gradient: "from-emerald-100 via-white to-lime-100" },
+};
+
+export function StoreListingFallbackMedia({ category }: { category: StoreCategory }) {
+  const config = categoryConfig[category] ?? { icon: Package, label: "Categoría", gradient: "from-slate-100 via-white to-slate-200" };
+  const Icon = config.icon;
+
+  return (
+    <div className={`relative h-44 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br ${config.gradient}`}>
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/70" />
+      <div className="absolute -bottom-6 left-6 h-20 w-20 rounded-full bg-white/60" />
+      <div className="relative flex h-full flex-col justify-between p-4 text-slate-700">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white bg-white/85 shadow-sm">
+          <Icon className="h-6 w-6" />
+        </div>
+        <p className="text-sm font-semibold">{config.label}</p>
+      </div>
+    </div>
+  );
+}
