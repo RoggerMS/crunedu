@@ -16,17 +16,17 @@ export function StoreSection({
   children,
 }: StoreSectionProps) {
   return (
-    <section className="space-y-3">
-      <div className="flex items-start justify-between gap-3">
+    <section className="space-y-2.5">
+      <div className="flex items-start justify-between gap-2">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+          <h2 className="text-lg font-bold text-slate-900 lg:text-xl">{title}</h2>
           {subtitle ? <p className="text-sm text-slate-600">{subtitle}</p> : null}
         </div>
         {actionLabel ? (
           <button
             type="button"
             onClick={onAction}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700"
+            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700"
           >
             {actionLabel}
           </button>
