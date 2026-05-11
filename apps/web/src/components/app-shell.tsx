@@ -1,7 +1,7 @@
 "use client";
 
 import { MAIN_NAVIGATION } from "@crunedu/shared";
-import { Bell, ChevronLeft, ChevronRight, GraduationCap, Search, UserCircle2 } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, GraduationCap, Plus, Search, UserCircle2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -28,6 +28,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
   const searchContext = useMemo(() => getSearchContext(pathname), [pathname]);
   const isMomentsPortal = pathname.startsWith("/app/momentos");
+  const isStoreRoute = pathname.startsWith("/app/tienda");
+  const isStoreCreateRoute = pathname === "/app/tienda/nuevo";
   const { results, loading, error } = useSearch(query, searchType, searchPage);
   const hasQuery = query.trim().length > 0;
   const hasResults =
@@ -195,6 +197,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className="w-full bg-transparent text-slate-700 outline-none placeholder:text-slate-500"
               />
             </div>
+            {isStoreRoute ? (
+              <Link
+                href={isStoreCreateRoute ? "/app/tienda" : "/app/tienda/nuevo"}
+                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                <Plus size={16} />
+                {isStoreCreateRoute ? "Volver a Tienda" : "Subir producto"}
+              </Link>
+            ) : null}
 
             <button
               type="button"
@@ -352,6 +363,6 @@ function getSearchContext(pathname: string): { scope: "all" | "questions" | "deb
   if (pathname.startsWith("/app/apuntes")) return { scope: "notes", placeholder: "Buscar apuntes, materiales, cursos o archivos..." };
   if (pathname.startsWith("/app/tramites") || pathname.startsWith("/app/universidad")) return { scope: "procedures", placeholder: "Buscar avisos, trámites, eventos o servicios..." };
   if (pathname.startsWith("/app/momentos")) return { scope: "moments", placeholder: "Buscar momentos, experiencias o publicaciones destacadas..." };
-  if (pathname.startsWith("/app/tienda")) return { scope: "store", placeholder: "Buscar productos, recursos o materiales..." };
+  if (pathname.startsWith("/app/tienda")) return { scope: "store", placeholder: "¿Qué necesitas para tus clases o tu vida en campus?" };
   return { scope: "all", placeholder: "Buscar publicaciones, preguntas, comunidades y productos..." };
 }

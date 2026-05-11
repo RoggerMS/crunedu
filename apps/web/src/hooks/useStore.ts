@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { storeListingsSeed, storeNeeds } from "@/components/store/store-data";
 import type { StoreDeliveryType, StoreListing, StoreSort } from "@/components/store/types";
 
@@ -14,6 +14,10 @@ export function useStore(initialQuery = "") {
   const [toast, setToast] = useState<string | null>(null);
   const [loading] = useState(false);
   const [hiddenListings, setHidden] = useState<string[]>([]);
+
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
 
   const filteredListings = useMemo(() => {
     let data = listings.filter((listing) => !hiddenListings.includes(listing.id));
