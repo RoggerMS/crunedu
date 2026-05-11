@@ -1,0 +1,2 @@
+import type { StoreListing } from "./types"; import { StoreListingCard } from "./StoreListingCard";
+export function StoreListingGrid({items,...handlers}:{items:StoreListing[];onSave:(id:string)=>void;onContact:(t:string)=>void;onShare:(id:string)=>void;onReport:()=>void;onHide:(id:string)=>void}){return <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4 xl:grid-cols-3">{items.map((item)=><StoreListingCard key={item.id} item={item} {...handlers}/>)}</div>}
