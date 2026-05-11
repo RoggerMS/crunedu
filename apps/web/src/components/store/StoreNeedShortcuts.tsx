@@ -2,7 +2,7 @@ import { storeNeeds } from "./store-data";
 
 export function StoreNeedShortcuts({ active, onSelect }: { active: string; onSelect: (id: string) => void }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-10">
       {storeNeeds.map((need) => {
         const isActive = active === need.id;
 
@@ -11,15 +11,15 @@ export function StoreNeedShortcuts({ active, onSelect }: { active: string; onSel
             key={need.id}
             type="button"
             onClick={() => onSelect(need.id)}
-            className={`rounded-2xl border p-4 text-left transition ${
+            className={`h-[92px] rounded-xl border p-3 text-left transition ${
               isActive
-                ? "border-indigo-400 bg-indigo-50 shadow-sm"
+                ? "border-indigo-500 bg-indigo-50 shadow-sm"
                 : "border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm"
             }`}
           >
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-lg">{need.icon}</div>
-            <p className="text-sm font-semibold text-slate-900">{need.label}</p>
-            <p className="text-xs text-slate-600">{need.subtitle}</p>
+            <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-base">{need.icon}</div>
+            <p className="line-clamp-1 text-sm font-bold text-slate-900">{need.label}</p>
+            <p className="line-clamp-1 text-xs text-slate-600">{need.subtitle}</p>
           </button>
         );
       })}

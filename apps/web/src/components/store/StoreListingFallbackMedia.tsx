@@ -31,19 +31,19 @@ const categoryConfig: Record<StoreCategory, { icon: LucideIcon; label: string; g
   free: { icon: Gift, label: "Gratis", gradient: "from-emerald-100 via-white to-lime-100" },
 };
 
-export function StoreListingFallbackMedia({ category }: { category: StoreCategory }) {
+export function StoreListingFallbackMedia({ category, compact = false }: { category: StoreCategory; compact?: boolean }) {
   const config = categoryConfig[category] ?? { icon: Package, label: "Categoría", gradient: "from-slate-100 via-white to-slate-200" };
   const Icon = config.icon;
 
   return (
-    <div className={`relative h-44 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br ${config.gradient}`}>
+    <div className={`relative ${compact ? "h-full rounded-none border-0" : "h-44 rounded-2xl border border-slate-200"} overflow-hidden bg-gradient-to-br ${config.gradient}`}>
       <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/70" />
       <div className="absolute -bottom-6 left-6 h-20 w-20 rounded-full bg-white/60" />
-      <div className="relative flex h-full flex-col justify-between p-4 text-slate-700">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white bg-white/85 shadow-sm">
-          <Icon className="h-6 w-6" />
+      <div className={`relative flex h-full flex-col justify-between text-slate-700 ${compact ? "p-3" : "p-4"}`}>
+        <div className={`flex items-center justify-center rounded-xl border border-white bg-white/85 shadow-sm ${compact ? "h-9 w-9" : "h-11 w-11"}`}>
+          <Icon className={compact ? "h-5 w-5" : "h-6 w-6"} />
         </div>
-        <p className="text-sm font-semibold">{config.label}</p>
+        <p className={`${compact ? "text-xs" : "text-sm"} font-semibold`}>{config.label}</p>
       </div>
     </div>
   );
