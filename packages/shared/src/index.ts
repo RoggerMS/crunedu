@@ -29,7 +29,7 @@ export const MAIN_NAVIGATION = [
   { label: "Debates", href: "/app/debates" },
   { label: "Preguntas", href: "/app/preguntas" },
   { label: "Apuntes", href: "/app/apuntes" },
-  { label: "Trámites", href: "/app/tramites" },
+  { label: "Universidad", href: "/app/universidad" },
   { label: "Momentos", href: "/app/momentos" },
   { label: "Tienda", href: "/app/tienda" },
   { label: "Mi perfil", href: "/app/perfil" },

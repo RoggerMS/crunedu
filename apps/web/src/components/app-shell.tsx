@@ -333,7 +333,7 @@ function getSearchContext(pathname: string): { scope: "all" | "questions" | "deb
   if (pathname.startsWith("/app/debates")) return { scope: "debates", placeholder: "Buscar debates, cursos, temas o participantes..." };
   if (pathname.startsWith("/app/comunidades")) return { scope: "communities", placeholder: "Buscar comunidades, carreras, cursos o temas..." };
   if (pathname.startsWith("/app/apuntes")) return { scope: "notes", placeholder: "Buscar apuntes, materiales, cursos o archivos..." };
-  if (pathname.startsWith("/app/tramites")) return { scope: "procedures", placeholder: "Buscar trámites, requisitos, convocatorias o fechas..." };
+  if (pathname.startsWith("/app/tramites") || pathname.startsWith("/app/universidad")) return { scope: "procedures", placeholder: "Buscar avisos, trámites, eventos o servicios..." };
   if (pathname.startsWith("/app/momentos")) return { scope: "moments", placeholder: "Buscar momentos, experiencias o publicaciones destacadas..." };
   if (pathname.startsWith("/app/tienda")) return { scope: "store", placeholder: "Buscar productos, recursos o materiales..." };
   return { scope: "all", placeholder: "Buscar publicaciones, preguntas, comunidades y productos..." };
