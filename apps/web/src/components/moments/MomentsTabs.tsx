@@ -1,0 +1,3 @@
+import type { MomentView } from "./types";
+const tabs: { key: MomentView; label: string }[] = [{ key: "moments", label: "Momentos" }, { key: "news", label: "Noticias" }, { key: "gallery", label: "Galería" }, { key: "saved", label: "Guardados" }, { key: "trends", label: "Tendencias" }];
+export function MomentsTabs({ activeView, setActiveView }: { activeView: MomentView; setActiveView: (view: MomentView) => void }) { return <nav className="flex flex-wrap gap-1">{tabs.map((tab)=><button key={tab.key} onClick={()=>setActiveView(tab.key)} className={`rounded-xl px-3 py-2 text-sm font-semibold ${activeView===tab.key?"bg-indigo-600 text-white":"bg-slate-100 text-slate-700"}`}>{tab.label}</button>)}</nav>; }
