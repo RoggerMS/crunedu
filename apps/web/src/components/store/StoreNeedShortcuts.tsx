@@ -11,15 +11,15 @@ export function StoreNeedShortcuts({ active, onSelect }: { active: string; onSel
             key={need.id}
             type="button"
             onClick={() => onSelect(need.id)}
-            className={`h-[92px] rounded-xl border p-3 text-left transition ${
+            className={`h-[96px] rounded-xl border p-3 text-left transition ${
               isActive
                 ? "border-indigo-500 bg-indigo-50 shadow-sm"
                 : "border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm"
             }`}
           >
             <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-base">{need.icon}</div>
-            <p className="line-clamp-1 text-sm font-bold text-slate-900">{need.label}</p>
-            <p className="line-clamp-1 text-xs text-slate-600">{need.subtitle}</p>
+            <p className="line-clamp-2 text-xs font-bold leading-tight text-slate-900 sm:text-sm">{need.label}</p>
+            <p className="line-clamp-2 text-xs leading-tight text-slate-600">{need.subtitle}</p>
           </button>
         );
       })}

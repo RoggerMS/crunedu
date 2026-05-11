@@ -33,7 +33,6 @@ export default function TiendaPage() {
   return (
     <div className="mx-auto grid max-w-[1600px] gap-4 px-6 py-4 xl:grid-cols-[minmax(0,1fr)_320px]">
       <main className="space-y-4">
-        <input value={store.query} onChange={(event) => store.setQuery(event.target.value)} placeholder="¿Qué necesitas para tus clases o tu vida en campus?" className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm" />
         <StoreHeader onService={() => store.filterBySearch("servicio")} onMy={() => store.filterBySearch("Tú")} onSaved={() => store.filterBySearch("")} onConsultas={() => store.contactSeller("Mis consultas")} />
 
         {store.toast ? <div className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white">{store.toast}</div> : null}
