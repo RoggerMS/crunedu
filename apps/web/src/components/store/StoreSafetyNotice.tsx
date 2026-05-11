@@ -1,0 +1,1 @@
+export function StoreSafetyNotice(){return <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">Esta entrega ocurre fuera del campus. Coordina en un lugar público y evita pagos adelantados.</div>}

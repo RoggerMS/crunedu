@@ -1,0 +1,2 @@
+import { storeNeeds } from "./store-data";
+export function StoreNeedShortcuts({active,onSelect}:{active:string;onSelect:(id:string)=>void}){return <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">{storeNeeds.map((n)=><button key={n.id} onClick={()=>onSelect(n.id)} className={`rounded-2xl border p-3 text-left ${active===n.id?"border-indigo-500 bg-indigo-50":"bg-white"}`}><p>{n.icon}</p><p className="text-sm font-semibold">{n.label}</p></button>)}</div>}

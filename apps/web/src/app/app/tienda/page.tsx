@@ -1,111 +1,35 @@
 "use client";
+import { useSearchParams } from "next/navigation";
+import { useStore } from "@/hooks/useStore";
+import { StoreAcademicRadar } from "@/components/store/StoreAcademicRadar";
+import { StoreEmptyState } from "@/components/store/StoreEmptyState";
+import { StoreFilters } from "@/components/store/StoreFilters";
+import { StoreHeader } from "@/components/store/StoreHeader";
+import { StoreListingGrid } from "@/components/store/StoreListingGrid";
+import { StoreLoadingState } from "@/components/store/StoreLoadingState";
+import { StoreNeedShortcuts } from "@/components/store/StoreNeedShortcuts";
+import { StoreSection } from "@/components/store/StoreSection";
+import { StoreSidebar } from "@/components/store/StoreSidebar";
 
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { PageState, PrimaryButton } from "@/components/ui";
-import { getStoreCatalog, getStoreCategories, type StoreProduct } from "@/lib/api-helpers";
-import { mapApiError } from "@/lib/http-client";
-
-export default function TiendaPage() {
-  const [products, setProducts] = useState<StoreProduct[]>([]);
-  const [featuredProducts, setFeaturedProducts] = useState<StoreProduct[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
-
-  const loadProducts = useCallback(() => {
-    const faculty = typeof window !== "undefined" ? localStorage.getItem("profile_faculty") : "";
-    const career = typeof window !== "undefined" ? localStorage.getItem("profile_career") : "";
-
-    setLoading(true);
-    setError(null);
-
-    getStoreCatalog({ faculty, career })
-      .then((data) => {
-        setProducts(Array.isArray(data?.items) ? data.items : []);
-        setFeaturedProducts(Array.isArray(data?.featuredProducts) ? data.featuredProducts : []);
-      })
-      .catch((err) => {
-        setError(mapApiError(err, "No pudimos cargar la tienda en este momento."));
-        setProducts([]);
-        setFeaturedProducts([]);
-      })
-      .finally(() => setLoading(false));
-
-    getStoreCategories().then((data) => setCategories(Array.isArray(data) ? data : [])).catch(() => setCategories([]));
-  }, []);
-
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
-
-  return (
-    <section className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
-        <h1 className="text-3xl font-black tracking-tight">Tienda CrunEdu</h1>
-        <p className="mt-2 text-slate-600">Productos reales para estudiantes. Sin carrito, sin pagos automáticos.</p>
-      </div>
-
-      {loading ? (
-        <PageState type="loading" title="Cargando tienda" description="Estamos preparando los productos para estudiantes." />
-      ) : null}
-      {error ? (
-        <PageState
-          type="error"
-          title="No se pudo cargar la tienda"
-          description={error}
-          action={<PrimaryButton type="button" onClick={loadProducts}>Reintentar</PrimaryButton>}
-        />
-      ) : null}
-
-      {!loading && !error && featuredProducts.length > 0 ? (
-        <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
-          <h2 className="text-lg font-bold text-emerald-800">Destacados para tu contexto universitario</h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            {featuredProducts.map((product) => (
-              <Link key={`featured-${product.id}`} href={`/app/tienda/${product.id}`} className="rounded-2xl border border-emerald-200 bg-white p-3 hover:bg-emerald-100">
-                <p className="font-semibold">{product.title}</p>
-                <p className="text-xs text-slate-600">{product.category?.name}</p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      ) : null}
-      {!loading && !error && categories.length > 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <p className="text-sm font-semibold">Categorías disponibles</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {categories.map((category) => <span key={category.id} className="rounded-full bg-slate-100 px-3 py-1 text-xs">{category.name}</span>)}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {!loading && !error && products.length === 0 ? (
-          <div className="md:col-span-2 lg:col-span-3">
-            <PageState
-              type="empty"
-              title="No hay productos publicados"
-              description="Vuelve pronto para revisar nuevos productos útiles para tu ciclo."
-              action={<PrimaryButton type="button" onClick={loadProducts}>Reintentar</PrimaryButton>}
-            />
-          </div>
-        ) : (
-          products.map((product) => (
-            <article key={product.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft">
-              {product.isFeatured ? <span className="text-xs font-semibold text-emerald-700">Destacado</span> : null}
-              <span className="ml-2 text-xs font-semibold text-indigo-700">Activo</span>
-              <h2 className="text-lg font-bold">{product.title}</h2>
-              <p className="mt-1 text-xs text-slate-500">{product.category?.name}</p>
-              <p className="mt-2 text-sm text-slate-600 line-clamp-3">{product.description}</p>
-              <p className="mt-3 font-semibold">S/ {product.price}</p>
-              <Link href={`/app/tienda/${product.id}`} className="mt-4 inline-block rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">
-                Ver detalle
-              </Link>
-            </article>
-          ))
-        )}
-      </div>
-    </section>
-  );
+export default function TiendaPage(){
+  const params=useSearchParams();
+  const s=useStore(params.get("q")??"");
+  const academic=s.filteredListings.filter((x)=>["books","printed_notes","calculators","materials","uniforms"].includes(x.category));
+  const services=s.filteredListings.filter((x)=>x.type==="service");
+  const business=s.filteredListings.filter((x)=>x.type==="student_business");
+  const social=s.filteredListings.filter((x)=>x.type==="exchange"||x.type==="donation");
+  return <div className="mx-auto grid max-w-[1600px] gap-6 px-6 py-6 xl:grid-cols-[1fr_320px]">
+    <main className="space-y-6">
+      <StoreHeader onService={()=>s.setQuery("servicio")} onMy={()=>s.filterBySearch("María Fernanda")} onSaved={()=>s.filterBySearch("")||s.filterByCategory("all")} onConsultas={()=>s.contactSeller("Mis consultas")}/>
+      {s.toast && <div className="rounded-xl bg-slate-900 px-3 py-2 text-sm text-white">{s.toast}</div>}
+      <StoreSection title="¿Qué necesitas resolver hoy?"><StoreNeedShortcuts active={s.selectedNeed} onSelect={s.filterByNeed}/></StoreSection>
+      <StoreSection title="Radar académico de hoy"><StoreAcademicRadar onPick={s.filterBySearch}/></StoreSection>
+      <StoreSection title="Para tu vida académica"><StoreListingGrid items={academic.slice(0,6)} onSave={s.saveListing} onContact={s.contactSeller} onShare={s.shareListing} onReport={s.reportListing} onHide={s.hideListing}/></StoreSection>
+      <StoreSection title="Servicios rápidos en campus"><StoreListingGrid items={services.slice(0,6)} onSave={s.saveListing} onContact={s.contactSeller} onShare={s.shareListing} onReport={s.reportListing} onHide={s.hideListing}/></StoreSection>
+      <StoreSection title="Emprendimientos estudiantiles"><StoreListingGrid items={business.slice(0,4)} onSave={s.saveListing} onContact={s.contactSeller} onShare={s.shareListing} onReport={s.reportListing} onHide={s.hideListing}/></StoreSection>
+      <StoreSection title="Intercambios y donaciones"><StoreListingGrid items={social.slice(0,4)} onSave={s.saveListing} onContact={s.contactSeller} onShare={s.shareListing} onReport={s.reportListing} onHide={s.hideListing}/></StoreSection>
+      <StoreSection title="Explorar todo"><StoreFilters category={s.selectedCategory} setCategory={s.filterByCategory} sort={s.selectedSort} setSort={s.setSelectedSort} delivery={s.selectedDeliveryType} setDelivery={s.setSelectedDeliveryType}/>{s.loading ? <StoreLoadingState/> : s.filteredListings.length===0 ? <StoreEmptyState onCreate={()=>window.location.href="/app/tienda/nuevo"}/> : <StoreListingGrid items={s.filteredListings} onSave={s.saveListing} onContact={s.contactSeller} onShare={s.shareListing} onReport={s.reportListing} onHide={s.hideListing}/>}</StoreSection>
+    </main>
+    <StoreSidebar onSearch={s.filterBySearch}/>
+  </div>
 }

@@ -1,0 +1,2 @@
+const items=["Entrega hoy en campus","Materiales para parciales","Más buscado esta semana","Donaciones activas","Servicios disponibles ahora","Emprendimientos cerca de ti"];
+export function StoreAcademicRadar({onPick}:{onPick:(s:string)=>void}){return <div className="grid gap-2 md:grid-cols-3">{items.map((i)=><button key={i} onClick={()=>onPick(i)} className="rounded-xl border bg-white p-3 text-left text-sm">{i}</button>)}</div>}

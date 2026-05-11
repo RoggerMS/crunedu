@@ -1,0 +1,1 @@
+export function StoreEmptyState({onCreate}:{onCreate:()=>void}){return <div className="rounded-2xl border bg-white p-8 text-center"><p className="font-semibold">No hay publicaciones para este filtro.</p><button onClick={onCreate} className="mt-3 rounded-xl bg-indigo-600 px-4 py-2 text-white">Publicar producto</button></div>}
