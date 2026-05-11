@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function CreateMomentPage() { return <main className="min-h-screen bg-slate-50 p-6"><div className="mx-auto max-w-xl rounded-2xl border bg-white p-6"><h1 className="text-2xl font-black">Crear momento</h1><p className="mt-2 text-slate-600">Usa el botón flotante en Momentos para publicar rápido.</p><Link href="/app/momentos" className="mt-4 inline-block rounded-xl bg-indigo-600 px-4 py-2 text-white">Volver a Momentos</Link></div></main>; }

@@ -1,164 +1,37 @@
 "use client";
 
-import Image from "next/image";
-import { FormEvent, useMemo, useState } from "react";
-import { ModuleHeader } from "@/components/module-header";
-import { PageState } from "@/components/ui";
-
-type CampusMoment = {
-  id: number;
-  title: string;
-  description?: string;
-  createdAt: string;
-  imageUrl?: string;
-  sourceLabel?: string;
-  sourceHref?: string;
-};
+import Link from "next/link";
+import { useState } from "react";
+import { CreateMomentModal } from "@/components/moments/CreateMomentModal";
+import { MomentCommentsDrawer } from "@/components/moments/MomentCommentsDrawer";
+import { MomentHistoryStrip } from "@/components/moments/MomentHistoryStrip";
+import { MomentsGalleryView } from "@/components/moments/MomentsGalleryView";
+import { MomentsHeader } from "@/components/moments/MomentsHeader";
+import { MomentsNewsView } from "@/components/moments/MomentsNewsView";
+import { MomentsPortalLayout } from "@/components/moments/MomentsPortalLayout";
+import { MomentsSavedView } from "@/components/moments/MomentsSavedView";
+import { MomentsTrendsView } from "@/components/moments/MomentsTrendsView";
+import { MomentViewer } from "@/components/moments/MomentViewer";
+import { useMoments } from "@/hooks/useMoments";
 
 export default function MomentsPage() {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [showComposer, setShowComposer] = useState(false);
-  const [submitted, setSubmitted] = useState<string | null>(null);
-  const [moments, setMoments] = useState<CampusMoment[]>([]);
-  const [boostedMomentIds, setBoostedMomentIds] = useState<Set<number>>(new Set());
+  const moments = useMoments();
+  const [showCreate, setShowCreate] = useState(false);
+  const [showComments, setShowComments] = useState(false);
 
-  const imagePreviewUrl = useMemo(() => {
-    if (!imageFile) return null;
-    return URL.createObjectURL(imageFile);
-  }, [imageFile]);
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!title.trim()) return;
-
-    const nextMoment: CampusMoment = {
-      id: Date.now(),
-      title: title.trim(),
-      description: description.trim() || undefined,
-      createdAt: new Date().toLocaleString("es-PE", {
-        dateStyle: "short",
-        timeStyle: "short",
-      }),
-      imageUrl: imagePreviewUrl ?? undefined,
-    };
-
-    setMoments((currentMoments) => [nextMoment, ...currentMoments]);
-    setSubmitted("Tu momento quedó publicado.");
-    setTitle("");
-    setDescription("");
-    setImageFile(null);
-    setShowComposer(false);
-  }
-
-  function handleBoostToggle(momentId: number) {
-    setBoostedMomentIds((currentIds) => {
-      const nextIds = new Set(currentIds);
-      if (nextIds.has(momentId)) nextIds.delete(momentId);
-      else nextIds.add(momentId);
-      return nextIds;
-    });
-  }
-
-  return (
-    <section className="space-y-6">
-      <ModuleHeader title="Momentos" description="Comparte lo que está pasando en el campus y conversa con tu comunidad." />
-
-      <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-black">Publicar momento universitario</h2>
-          <button
-            type="button"
-            onClick={() => setShowComposer((current) => !current)}
-            className="rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
-          >
-            {showComposer ? "Cerrar publicación" : "Compartir momento"}
-          </button>
-        </div>
-        <p className="text-sm text-slate-600">Comparte algo de inicio, comunidades, debates, preguntas, apuntes, trámites o de tu día a día en la universidad.</p>
-
-        {showComposer ? (
-          <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-slate-200 p-4">
-            <label className="block text-sm font-semibold text-slate-700">
-              Título del momento <span className="text-rose-600">*</span>
-              <input
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3"
-                placeholder="Ejemplo: Feria académica en la facultad"
-                required
-              />
-            </label>
-            <label className="block text-sm font-semibold text-slate-700">
-              Descripción (opcional)
-              <textarea
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                className="mt-2 min-h-24 w-full rounded-2xl border border-slate-300 px-4 py-3"
-                placeholder="Comparte más contexto sobre tu momento..."
-              />
-            </label>
-            <label className="block text-sm font-semibold text-slate-700">
-              Agregar imagen
-              <input
-                type="file"
-                accept="image/*"
-                className="mt-2 block w-full text-sm text-slate-600"
-                onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
-              />
-            </label>
-            {imagePreviewUrl ? (
-              <Image
-                src={imagePreviewUrl}
-                alt="Vista previa del momento"
-                width={800}
-                height={450}
-                className="max-h-64 rounded-2xl border border-slate-200 object-cover"
-              />
-            ) : null}
-            <button type="submit" className="rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Publicar</button>
-          </form>
-        ) : null}
-        {submitted ? <p className="text-sm text-emerald-700">{submitted}</p> : null}
-      </section>
-
-      <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="text-lg font-black">Momentos compartidos</h2>
-        <p className="text-sm text-slate-600">Impulsa un momento una vez y vuelve a pulsar para quitar tu impulso. Por ahora es visual y no suma puntaje global.</p>
-        <div className="space-y-3">
-          {moments.length === 0 ? <p className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">Aún no hay momentos publicados. Sé la primera persona en compartir algo.</p> : null}
-          {moments.map((moment) => (
-            <article key={moment.id} className="rounded-2xl border border-slate-200 p-4">
-              <p className="text-sm text-slate-500">{moment.createdAt}</p>
-              <h3 className="mt-1 text-base font-bold text-slate-900">{moment.title}</h3>
-              {moment.description ? <p className="mt-1 text-sm text-slate-700">{moment.description}</p> : null}
-              {moment.imageUrl ? (
-                <Image
-                  src={moment.imageUrl}
-                  alt="Imagen del momento compartido"
-                  width={1000}
-                  height={560}
-                  className="mt-3 max-h-80 w-full rounded-2xl border border-slate-200 object-cover"
-                />
-              ) : null}
-              {moment.sourceHref && moment.sourceLabel ? <a className="mt-3 inline-block text-sm font-semibold text-indigo-700 hover:underline" href={moment.sourceHref}>{moment.sourceLabel}</a> : null}
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-xs font-semibold text-indigo-700">{boostedMomentIds.has(moment.id) ? "Impulso activo" : "Sin impulso activo"}</span>
-                <button type="button" onClick={() => handleBoostToggle(moment.id)} className="rounded-xl border border-indigo-200 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-50">
-                  {boostedMomentIds.has(moment.id) ? "Impulsado" : "Impulsar momento"}
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <PageState
-        type="success"
-        title="Comparte un momento universitario"
-        description="Publica actividades, fechas importantes o experiencias para que tu comunidad se mantenga informada."
-      />
+  return <MomentsPortalLayout><MomentsHeader activeView={moments.activeView} setActiveView={moments.setActiveView} query={moments.query} setQuery={moments.setQuery} />
+    <section className="mx-auto max-w-[1680px] px-4 py-5">
+      {moments.toast ? <p className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{moments.toast}</p> : null}
+      {moments.activeView === "moments" && moments.currentMoment ? <><MomentViewer moment={moments.currentMoment} previousMoment={moments.previousMoment} nextMoment={moments.nextMoment} onBoost={() => moments.boostMoment(moments.currentMoment!.id)} onPass={() => moments.passMoment(moments.currentMoment!.id)} onComment={() => setShowComments(true)} onSave={() => moments.saveMoment(moments.currentMoment!.id)} onShare={() => moments.shareMoment(moments.currentMoment!.id)} /><MomentHistoryStrip moments={moments.filteredMoments.slice(0, 8)} selectFromHistory={moments.selectFromHistory} /></> : null}
+      {moments.activeView === "moments" && !moments.currentMoment ? <div className="rounded-2xl border border-dashed bg-white p-10 text-center"><p>No hay momentos activos ahora.</p><button onClick={() => setShowCreate(true)} className="mt-3 rounded-xl bg-indigo-600 px-3 py-2 text-white">Crear momento</button></div> : null}
+      {moments.activeView === "news" ? <MomentsNewsView news={moments.newsSummaries} onOpenMoments={(id)=>{moments.setActiveView("moments"); moments.selectFromHistory(id);}} /> : null}
+      {moments.activeView === "gallery" ? <MomentsGalleryView moments={moments.filteredMoments} /> : null}
+      {moments.activeView === "saved" ? <MomentsSavedView moments={moments.savedMoments} onRemove={moments.saveMoment} /> : null}
+      {moments.activeView === "trends" ? <MomentsTrendsView moments={moments.moments} onView={(tag)=>moments.setQuery(tag)} /> : null}
     </section>
-  );
+    <button onClick={() => setShowCreate(true)} className="fixed bottom-6 right-6 rounded-full bg-indigo-600 p-4 text-white shadow-lg">+</button>
+    <Link href="/app/momentos/crear" className="sr-only">Crear momento</Link>
+    <MomentCommentsDrawer open={showComments} onClose={() => setShowComments(false)} comments={moments.comments.filter((c)=>c.momentId===moments.currentMoment?.id)} onComment={(text)=>moments.currentMoment && moments.commentMoment(moments.currentMoment.id, text)} />
+    {showCreate ? <CreateMomentModal onClose={() => setShowCreate(false)} onCreate={(input)=>moments.createMoment({ ...input, media: [{ id: `${Date.now()}-media`, type: "image", url: `https://picsum.photos/seed/${Date.now()}/1200/700` }] })} onDraft={moments.saveDraft} /> : null}
+  </MomentsPortalLayout>;
 }

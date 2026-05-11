@@ -1,0 +1,4 @@
+import Image from "next/image";
+import Link from "next/link";
+import type { MomentItem } from "./types";
+export function MomentsGalleryView({ moments }: { moments: MomentItem[] }) { return <section><div className="mb-3 flex flex-wrap gap-2">{["Hoy","Esta semana","Campus","Eventos","Humor","Comida","Cultura","Deportes","Perdido/encontrado"].map((f)=><button key={f} className="rounded-full border bg-white px-3 py-1 text-xs">{f}</button>)}</div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{moments.map((m)=><Link href={`/app/momentos/${m.id}`} key={m.id} className="rounded-2xl border bg-white p-2"><Image src={m.media[0]?.url ?? "https://picsum.photos/seed/g/300/220"} alt={m.title} width={300} height={220} className="h-40 w-full rounded-xl object-cover"/><p className="mt-2 font-semibold">{m.title}</p><p className="text-xs text-slate-600">{m.location}</p></Link>)}</div></section>; }

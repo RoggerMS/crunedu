@@ -27,6 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [searchPage, setSearchPage] = useState(1);
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
   const searchContext = useMemo(() => getSearchContext(pathname), [pathname]);
+  const isMomentsPortal = pathname.startsWith("/app/momentos");
   const { results, loading, error } = useSearch(query, searchType, searchPage);
   const hasQuery = query.trim().length > 0;
   const hasResults =
@@ -98,6 +99,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   function handleLogout() {
     setAccessToken("");
     router.replace("/login");
+  }
+
+  if (isMomentsPortal) {
+    return <div className="min-h-screen bg-slate-50">{children}</div>;
   }
 
   return (
