@@ -32,6 +32,6 @@ export default function MomentsPage() {
     <button onClick={() => setShowCreate(true)} className="fixed bottom-6 right-6 rounded-full bg-indigo-600 p-4 text-white shadow-lg">+</button>
     <Link href="/app/momentos/crear" className="sr-only">Crear momento</Link>
     <MomentCommentsDrawer open={showComments} onClose={() => setShowComments(false)} comments={moments.comments.filter((c)=>c.momentId===moments.currentMoment?.id)} onComment={(text)=>moments.currentMoment && moments.commentMoment(moments.currentMoment.id, text)} />
-    {showCreate ? <CreateMomentModal onClose={() => setShowCreate(false)} onCreate={(input)=>moments.createMoment({ ...input, media: [{ id: `${Date.now()}-media`, type: "image", url: `https://picsum.photos/seed/${Date.now()}/1200/700` }] })} onDraft={moments.saveDraft} /> : null}
+    {showCreate ? <CreateMomentModal onClose={() => setShowCreate(false)} onCreate={moments.createMoment} onDraft={moments.saveDraft} /> : null}
   </MomentsPortalLayout>;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fallbackMoments, fallbackNews } from "@/components/moments/moments-data";
 import type { MomentComment, MomentItem, MomentNewsSummary, MomentView } from "@/components/moments/types";
 
@@ -12,12 +12,23 @@ export function useMoments() {
   const [moments, setMoments] = useState<MomentItem[]>(fallbackMoments);
   const [newsSummaries] = useState<MomentNewsSummary[]>(fallbackNews);
   const [comments, setComments] = useState<MomentComment[]>([]);
-  const initialView = (typeof window !== "undefined" && (window.localStorage.getItem(PREF_KEY) as MomentView | null)) || (viewerAge !== undefined && viewerAge >= 35 ? "news" : "moments");
-  const [activeView, setActiveViewState] = useState<MomentView>(initialView ?? "moments");
+  const [activeView, setActiveViewState] = useState<MomentView>("moments");
   const [currentMomentIndex, setCurrentMomentIndex] = useState(0);
   const [history, setHistory] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedPreference = window.localStorage.getItem(PREF_KEY) as MomentView | null;
+    if (savedPreference) {
+      setActiveViewState(savedPreference);
+      return;
+    }
+
+    if (viewerAge !== undefined && viewerAge >= 35) {
+      setActiveViewState("news");
+    }
+  }, [viewerAge]);
 
   const filteredMoments = useMemo(() => moments.filter((m) => (activeView === "saved" ? m.viewerState.saved : new Date(m.expiresAt) > new Date() || m.viewerState.saved)).filter((m) => `${m.title} ${m.location ?? ""} ${m.tags.join(" ")}`.toLowerCase().includes(query.toLowerCase())).sort((a, b) => score(b) - score(a)), [moments, activeView, query]);
   const currentMoment = filteredMoments[currentMomentIndex] ?? null;
