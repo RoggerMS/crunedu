@@ -1,1 +1,1 @@
-export { deleteMediaBlob, getMediaBlob, saveMediaBlob } from "@/lib/feed-media-store";
+export { createObjectUrlFromStoredBlob, deleteMediaBlob, getMediaBlob, saveMediaBlob } from "@/lib/feed-media-store";
