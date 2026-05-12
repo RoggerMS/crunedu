@@ -2,6 +2,29 @@ import type { Community, CreatePostImagePayload, FeedPost } from "@crunedu/share
 
 export type PostType = "publicacion" | "apunte" | "pregunta" | "momento" | "debate" | "tramite";
 
+export type FeedPostType =
+  | "text"
+  | "image"
+  | "file"
+  | "shared_note"
+  | "shared_question"
+  | "shared_debate"
+  | "shared_community"
+  | "shared_university"
+  | "shared_store_listing"
+  | "shared_profile"
+  | "shared_moment";
+
+export type SharedEntity = {
+  id: string;
+  type: "note" | "question" | "debate" | "community" | "university" | "store_listing" | "profile" | "moment";
+  title: string;
+  description?: string;
+  href: string;
+  meta?: string;
+  imageUrl?: string;
+};
+
 export type LocalAttachmentFile = {
   id: string;
   name: string;
@@ -19,11 +42,16 @@ export type LocalFeedPost = {
   authorAvatarUrl?: string;
   communityName?: string;
   createdAt: string;
+  attachedFiles: LocalAttachmentFile[];
+  attachedImages: Array<{ id: string; url: string; alt?: string }>;
+
   tags: string[];
   courseName?: string;
   stance?: string;
   deadline?: string;
   images?: Array<{ id: string; url: string; alt?: string }>;
+  sharedEntity?: SharedEntity;
+  postType?: FeedPostType;
   files?: LocalAttachmentFile[];
   stats: { likes: number; comments: number; saves: number };
   viewerState: { liked: boolean; saved: boolean };
