@@ -12,7 +12,11 @@ export function useFeed() {
 
   const reload = useCallback(async () => {
     setLoading(true);
-    try { setPosts(await repository.listPosts()); setError(null); } catch (e) { setError(e instanceof Error ? e.message : "No se pudo cargar el feed."); } finally { setLoading(false); }
+    try { const loadedPosts = await repository.listPosts();
+      const commentsEntries = await Promise.all(loadedPosts.map(async (post) => [post.id, await repository.listComments(post.id)] as const));
+      setPosts(loadedPosts);
+      setCommentsByPost(Object.fromEntries(commentsEntries));
+      setError(null); } catch (e) { setError(e instanceof Error ? e.message : "No se pudo cargar el feed."); } finally { setLoading(false); }
   }, []);
   useEffect(() => { void reload(); }, [reload]);
 

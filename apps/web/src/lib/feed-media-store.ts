@@ -39,3 +39,10 @@ export async function deleteMediaBlob(id: string) {
     tx.onerror = () => reject(tx.error);
   });
 }
+
+
+export async function createObjectUrlFromStoredBlob(id: string): Promise<string | null> {
+  const blob = await getMediaBlob(id);
+  if (!blob) return null;
+  return URL.createObjectURL(blob);
+}

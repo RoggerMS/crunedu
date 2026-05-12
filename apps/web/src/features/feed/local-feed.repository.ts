@@ -1,6 +1,7 @@
 import type { FeedRepository } from "./feed.repository";
 import type { CreateFeedPostInput, FeedAttachment, FeedComment, FeedPost, FeedPostType } from "./feed.types";
 import { appendEvent, loadComments, loadHidden, loadPosts, loadReports, saveComments, saveHidden, savePosts, saveReports } from "./feed-storage";
+import { createObjectUrlFromStoredBlob } from "./feed-media-store";
 
 const mapType = (raw: unknown): FeedPostType => (raw === "publicación" || raw === "publicacion" ? "text" : typeof raw === "string" ? (raw as FeedPostType) : "text");
 
@@ -22,7 +23,18 @@ export const normalizeFeedPost = (raw: any): FeedPost => ({
 const localFeedRepository: FeedRepository = {
   async listPosts() {
     const hidden = new Set(loadHidden());
-    return loadPosts().map(normalizeFeedPost).filter((p) => !hidden.has(p.id));
+    const commentsByPost = loadComments();
+    const posts = loadPosts().map(normalizeFeedPost).filter((p) => !hidden.has(p.id));
+    for (const post of posts) {
+      for (const attachment of post.attachments ?? []) {
+        if (!attachment.previewUrl && attachment.storageKey) {
+          try { attachment.previewUrl = await createObjectUrlFromStoredBlob(attachment.storageKey) ?? undefined; } catch {}
+        }
+      }
+      const total = commentsByPost[post.id]?.length ?? 0;
+      if (post.stats.comments !== total) post.stats.comments = total;
+    }
+    return posts;
   },
   async createPost(input) {
     const post: FeedPost = normalizeFeedPost({ id: `local-${Date.now()}`, type: input.attachments?.length ? "image" : "text", content: input.content, attachments: input.attachments ?? [], destination: input.destination ?? { type: "general", label: "Feed general" }, visibility: input.visibility ?? "public", createdAt: new Date().toISOString() });
