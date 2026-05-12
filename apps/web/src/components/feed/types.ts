@@ -5,8 +5,7 @@ export type PostType = "publicacion" | "apunte" | "pregunta" | "momento" | "deba
 export type FeedPostType =
   | "text"
   | "image"
-  | "file"
-  | "shared_note"
+    | "shared_note"
   | "shared_question"
   | "shared_debate"
   | "shared_community"
@@ -43,13 +42,13 @@ export type LocalFeedPost = {
   communityName?: string;
   createdAt: string;
   attachedFiles: LocalAttachmentFile[];
-  attachedImages: Array<{ id: string; url: string; alt?: string }>;
+  attachedImages: Array<{ id: string; mediaId: string; alt?: string; previewUrl?: string }>;
 
   tags: string[];
   courseName?: string;
   stance?: string;
   deadline?: string;
-  images?: Array<{ id: string; url: string; alt?: string }>;
+  images?: Array<{ id: string; mediaId: string; alt?: string; previewUrl?: string }>;
   sharedEntity?: SharedEntity;
   postType?: FeedPostType;
   files?: LocalAttachmentFile[];
@@ -83,7 +82,7 @@ export interface CreatePostSubmitPayload {
   communityId: string;
   tags: string[];
   attachedFiles: LocalAttachmentFile[];
-  attachedImages: Array<{ id: string; url: string; uploaded?: CreatePostImagePayload }>;
+  attachedImages: Array<{ id: string; mediaId: string; previewUrl?: string; uploaded?: CreatePostImagePayload }>;
 }
 
 export interface FeedPostCard extends Omit<FeedPost, "id"> {
