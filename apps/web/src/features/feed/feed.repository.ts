@@ -10,7 +10,8 @@ export interface FeedRepository {
   savePost(postId: string): Promise<FeedPost>;
   unsavePost(postId: string): Promise<FeedPost>;
   listComments(postId: string): Promise<FeedComment[]>;
-  addComment(postId: string, content: string): Promise<FeedComment>;
+  addComment(postId: string, content: string, parentId?: string): Promise<FeedComment>;
+  likeComment(postId: string, commentId: string): Promise<FeedComment[]>;
   reportPost(postId: string, reason: string, detail?: string): Promise<void>;
   hidePost(postId: string): Promise<void>;
   sharePost(postId: string): Promise<FeedPost>;

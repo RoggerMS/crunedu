@@ -48,9 +48,12 @@ export type FeedPost = {
 export type FeedComment = {
   id: string;
   postId: string;
+  parentId?: string;
   author: { id: string; name: string; avatarUrl?: string };
   content: string;
   createdAt: string;
+  stats?: { likes: number; replies: number };
+  viewerState?: { liked: boolean };
 };
 
 export type CreateFeedPostInput = {

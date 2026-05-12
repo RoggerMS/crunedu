@@ -24,10 +24,11 @@ export function useFeed() {
   const deletePost = async (postId: string) => { await repository.deletePost(postId); setPosts((prev) => prev.filter((post) => post.id !== postId)); };
   const likePost = async (postId: string) => { const post = posts.find((item) => item.id === postId); if (!post) return; const updated = post.viewerState.liked ? await repository.unlikePost(postId) : await repository.likePost(postId); setPosts((prev) => prev.map((item) => item.id === postId ? updated : item)); };
   const savePost = async (postId: string) => { const post = posts.find((item) => item.id === postId); if (!post) return; const updated = post.viewerState.saved ? await repository.unsavePost(postId) : await repository.savePost(postId); setPosts((prev) => prev.map((item) => item.id === postId ? updated : item)); };
-  const addComment = async (postId: string, content: string) => { const comment = await repository.addComment(postId, content); setCommentsByPost((prev) => ({ ...prev, [postId]: [comment, ...(prev[postId] ?? [])] })); setPosts((prev) => prev.map((item) => item.id === postId ? { ...item, stats: { ...item.stats, comments: item.stats.comments + 1 } } : item)); };
+  const addComment = async (postId: string, content: string, parentId?: string) => { const comment = await repository.addComment(postId, content, parentId); setCommentsByPost((prev) => ({ ...prev, [postId]: [comment, ...(prev[postId] ?? [])] })); setPosts((prev) => prev.map((item) => item.id === postId ? { ...item, stats: { ...item.stats, comments: item.stats.comments + 1 } } : item)); };
+  const likeComment = async (postId: string, commentId: string) => { const updated = await repository.likeComment(postId, commentId); setCommentsByPost((prev) => ({ ...prev, [postId]: updated })); };
   const reportPost = async (postId: string, reason: string, detail?: string) => repository.reportPost(postId, reason, detail);
   const hidePost = async (postId: string) => { await repository.hidePost(postId); setPosts((prev) => prev.filter((item) => item.id !== postId)); };
   const sharePost = async (postId: string) => { const updated = await repository.sharePost(postId); setPosts((prev) => prev.map((item) => item.id === postId ? updated : item)); };
 
-  return { posts, commentsByPost, loading, hydrated: !loading, error, createPost, deletePost, likePost, savePost, addComment, reportPost, hidePost, sharePost, reload };
+  return { posts, commentsByPost, loading, hydrated: !loading, error, createPost, deletePost, likePost, savePost, addComment, likeComment, reportPost, hidePost, sharePost, reload };
 }

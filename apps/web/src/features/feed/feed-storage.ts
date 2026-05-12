@@ -6,6 +6,7 @@ export const FEED_STORAGE_KEYS = {
   hidden: "crunedu_feed_hidden",
   reports: "crunedu_feed_reports",
   events: "crunedu_feed_events",
+  commentLikes: "crunedu_feed_comment_likes",
 } as const;
 
 const safeParse = <T,>(key: string, fallback: T): T => {
@@ -30,3 +31,7 @@ export const appendEvent = (event: Record<string, unknown>) => {
   const events = safeParse<Record<string, unknown>[]>(FEED_STORAGE_KEYS.events, []);
   localStorage.setItem(FEED_STORAGE_KEYS.events, JSON.stringify([event, ...events].slice(0, 200)));
 };
+
+
+export const loadCommentLikes = () => safeParse<Record<string, true>>(FEED_STORAGE_KEYS.commentLikes, {});
+export const saveCommentLikes = (likes: Record<string, true>) => localStorage.setItem(FEED_STORAGE_KEYS.commentLikes, JSON.stringify(likes));
