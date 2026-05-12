@@ -1,7 +1,7 @@
 import { AlignLeft, FileUp, ImagePlus, MessageCircle, MessageSquarePlus, NotebookPen, Sparkles, X } from "lucide-react";
-import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { AttachmentPreview } from "./AttachmentPreview";
+import { FeedAttachmentPreview } from "./FeedAttachmentPreview";
+import { MAX_FEED_IMAGES } from "./constants";
 import type { CommunityLite, CreatePostSubmitPayload, LocalAttachmentFile, PostType } from "./types";
 
 const suggestedTags = ["recurso", "consejo", "comunidad", "universidad"];
@@ -39,13 +39,14 @@ export function CreatePostModal(props: { open: boolean; initialType: PostType; c
   useEffect(() => setType(props.initialType), [props.initialType, props.open]);
   const conf = config[type];
   const hasContent = Boolean(title.trim() || content.trim() || files.length || images.length || tags.length);
-  const canSubmit = props.isAuthenticated && (content.trim() || files.length || images.length) && (!conf.requiresTitle || title.trim()) && (visibility !== "comunidad" || communityId);
+  const hasValidContent = Boolean(content.trim().length >= 1 || files.length > 0 || images.length > 0);
+  const canSubmit = props.isAuthenticated && hasValidContent && (!conf.requiresTitle || title.trim()) && (visibility !== "comunidad" || communityId);
   const showValidation = hasTriedSubmit || touched.title || touched.content;
   const validationText = useMemo(() => {
     if (!showValidation) return null;
     if (!props.isAuthenticated) return "Inicia sesión para publicar contenido.";
     if (conf.requiresTitle && !title.trim()) return "Agrega un título para este tipo de publicación.";
-    if (!content.trim() && !files.length && !images.length) return "Agrega contenido para publicar.";
+    if (!content.trim() && !files.length && !images.length) return "Agrega texto, una imagen, un archivo o contenido para publicar.";
     if (visibility === "comunidad" && !communityId) return "Selecciona una comunidad o cambia la visibilidad.";
     return null;
   }, [showValidation, props.isAuthenticated, conf.requiresTitle, title, content, files.length, images.length, visibility, communityId]);
@@ -66,7 +67,10 @@ export function CreatePostModal(props: { open: boolean; initialType: PostType; c
   return <div className="fixed inset-0 z-50 bg-slate-950/45 p-3 backdrop-blur-sm" onClick={props.onClose}>
     <div role="dialog" aria-modal className="mx-auto mt-3 max-h-[93vh] w-full max-w-[1000px] overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
       <div className="flex items-start justify-between"><div><h2 className="text-xl font-black">Crear publicación</h2><p className="text-sm text-slate-500">{conf.subtitle}</p></div><button aria-label="Cerrar" className="rounded-lg p-1 hover:bg-slate-100" onClick={props.onClose}><X size={18} /></button></div>
-      <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">{types.map(({ id, icon: Icon }) => <button key={id} onClick={() => setType(id)} className={`rounded-xl border px-2 py-2 text-left transition ${type === id ? "border-indigo-500 bg-indigo-50" : "border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/40"}`}><Icon size={14} /><p className="text-xs font-semibold">{config[id].label}</p></button>)}</div>
+      <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">{types.map(({ id, icon: Icon }) => {
+        const disabled = id !== "publicacion";
+        return <button key={id} title={disabled ? `Próximamente se integrará con ${config[id].label === "Trámite" ? "Universidad/Trámites" : `${config[id].label}s`}.` : undefined} onClick={() => disabled ? props.onToast("Próximamente podrás crear este contenido desde su módulo correspondiente.", "info") : setType(id)} className={`rounded-xl border px-2 py-2 text-left transition ${type === id ? "border-indigo-500 bg-indigo-50" : "border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/40"} ${disabled ? "cursor-not-allowed opacity-60" : ""}`}><Icon size={14} /><p className="text-xs font-semibold">{config[id].label}</p></button>;
+      })}</div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <div className="space-y-3 lg:col-span-2">
@@ -79,10 +83,10 @@ export function CreatePostModal(props: { open: boolean; initialType: PostType; c
           {type === "apunte" ? <p className="text-xs text-slate-500">Ideal para PDF, DOCX, PPT o resúmenes de clase.</p> : null}
           <div className="flex flex-wrap gap-2">
             <label className={`cursor-pointer rounded-xl border px-3 py-2 text-xs font-semibold ${type === "apunte" ? "border-indigo-300 bg-indigo-50" : ""}`}>Adjuntar archivo<input type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; if (files.length >= 1) return setError("Solo puedes adjuntar 1 archivo por publicación."); setFiles([{ id: crypto.randomUUID(), name: f.name, size: f.size, type: f.type, file: f }]); setError(null); }} /></label>
-            <label className={`cursor-pointer rounded-xl border px-3 py-2 text-xs font-semibold ${type === "momento" ? "border-indigo-300 bg-indigo-50" : ""}`}>Adjuntar imagen<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; if (images.length >= 4) return setError("Máximo 4 imágenes."); setImages((prev) => [...prev, { id: crypto.randomUUID(), url: URL.createObjectURL(f) }]); setError(null); }} /></label>
+            <label className={`cursor-pointer rounded-xl border px-3 py-2 text-xs font-semibold ${type === "momento" ? "border-indigo-300 bg-indigo-50" : ""}`}>Adjuntar imagen<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; if (images.length >= MAX_FEED_IMAGES) return setError(`Por ahora puedes subir hasta ${MAX_FEED_IMAGES} imágenes.`); const reader = new FileReader(); reader.onload = () => setImages((prev) => [...prev, { id: crypto.randomUUID(), url: String(reader.result ?? "") }]); reader.readAsDataURL(f); setError(null); }} /></label>
           </div>
-          <p className="text-xs text-slate-500">Puedes agregar hasta 4 imágenes.</p>
-          <AttachmentPreview files={files} images={images} onRemoveFile={(id) => setFiles((p) => p.filter((f) => f.id !== id))} onRemoveImage={(id) => setImages((p) => p.filter((img) => img.id !== id))} />
+          <p className="text-xs text-slate-500">Puedes agregar hasta {MAX_FEED_IMAGES} imágenes.</p>
+          <FeedAttachmentPreview files={files} images={images} onRemoveFile={(id) => setFiles((p) => p.filter((f) => f.id !== id))} onRemoveImage={(id) => setImages((p) => p.filter((img) => img.id !== id))} />
           {error ? <p className="text-xs text-rose-600">{error}</p> : null}
           {validationText ? <p className="text-xs text-rose-600">{validationText}</p> : null}
         </div>
@@ -99,7 +103,7 @@ export function CreatePostModal(props: { open: boolean; initialType: PostType; c
           </div>
           <div className="rounded-xl border p-3">
             <p className="text-sm font-bold">Vista previa</p>
-            {!hasContent ? <p className="mt-2 text-xs text-slate-500">Tu vista previa aparecerá aquí.</p> : <div className="mt-2 space-y-2 text-xs"><div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 font-semibold text-indigo-700">Tú</span><div><p className="font-semibold">Tú</p><p className="text-slate-500">{conf.label} · {props.communities.find((c) => String(c.id) === communityId)?.name ?? "Feed general"}</p></div></div>{title.trim() ? <p className="font-semibold">{title}</p> : null}<p className="line-clamp-3 text-slate-600">{content || "Sin contenido todavía."}</p><div className="flex flex-wrap gap-1">{tags.map((tag) => <span key={tag} className="rounded-full bg-indigo-50 px-2 py-1 text-[11px] text-indigo-700">#{tag}</span>)}</div>{images[0] ? <Image src={images[0].url} alt="preview" width={240} height={110} className="h-20 w-full rounded-lg object-cover" /> : null}{files[0] ? <p className="rounded bg-slate-100 px-2 py-1">{files[0].name}</p> : null}</div>}
+            {!hasContent ? <p className="mt-2 text-xs text-slate-500">Tu vista previa aparecerá aquí.</p> : <div className="mt-2 space-y-2 text-xs"><div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 font-semibold text-indigo-700">Tú</span><div><p className="font-semibold">Tú</p><p className="text-slate-500">{conf.label} · {props.communities.find((c) => String(c.id) === communityId)?.name ?? "Feed general"} · {visibility === "todos" ? "Visible para todos" : "Solo comunidad"}</p></div></div>{title.trim() ? <p className="font-semibold">{title}</p> : null}{content ? <p className="line-clamp-3 text-slate-600">{content}</p> : null}<div className="flex flex-wrap gap-1">{tags.map((tag) => <span key={tag} className="rounded-full bg-indigo-50 px-2 py-1 text-[11px] text-indigo-700">#{tag}</span>)}</div><FeedAttachmentPreview files={files} images={images} /></div>}
           </div>
         </div>
       </div>
