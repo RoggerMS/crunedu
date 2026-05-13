@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileText, Lock, MoreHorizontal, Users } from "lucide-react";
 import type { Community as ApiCommunity } from "@crunedu/shared";
 import { useCommunities } from "@/hooks/useCommunities";
+import { CommunityCardSkeleton } from "@/components/communities/CommunityCardSkeleton";
 
 type Privacy = "publica" | "privada";
 type CommunityStatus = "nueva" | "muy_activa" | "normal";
@@ -28,16 +29,11 @@ type CommunityCardModel = {
   sampleMembers: string[];
 };
 
-const FALLBACK_COMMUNITIES: CommunityCardModel[] = [
-  { id: "fallback-cachimbos", name: "Cachimbos", description: "Espacio para resolver dudas y acompañar a ingresantes.", cover: "from-indigo-200 via-violet-100 to-white", icon: "C", tags: ["UNE", "Ingresantes", "Apoyo"], membersCount: 0, weeklyPosts: 0, isMember: false, privacy: "publica", status: "nueva", createdAt: new Date().toISOString(), sampleMembers: ["CU", "RE", "DU"] },
-  { id: "fallback-apuntes", name: "Apuntes", description: "Comparte recursos de estudio permitidos por cursos.", cover: "from-sky-200 via-indigo-100 to-white", icon: "A", tags: ["Recursos", "Cursos", "UNE"], membersCount: 0, weeklyPosts: 0, isMember: false, privacy: "publica", status: "normal", createdAt: new Date().toISOString(), sampleMembers: ["NO", "TA", "SU"] },
-];
-
 const TAG_POOL = ["UNE", "Apoyo académico", "Trámites", "General", "Cursos"];
 
 export default function CommunitiesPage() {
   const router = useRouter();
-  const { communities: apiCommunities, loading, error } = useCommunities();
+  const { communities: apiCommunities, loading, error, reload } = useCommunities();
   const [topView, setTopView] = useState<TopView>("explorar");
   const [filter, setFilter] = useState<ExploreFilter>("todas");
   const [sort, setSort] = useState<SortOption>("recientes");
@@ -46,7 +42,9 @@ export default function CommunitiesPage() {
   const [joinedOverlay, setJoinedOverlay] = useState<Record<string, boolean>>(() => readBooleanMap("crunedu_joined_communities"));
 
   const mappedCommunities = useMemo(() => apiCommunities.map((community) => mapCommunityToCardModel(community, joinedOverlay)), [apiCommunities, joinedOverlay]);
-  const communities = mappedCommunities.length > 0 ? mappedCommunities : FALLBACK_COMMUNITIES;
+  const communities = mappedCommunities;
+  const showErrorState = !loading && Boolean(error);
+  const showEmptyState = !loading && !error && communities.length === 0;
 
   const recommended = useMemo(() => [...communities].sort((a, b) => scoreCommunity(b) - scoreCommunity(a)), [communities]);
 
@@ -92,25 +90,26 @@ export default function CommunitiesPage() {
         </div>
       </div>
 
-      {loading ? <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">Cargando comunidades…</div> : null}
-      {error && mappedCommunities.length === 0 ? <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{error} Mostrando una vista de respaldo temporal.</div> : null}
+      {loading ? <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">Cargando comunidades...</div> : null}
+      {showErrorState ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"><p>No se pudieron cargar las comunidades.</p><button className="mt-3 rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold" onClick={() => void reload()}>Reintentar</button></div> : null}
+      {showEmptyState ? <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm"><p className="text-sm text-slate-700">Aún no hay comunidades disponibles.</p><button className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white" onClick={() => router.push("/app/comunidades/nueva")}>Crear comunidad</button></div> : null}
 
-      {topView === "publicaciones" ? (
+      {!showErrorState && !showEmptyState && (topView === "publicaciones" ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm"><h2 className="text-lg font-semibold text-slate-900">Publicaciones de tus comunidades</h2><p className="mt-2 text-sm text-slate-600">Aún no hay publicaciones de tus comunidades.</p></div>
       ) : (
         <>
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between"><div><h2 className="text-base font-semibold text-slate-900">Recomendadas para ti</h2><p className="text-xs text-slate-500">Basadas en comunidades reales y actividad reciente.</p></div><button className="text-sm font-semibold text-indigo-600" onClick={() => setShowAllRecommended((prev) => !prev)}>{showAllRecommended ? "Volver a explorar" : "Ver más"}</button></div>
-            <div className="flex gap-4 overflow-x-auto pb-1">{(showAllRecommended ? recommended : recommended.slice(0, 4)).map((community) => <div key={`recommended-${community.id}`} className="min-w-[260px] flex-1"><CommunityCard community={community} requestSent={Boolean(requests[String(community.id)])} onJoin={onJoin} onEnter={() => router.push(`/app/comunidades/${community.id}`)} /></div>)}</div>
+            <div className="flex gap-4 overflow-x-auto pb-1">{loading ? Array.from({ length: 4 }).map((_, index) => <CommunityCardSkeleton key={`recommended-skeleton-${index}`} compact />) : (showAllRecommended ? recommended : recommended.slice(0, 4)).map((community) => <div key={`recommended-${community.id}`} className="w-[280px] max-w-[320px] min-w-[260px] flex-shrink-0"><CommunityCard community={community} requestSent={Boolean(requests[String(community.id)])} onJoin={onJoin} onEnter={() => router.push(`/app/comunidades/${community.id}`)} /></div>)}</div>{!loading && !error && recommended.length === 0 ? <p className="mt-3 text-xs text-slate-500">Aún no hay recomendaciones disponibles.</p> : null}
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><h2 className="text-base font-semibold text-slate-900">{topView === "mis" || filter === "mis" ? "Mis comunidades" : "Explorar comunidades"}</h2></div>
             <div className="mt-3 flex flex-wrap gap-2">{[["todas", "Todas"], ["mis", "Mis comunidades"], ["nuevas", "Nuevas"], ["activas", "Activas"], ["privadas", "Privadas"], ["publicas", "Públicas"]].map(([value, label]) => <button key={value} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${filter === value ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700"}`} onClick={() => { setFilter(value as ExploreFilter); if (value !== "mis") setTopView("explorar"); }}>{label}</button>)}</div>
             <div className="mt-3"><select value={sort} onChange={(event) => setSort(event.target.value as SortOption)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm"><option value="recientes">Más recientes</option><option value="activas">Más activas</option><option value="az">Nombre A-Z</option></select></div>
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{filtered.map((community) => <CommunityCard key={community.id} community={community} requestSent={Boolean(requests[String(community.id)])} onJoin={onJoin} onEnter={() => router.push(`/app/comunidades/${community.id}`)} />)}</div>
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{loading ? Array.from({ length: 8 }).map((_, index) => <CommunityCardSkeleton key={`grid-skeleton-${index}`} />) : filtered.map((community) => <CommunityCard key={community.id} community={community} requestSent={Boolean(requests[String(community.id)])} onJoin={onJoin} onEnter={() => router.push(`/app/comunidades/${community.id}`)} />)}</div>
           </div>
         </>
-      )}
+      ))}
     </section>
   );
 }
