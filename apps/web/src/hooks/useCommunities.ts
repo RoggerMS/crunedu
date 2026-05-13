@@ -21,6 +21,9 @@ export function useCommunities(): UseCommunitiesResult {
       const data = await apiRequest<Community[]>("/communities");
       setCommunities(data);
     } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[communities] Failed to load communities", err);
+      }
       setError(mapApiError(err, "No se pudieron cargar las comunidades."));
     } finally {
       setLoading(false);
