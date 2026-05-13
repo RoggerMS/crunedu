@@ -53,7 +53,7 @@ export default function AppPage() {
         {!feed.loading && !feed.error && filteredPosts.length === 0 ? <div className="rounded-2xl border bg-white p-6 text-center"><h3 className="text-xl font-black">Tu feed académico está listo para empezar</h3><p className="mt-2 text-sm text-slate-500">Publica en el feed o explora comunidades para descubrir contenido.</p><div className="mt-4 flex flex-wrap justify-center gap-2"><PrimaryButton onClick={() => { setSelectedType("publicacion"); setIsOpen(true); }}>Crear publicación</PrimaryButton></div></div> : null}
       </section>
       <aside className="hidden self-start lg:block">
-        <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto">
+        <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto overscroll-contain pr-1">
           <RightSidebar communities={communities} trends={[]} draftsCount={draftsCount} onJoin={() => showToast("Función de unirse a comunidad pendiente de conexión.", "info")} onOpenCreate={(type) => { setSelectedType(type); setIsOpen(true); }} />
         </div>
       </aside>
