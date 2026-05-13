@@ -12,6 +12,8 @@ type CommunityFormState = {
   name: string;
   description: string;
   rules: string;
+  tags: string;
+  privacy: "publica" | "privada";
   avatarUrl: string;
   coverUrl: string;
   avatarPreview: string;
@@ -21,6 +23,8 @@ const initialForm: CommunityFormState = {
   name: "",
   description: "",
   rules: "",
+  tags: "",
+  privacy: "publica",
   avatarUrl: "",
   coverUrl: "",
   avatarPreview: "",
@@ -54,7 +58,7 @@ export default function NewCommunityPage() {
     setFormError(null);
     setIsSubmitting(true);
     try {
-      await createCommunity(
+      const created = await createCommunity(
         {
           name: form.name,
           description: form.description || undefined,
@@ -64,7 +68,7 @@ export default function NewCommunityPage() {
         },
         accessToken,
       );
-      router.push("/app/comunidades");
+      router.push(`/app/comunidades/${created.id}`);
       router.refresh();
     } catch (error) {
       setFormError(mapApiError(error, "No se pudo crear la comunidad."));
@@ -104,6 +108,25 @@ export default function NewCommunityPage() {
             maxLength={300}
             rows={3}
           />
+          <div className="grid gap-3 md:grid-cols-2">
+            <Input
+              placeholder="Etiquetas (separadas por coma)"
+              value={form.tags}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, tags: event.target.value }))
+              }
+            />
+            <select
+              value={form.privacy}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, privacy: event.target.value as "publica" | "privada" }))
+              }
+              className="rounded-2xl border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="publica">Pública</option>
+              <option value="privada">Privada</option>
+            </select>
+          </div>
           <TextArea
             placeholder="Reglas de la comunidad"
             value={form.rules}
@@ -205,6 +228,8 @@ export default function NewCommunityPage() {
                 {form.description.trim() ||
                   "Aquí verás la descripción de tu comunidad."}
               </p>
+              <p className="mt-2 text-xs text-slate-500">Privacidad: {form.privacy === "privada" ? "Privada" : "Pública"}</p>
+              <div className="mt-2 flex flex-wrap gap-1">{form.tags.split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 4).map((tag) => <span key={tag} className="rounded-full bg-white px-2 py-1 text-[11px] text-slate-700">#{tag}</span>)}</div>
               <p className="mt-3 rounded-xl bg-white p-3 text-xs text-slate-700">
                 {form.rules.trim() ||
                   "Aquí aparecerán las reglas principales para tus miembros."}
