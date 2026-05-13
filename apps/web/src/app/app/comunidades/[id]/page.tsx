@@ -13,13 +13,13 @@ import { CommunityMembersCard } from "@/components/communities/detail/CommunityM
 import { CommunityInviteCard } from "@/components/communities/detail/CommunityInviteCard";
 import { CommunityRulesCard } from "@/components/communities/detail/CommunityRulesCard";
 import { CommunityInfoPanel } from "@/components/communities/detail/CommunityInfoPanel";
-import type { CommunityDetailModel } from "@/components/communities/detail/types";
+import type { CommunityDetailModel, CommunityPostModel } from "@/components/communities/detail/types";
 
 export default function CommunityDetailPage({ params }: { params: { id: string } }) {
   const communityId = Number(params.id);
   const { accessToken, isAuthenticated, setAccessToken } = useAccessToken();
   const [community, setCommunity] = useState<CommunityDetailModel | null>(null);
-  const [posts, setPosts] = useState<Array<{ id: number; title: string; content: string }>>([]);
+  const [posts, setPosts] = useState<CommunityPostModel[]>([]);
   const [activeTab, setActiveTab] = useState("inicio");
   const [isMember, setIsMember] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
@@ -29,9 +29,16 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
   const inviteUrl = useMemo(() => (typeof window === "undefined" ? "" : `${window.location.origin}/app/comunidades/${communityId}`), [communityId]);
-  const showToast = (message: string, type: "success" | "error" | "info" = "info") => { setToast({ message, type }); setTimeout(() => setToast(null), 3000); };
+  const showToast = (message: string, type: "success" | "error" | "info" = "info") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
-  const copyLink = async (message: string) => { if (!inviteUrl) return; await navigator.clipboard.writeText(inviteUrl); showToast(message, "success"); };
+  const copyLink = async (message: string) => {
+    if (!inviteUrl) return;
+    await navigator.clipboard.writeText(inviteUrl);
+    showToast(message, "success");
+  };
 
   async function load() {
     setLoading(true);
@@ -39,22 +46,49 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
     try {
       const [communityResponse, postsResponse] = await Promise.all([
         apiRequest<any>(`/communities/${communityId}`),
-        apiRequest<{ items: Array<{ id: number; title: string; content: string }> }>(`/communities/${communityId}/posts?limit=10`),
+        apiRequest<{ items?: any[] }>(`/communities/${communityId}/posts?limit=10`),
       ]);
+
+      const mappedPosts = (postsResponse.items ?? []).map((post) => ({
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        createdAt: post.createdAt ? new Date(post.createdAt).toLocaleString("es-PE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "Hace poco",
+        authorName: [post.author?.firstName, post.author?.lastName].filter(Boolean).join(" ") || "Estudiante CrunEdu",
+        authorAvatarUrl: post.author?.avatarUrl,
+        authorRole: post.authorRole ?? "Miembro activo",
+      })) as CommunityPostModel[];
+
+      const members = Array.isArray(communityResponse.members)
+        ? communityResponse.members.map((member: any, index: number) => ({
+            id: member.id ?? index + 1,
+            name: [member.firstName, member.lastName].filter(Boolean).join(" ") || member.name || "Miembro",
+            avatarUrl: member.avatarUrl,
+            status: member.status ?? (index < 2 ? "En línea" : `Hace ${index} hora${index === 1 ? "" : "s"}`),
+          }))
+        : [];
+
       setCommunity({
         id: communityResponse.id,
         name: communityResponse.name,
         description: communityResponse.description ?? "Espacio para compartir recursos, dudas y publicaciones académicas.",
-        rules: (communityResponse.rules?.split("\n").filter(Boolean) ?? ["Ser respetuoso", "No spam ni autopromoción", "Mantener el contenido relevante"]).slice(0, 3),
+        rules: (communityResponse.rules?.split("\n").filter(Boolean) ?? [
+          "Sé respetuoso con todos los miembros.",
+          "No se permite spam ni publicidad.",
+          "Usa contenido relacionado con el curso.",
+          "Ayuda y colabora con la comunidad.",
+        ]).slice(0, 4),
         avatarUrl: communityResponse.avatarUrl,
         coverUrl: communityResponse.coverUrl,
-        membersCount: communityResponse.membersCount ?? 1,
-        postsCount: communityResponse.postsCount ?? postsResponse.items.length,
-        createdAt: communityResponse.createdAt ? new Date(communityResponse.createdAt).toLocaleDateString("es-PE") : undefined,
-        visibilityLabel: communityResponse.isPrivate ? "Privada" : "Pública",
+        membersCount: communityResponse.membersCount ?? Math.max(members.length, 1),
+        members,
+        postsCount: communityResponse.postsCount ?? mappedPosts.length,
+        visibilityLabel: communityResponse.isPrivate ? "Grupo privado" : "Grupo público",
         creatorName: communityResponse.creator?.firstName ?? "Creador",
+        isPrivate: communityResponse.isPrivate ?? false,
       });
-      setPosts(postsResponse.items ?? []);
+      setPosts(mappedPosts);
+
       if (isAuthenticated && accessToken) {
         try {
           const membership = await apiRequest<{ isJoined: boolean; isCreator: boolean }>(`/communities/${communityId}/membership`, { headers: { Authorization: `Bearer ${accessToken}` } });
@@ -71,7 +105,9 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
       }
     } catch {
       setError("No encontramos esta comunidad.");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   const onJoin = async () => {
@@ -87,13 +123,17 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
         setAccessToken("");
         showToast("Tu sesión expiró. Inicia sesión nuevamente.", "error");
       } else showToast("No se pudo completar la acción. Inténtalo nuevamente.", "error");
-    } finally { setJoining(false); }
+    } finally {
+      setJoining(false);
+    }
   };
 
-  useEffect(() => { if (!Number.isNaN(communityId)) void load(); }, [communityId, accessToken]);
+  useEffect(() => {
+    if (!Number.isNaN(communityId)) void load();
+  }, [communityId, accessToken]);
 
   if (loading) return <PageState type="loading" title="Cargando comunidad…" description="Estamos preparando el espacio de tu comunidad." />;
   if (error || !community) return <PageState type="error" title="No encontramos esta comunidad." description="Es posible que no exista o ya no esté disponible." action={<PrimaryButton type="button"><Link href="/app/comunidades">Volver a comunidades</Link></PrimaryButton>} />;
 
-  return <section className="space-y-4">{toast ? <div className={`fixed bottom-5 right-5 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}<Link href="/app/comunidades" className="inline-flex text-sm font-semibold text-indigo-700">← Comunidades</Link><CommunityHero community={community} isCreator={isCreator} isMember={isMember} joining={joining} onJoin={onJoin} onShare={() => void copyLink("Enlace de comunidad copiado.")} onMenu={() => showToast("Función disponible próximamente.", "info")} /><CommunityTabs activeTab={activeTab} onChange={setActiveTab} showSettings={isCreator} />{activeTab === "inicio" ? <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]"><div className="space-y-4"><CommunityComposer onOpenPost={() => showToast("Crear publicación estará disponible pronto.", "info")} onOpenQuestion={() => showToast("Crear pregunta estará disponible pronto.", "info")} showToast={showToast} /><CommunityPostsPanel posts={posts} onCreatePost={() => showToast("Crear publicación estará disponible pronto.", "info")} /></div><div className="space-y-4"><CommunityMembersCard count={community.membersCount} creatorName={community.creatorName ?? "Creador"} /><CommunityInviteCard url={inviteUrl} onCopy={() => void copyLink("Enlace de invitación copiado.")} /><CommunityRulesCard rules={community.rules} /></div></div> : null}{activeTab === "publicaciones" ? <CommunityPostsPanel posts={posts} onCreatePost={() => showToast("Crear publicación estará disponible pronto.", "info")} /> : null}{activeTab === "miembros" ? <CommunityMembersCard count={community.membersCount} creatorName={community.creatorName ?? "Creador"} /> : null}{activeTab === "eventos" ? <div className="rounded-2xl border border-slate-200 bg-white p-6"><p>Aún no hay eventos programados.</p><button className="mt-3 rounded-xl border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-700">Crear evento</button></div> : null}{activeTab === "archivos" ? <div className="rounded-2xl border border-slate-200 bg-white p-6"><p>Aún no hay archivos compartidos.</p><button className="mt-3 rounded-xl border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-700">Compartir archivo</button></div> : null}{activeTab === "informacion" ? <CommunityInfoPanel community={community} /> : null}{activeTab === "configuracion" ? <div className="rounded-2xl border border-slate-200 bg-white p-6">Solo los administradores pueden configurar esta comunidad.</div> : null}</section>;
+  return <main className="mx-auto w-full max-w-[1500px] space-y-4 px-2 py-2 md:px-4 md:py-4">{toast ? <div className={`fixed bottom-5 right-5 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}<Link href="/app/comunidades" className="inline-flex text-sm font-semibold text-indigo-700">← Comunidades</Link><CommunityHero community={community} isCreator={isCreator} isMember={isMember} isPrivate={community.isPrivate} joining={joining} onJoin={onJoin} onInvite={() => showToast("Invitaciones próximamente.", "info")} onEdit={() => showToast("Configuración de comunidad próximamente.", "info")} onShare={() => void copyLink("Enlace copiado.")} onMenu={() => showToast(isCreator ? "Opciones de administración próximamente." : "Opciones de comunidad próximamente.", "info")} /><CommunityTabs activeTab={activeTab} onChange={setActiveTab} showSettings={isCreator} /><div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]"><section className="min-w-0 space-y-4">{isMember || isCreator ? <CommunityComposer onOpenPost={() => showToast("Crear publicación estará disponible pronto.", "info")} onOpenQuestion={() => showToast("Crear pregunta estará disponible pronto.", "info")} showToast={showToast} /> : <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Únete a esta comunidad para publicar y participar.</div>}{activeTab !== "informacion" ? <CommunityPostsPanel posts={posts} onCreatePost={() => showToast("Crear publicación estará disponible pronto.", "info")} /> : <CommunityInfoPanel community={community} />}</section><aside className="space-y-4 xl:sticky xl:top-24 xl:self-start"><CommunityMembersCard count={community.membersCount} creatorName={community.creatorName ?? "Creador"} members={community.members} /><CommunityInviteCard url={inviteUrl} onCopy={() => void copyLink("Enlace copiado.")} onInvite={() => showToast("Invitaciones próximamente.", "info")} /><CommunityRulesCard rules={community.rules} /></aside></div></main>;
 }
