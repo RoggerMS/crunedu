@@ -141,8 +141,25 @@ function getStatus(community: ApiCommunity): CommunityStatus {
   return "normal";
 }
 
-function scoreCommunity(community: CommunityCardModel) { return community.weeklyPosts * 2 + community.membersCount + (community.status === "muy_activa" ? 30 : 0); }
-function activityRatio(community: CommunityCardModel) { return community.membersCount === 0 ? 0 : community.weeklyPosts / community.membersCount; }
+function scoreCommunity(community: CommunityCardModel) {
+  const proportionalActivity = activityRatio(community);
+  const hasRecentActivity = community.weeklyPosts > 0 ? 1 : 0;
+  const freshnessBonus = recencyScore(community.createdAt);
+  const newCommunityBonus = community.status === "nueva" ? 0.75 : 0;
+
+  return proportionalActivity * 4 + hasRecentActivity * 1.5 + freshnessBonus + newCommunityBonus;
+}
+
+function recencyScore(createdAt: string) {
+  const ageDays = Math.max(1, Math.floor((Date.now() - +new Date(createdAt)) / 86_400_000));
+  if (ageDays <= 7) return 1;
+  if (ageDays <= 30) return 0.5;
+  return 0;
+}
+
+function activityRatio(community: CommunityCardModel) {
+  return community.weeklyPosts / Math.max(community.membersCount, 1);
+}
 
 function readBooleanMap(key: string): Record<string, boolean> {
   if (typeof window === "undefined") return {};
