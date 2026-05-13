@@ -1,4 +1,4 @@
-const baseTabs = ["inicio", "publicaciones", "miembros", "eventos", "archivos", "informacion"] as const;
+const baseTabs = ["inicio", "publicaciones", "miembros", "multimedia", "archivos", "informacion"] as const;
 
 type Props = {
   activeTab: string;
@@ -7,7 +7,7 @@ type Props = {
 };
 
 export function CommunityTabs({ activeTab, onChange, showSettings }: Props) {
-  const tabs = showSettings ? [...baseTabs, "configuracion"] : [...baseTabs];
+  const tabs = [...baseTabs];
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-3">
       <div className="flex gap-2 overflow-x-auto">
