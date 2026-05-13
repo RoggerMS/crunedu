@@ -20,6 +20,8 @@ export function CreatePostModal(props: { open: boolean; initialType: PostType; c
   const hasContent = Boolean(content.trim().length >= 1 || images.length > 0);
   const canSubmit = props.isAuthenticated && type === "publicacion" && hasContent;
   const addTag = (raw: string) => { const clean = raw.trim().toLowerCase(); if (!clean || tags.includes(clean)) return; setTags((prev) => [...prev, clean].slice(0, 8)); setTagInput(""); };
+  const clearAttachedImages = () => setImages((prev) => { prev.forEach((image) => { if (image.previewUrl) URL.revokeObjectURL(image.previewUrl); }); return []; });
+  const resetForm = () => { setType(props.initialType); setTitle(""); setContent(""); setCommunityId(""); setVisibility("todos"); setTags([]); setTagInput(""); clearAttachedImages(); };
 
   if (!props.open) return null;
   return <div className="fixed inset-0 z-50 bg-slate-950/45 p-3 backdrop-blur-sm" onClick={props.onClose}><div role="dialog" aria-modal className="mx-auto mt-3 max-h-[93vh] w-full max-w-[1000px] overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -35,6 +37,6 @@ export function CreatePostModal(props: { open: boolean; initialType: PostType; c
       <div className="rounded-xl border p-3"><p className="text-sm font-bold">Vista previa</p>{!hasContent ? <p className="mt-2 text-xs text-slate-500">Tu vista previa aparecerá aquí.</p> : <div className="mt-2 space-y-2 text-xs"><p className="font-semibold">Tú</p><p className="text-slate-500">Publicación · Feed general · {visibility === "todos" ? "Visible para todos" : "Solo comunidad"}</p><p className="text-slate-700">{content}</p><FeedAttachmentPreview files={[]} images={images} /></div>}</div>
       <div className="rounded-xl border p-3"><div className="flex flex-wrap gap-1">{suggestedTags.map((tag) => <button key={tag} onClick={() => addTag(tag)} className="rounded-full border px-2 py-1 text-xs">{tag}</button>)}</div><input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag(tagInput))} className="mt-2 w-full rounded border px-2 py-1 text-xs" placeholder="Etiqueta" /></div>
     </div></div>
-    <div className="mt-4 flex justify-end gap-2"><button className="rounded-xl border px-4 py-2 text-sm" onClick={props.onClose}>Cancelar</button><button disabled={!canSubmit} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300" onClick={() => props.onSubmit({ type: "publicacion", title, content, visibility, communityId, tags, attachedFiles: [], attachedImages: images })}>Publicar</button></div>
+    <div className="mt-4 flex justify-end gap-2"><button className="rounded-xl border px-4 py-2 text-sm" onClick={props.onClose}>Cancelar</button><button disabled={!canSubmit} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300" onClick={async () => { const payload: CreatePostSubmitPayload = { type: "publicacion", title, content, visibility, communityId, tags, attachedFiles: [], attachedImages: images }; await props.onSubmit(payload); resetForm(); props.onClose(); }}>Publicar</button></div>
   </div></div>;
 }
