@@ -357,9 +357,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function getSearchContext(pathname: string): { scope: "all" | "questions" | "debates" | "communities" | "notes" | "procedures" | "moments" | "store"; placeholder: string } {
+function getSearchContext(pathname: string): { scope: "all" | "questions" | "debates" | "conversar" | "communities" | "notes" | "procedures" | "moments" | "store"; placeholder: string } {
   if (pathname.startsWith("/app/preguntas")) return { scope: "questions", placeholder: "Buscar preguntas, cursos, ejercicios o temas..." };
   if (pathname.startsWith("/app/debates")) return { scope: "debates", placeholder: "Buscar debates, cursos, temas o participantes..." };
+  if (pathname.startsWith("/app/conversar")) return { scope: "conversar", placeholder: "Buscar conversaciones, temas, cursos o estudiantes..." };
   if (pathname.startsWith("/app/comunidades")) return { scope: "communities", placeholder: "Buscar comunidades, carreras, cursos o temas..." };
   if (pathname.startsWith("/app/apuntes")) return { scope: "notes", placeholder: "Buscar apuntes, materiales, cursos o archivos..." };
   if (pathname.startsWith("/app/tramites") || pathname.startsWith("/app/universidad")) return { scope: "procedures", placeholder: "Buscar avisos, trámites, eventos o servicios..." };
