@@ -30,6 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isMomentsPortal = pathname.startsWith("/app/momentos");
   const isStoreRoute = pathname.startsWith("/app/tienda");
   const isStoreCreateRoute = pathname === "/app/tienda/nuevo";
+  const isNewCommunityCreationRoute = pathname === "/app/comunidades/nueva";
   const { results, loading, error } = useSearch(query, searchType, searchPage);
   const hasQuery = query.trim().length > 0;
   const hasResults =
@@ -103,7 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.replace("/login");
   }
 
-  if (isMomentsPortal) {
+  if (isMomentsPortal || isNewCommunityCreationRoute) {
     return <div className="min-h-screen bg-slate-50">{children}</div>;
   }
 
