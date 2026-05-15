@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PrimaryButton, SecondaryButton } from "@/components/ui";
 import { ConversarConversationCard } from "@/components/conversar/ConversarConversationCard";
@@ -106,6 +107,9 @@ export default function ConversarPage() {
             <PrimaryButton type="button" onClick={() => router.push("/app/conversar/nueva")}>
               Crear conversación
             </PrimaryButton>
+            <Link href="/app/conversar/grabaciones">
+              <SecondaryButton type="button">Ver grabaciones</SecondaryButton>
+            </Link>
             <SecondaryButton type="button" disabled>
               Buscar compañeros
             </SecondaryButton>
