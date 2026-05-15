@@ -9,7 +9,7 @@ const blockedMessages: Record<Exclude<PostType, "publicacion">, string> = {
   apunte: "Los apuntes se crearán desde el módulo Apuntes. Luego podrás compartirlos en el feed.",
   pregunta: "Las preguntas se crearán desde Preguntas. Luego podrás compartirlas en el feed.",
   momento: "Los momentos se crearán desde Momentos. Luego podrás compartirlos en el feed.",
-  debate: "Los debates se crearán desde Debates. Luego podrás compartirlos en el feed.",
+  debate: "Los debates se crean desde Conversar, dentro de la pestaña Debates. Luego podrás compartirlos en el feed.",
   tramite: "Los trámites se crearán desde Universidad. Luego podrás compartirlos en el feed.",
 };
 
