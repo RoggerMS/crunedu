@@ -1,18 +1,5 @@
-"use client";
-import Link from "next/link";
-import { useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-import { mockDebates } from "@/components/debates";
+import { redirect } from "next/navigation";
 
-export default function DebateDetailPage() {
-  const params = useParams<{ id: string }>();
-  const debate = useMemo(() => mockDebates.find((item) => item.id === params.id), [params.id]);
-  const [saved, setSaved] = useState(Boolean(debate?.isSaved));
-  const [join, setJoin] = useState(Boolean(debate?.isJoined));
-  const [openReply, setOpenReply] = useState(false);
-  if (!debate) return <main className="mx-auto max-w-[1540px] px-4 py-6"><p>No encontramos este debate.</p><Link href="/app/debates" className="text-indigo-600">Volver a Debates</Link></main>;
-  const argsA = debate.highlightedArguments.filter((a) => a.side === "a");
-  const argsB = debate.highlightedArguments.filter((a) => a.side === "b");
-
-  return (<main className="mx-auto max-w-[1540px] space-y-4 px-4 py-6 sm:px-6 lg:px-8"><div className="grid gap-4 xl:grid-cols-[1fr_320px]"><article className="rounded-2xl border bg-white p-4"><Link className="text-indigo-600" href="/app/debates">Volver a Debates</Link><h1 className="mt-2 text-2xl font-black">{debate.title}</h1><p className="text-slate-600">{debate.description}</p><p className="mt-2 text-xs text-slate-500">{debate.authorName} · {debate.category} · {debate.mode === "academicos" ? "Académico" : "General"} · {debate.status}</p><div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto_1fr]"><div className="rounded bg-emerald-50 p-3"><p className="font-bold">A: {debate.sideA.label}</p><p className="text-sm">{debate.sideA.description}</p></div><div className="self-center text-center font-black text-slate-400">VS</div><div className="rounded bg-rose-50 p-3"><p className="font-bold">B: {debate.sideB.label}</p><p className="text-sm">{debate.sideB.description}</p></div></div><div className="mt-4 grid gap-3 md:grid-cols-2"><div><h3 className="font-semibold">Argumentos postura A</h3>{argsA.map((a)=><p key={a.id} className="mt-1 text-sm">• {a.content}</p>)}</div><div><h3 className="font-semibold">Argumentos postura B</h3>{argsB.map((a)=><p key={a.id} className="mt-1 text-sm">• {a.content}</p>)}</div></div><p className="mt-4 text-sm">{debate.stats.responses} respuestas · {debate.stats.participants} participantes · {debate.stats.views} vistas</p><div className="mt-3 flex flex-wrap gap-2"><button onClick={()=>setJoin(true)} className="rounded border px-3 py-1 text-sm">{join ? "Ya te uniste" : "Unirme"}</button><button onClick={()=>setOpenReply(true)} className="rounded border px-3 py-1 text-sm">Responder con argumento</button><button onClick={()=>setSaved((v)=>!v)} className="rounded border px-3 py-1 text-sm">{saved?"Guardado":"Guardar"}</button><button onClick={async ()=>navigator.clipboard.writeText(`${window.location.origin}/app/debates/${debate.id}`)} className="rounded border px-3 py-1 text-sm">Compartir</button><button className="rounded border px-3 py-1 text-sm">Ver resumen</button></div>{openReply?<div className="mt-4 rounded-xl border p-3"><p className="font-semibold">Nuevo argumento</p><textarea className="mt-2 w-full rounded border p-2" placeholder="Escribe tu argumento..." /><button onClick={()=>setOpenReply(false)} className="mt-2 rounded bg-indigo-600 px-3 py-1 text-white">Publicar</button></div>:null}</article><aside className="rounded-2xl border bg-white p-4"><p className="font-bold">Panel rápido</p><p className="mt-2 text-sm text-slate-600">Categoría: {debate.category}</p><p className="text-sm text-slate-600">Modo: {debate.mode}</p></aside></div></main>);
+export default function LegacyDebateDetailRedirectPage() {
+  redirect("/app/conversar?tab=debates");
 }

@@ -17,7 +17,7 @@ type ProfileData = {
 const MODULE_LINKS = [
   { label: "Inicio", href: "/app" },
   { label: "Comunidades", href: "/app/comunidades" },
-  { label: "Debates", href: "/app/debates" },
+  { label: "Debates y conversaciones", href: "/app/conversar?tab=debates" },
   { label: "Preguntas", href: "/app/preguntas" },
   { label: "Apuntes", href: "/app/apuntes" },
   { label: "Trámites", href: "/app/tramites" },
@@ -116,7 +116,7 @@ export default function MiPerfilPage() {
 
         <div className="mt-6 rounded-2xl border border-slate-200 p-4">
           <h2 className="text-lg font-bold text-slate-900">Mi actividad en CrunEdu</h2>
-          <p className="mt-1 text-sm text-slate-600">Accesos rápidos para construir tu perfil con publicaciones, debates y aportes.</p>
+          <p className="mt-1 text-sm text-slate-600">Accesos rápidos para construir tu perfil con publicaciones, debates y conversaciones.</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {MODULE_LINKS.map((item) => (
               <Link key={item.href} href={item.href} className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100">
