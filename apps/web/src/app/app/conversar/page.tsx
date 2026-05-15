@@ -151,10 +151,16 @@ export default function ConversarPage() {
         <main className="space-y-4">
           {filteredConversations.length ? (
             filteredConversations.map((conversation) => {
-              const isDebate = conversation.type === "debate";
+              const canOpenFinishedView =
+                conversation.status === "finished" ||
+                conversation.status === "recorded" ||
+                conversation.recording?.status === "available";
+              const isDebateRoom =
+                conversation.type === "debate" &&
+                (conversation.status === "live" || conversation.status === "waiting");
               const canOpenStandardRoom =
-                (conversation.status === "live" || conversation.status === "waiting") && !isDebate;
-              const canOpenPrimary = isDebate || canOpenStandardRoom;
+                (conversation.status === "live" || conversation.status === "waiting") && conversation.type !== "debate";
+              const canOpenPrimary = canOpenFinishedView || isDebateRoom || canOpenStandardRoom;
 
               return (
                 <ConversarConversationCard
@@ -162,7 +168,20 @@ export default function ConversarPage() {
                   conversation={conversation}
                   isPrimaryDisabled={!canOpenPrimary}
                   onPrimaryAction={(selectedConversation) => {
-                    if (selectedConversation.type === "debate") {
+                    const shouldOpenFinished =
+                      selectedConversation.status === "finished" ||
+                      selectedConversation.status === "recorded" ||
+                      selectedConversation.recording?.status === "available";
+
+                    if (shouldOpenFinished) {
+                      router.push(`/app/conversar/${selectedConversation.id}/finalizada`);
+                      return;
+                    }
+
+                    if (
+                      selectedConversation.type === "debate" &&
+                      (selectedConversation.status === "live" || selectedConversation.status === "waiting")
+                    ) {
                       router.push(`/app/conversar/${selectedConversation.id}/debate`);
                       return;
                     }
