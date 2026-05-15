@@ -26,6 +26,7 @@ export const FILE_LIMITS = {
 export const MAIN_NAVIGATION = [
   { label: "Inicio", href: "/app" },
   { label: "Comunidades", href: "/app/comunidades" },
+  // Debates now lives inside Conversar as an internal tab/filter.
   { label: "Conversar", href: "/app/conversar" },
   { label: "Preguntas", href: "/app/preguntas" },
   { label: "Apuntes", href: "/app/apuntes" },
