@@ -151,10 +151,12 @@ export default function ConversarPage() {
         <main className="space-y-4">
           {filteredConversations.length ? (
             filteredConversations.map((conversation) => {
-              const isDebate = conversation.type === "debate";
-              const canOpenStandardRoom =
-                (conversation.status === "live" || conversation.status === "waiting") && !isDebate;
-              const canOpenPrimary = isDebate || canOpenStandardRoom;
+              const isLiveOrWaiting = conversation.status === "live" || conversation.status === "waiting";
+              const isDebateRoom = conversation.type === "debate" && isLiveOrWaiting;
+              const canOpenStandardRoom = isLiveOrWaiting && conversation.type !== "debate";
+              const canOpenFinishedByStatus = conversation.status === "finished" || conversation.status === "recorded";
+              const canOpenFinishedByRecording = !isLiveOrWaiting && conversation.recording?.status === "available";
+              const canOpenPrimary = isDebateRoom || canOpenStandardRoom || canOpenFinishedByStatus || canOpenFinishedByRecording;
 
               return (
                 <ConversarConversationCard
@@ -162,13 +164,25 @@ export default function ConversarPage() {
                   conversation={conversation}
                   isPrimaryDisabled={!canOpenPrimary}
                   onPrimaryAction={(selectedConversation) => {
-                    if (selectedConversation.type === "debate") {
+                    const isLiveOrWaiting = selectedConversation.status === "live" || selectedConversation.status === "waiting";
+
+                    if (isLiveOrWaiting && selectedConversation.type === "debate") {
                       router.push(`/app/conversar/${selectedConversation.id}/debate`);
                       return;
                     }
 
-                    if (selectedConversation.status === "live" || selectedConversation.status === "waiting") {
+                    if (isLiveOrWaiting && selectedConversation.type !== "debate") {
                       router.push(`/app/conversar/${selectedConversation.id}`);
+                      return;
+                    }
+
+                    if (selectedConversation.status === "finished" || selectedConversation.status === "recorded") {
+                      router.push(`/app/conversar/${selectedConversation.id}/finalizada`);
+                      return;
+                    }
+
+                    if (!isLiveOrWaiting && selectedConversation.recording?.status === "available") {
+                      router.push(`/app/conversar/${selectedConversation.id}/finalizada`);
                     }
                   }}
                 />
