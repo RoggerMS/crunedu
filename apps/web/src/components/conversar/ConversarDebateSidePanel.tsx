@@ -18,11 +18,22 @@ const mockChat = [
   "Lucía: La evaluación debería enfocarse en el proceso, no solo en la respuesta.",
 ];
 
-export function ConversarDebateSidePanel({ conversation, stances }: { conversation: Conversation; stances: DebateStance[] }) {
+export function ConversarDebateSidePanel({
+  conversation,
+  stances,
+}: {
+  conversation: Conversation;
+  stances: DebateStance[];
+}) {
   const [activeTab, setActiveTab] = useState<TabKey>("chat");
 
   const grouped = useMemo(() => {
-    const result: Record<string, string[]> = { "A favor": [], "En contra": [], "Depende del uso": [], Oyentes: [] };
+    const result: Record<string, string[]> = {
+      "A favor": [],
+      "En contra": [],
+      "Depende del uso": [],
+      Oyentes: [],
+    };
 
     conversation.participants.forEach((participant, index) => {
       if (participant.status === "listening") {
@@ -56,14 +67,24 @@ export function ConversarDebateSidePanel({ conversation, stances }: { conversati
         </div>
 
         <div className="mt-4 text-sm text-slate-700">
-          {activeTab === "chat" ? <ul className="space-y-2">{mockChat.map((line) => <li key={line}>• {line}</li>)}</ul> : null}
+          {activeTab === "chat" ? (
+            <ul className="space-y-2">
+              {mockChat.map((line) => (
+                <li key={line}>• {line}</li>
+              ))}
+            </ul>
+          ) : null}
 
           {activeTab === "participants" ? (
             <div className="space-y-3">
               {Object.entries(grouped).map(([label, names]) => (
                 <div key={label}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-                  <p className="mt-1 text-sm text-slate-700">{names.length ? names.join(", ") : "Sin participantes"}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {label}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-700">
+                    {names.length ? names.join(", ") : "Sin participantes"}
+                  </p>
                 </div>
               ))}
             </div>
@@ -73,9 +94,13 @@ export function ConversarDebateSidePanel({ conversation, stances }: { conversati
             <div className="space-y-3">
               {stances.map((stance) => (
                 <div key={stance.id}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{stance.title}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {stance.title}
+                  </p>
                   <ul className="mt-1 space-y-1">
-                    {stance.arguments.map((argument) => <li key={argument.id}>• {argument.content}</li>)}
+                    {stance.arguments.map((argument) => (
+                      <li key={argument.id}>• {argument.content}</li>
+                    ))}
                   </ul>
                 </div>
               ))}
@@ -84,31 +109,72 @@ export function ConversarDebateSidePanel({ conversation, stances }: { conversati
 
           {activeTab === "links" ? (
             <div className="space-y-3">
-              {conversation.sharedLinks.length ? conversation.sharedLinks.map((link) => (
-                <article key={link.id} className="rounded-xl border border-slate-200 p-3">
-                  <p className="font-semibold text-slate-900">{link.title}</p>
-                  <p className="text-xs text-slate-500">{link.domain} · compartido por {link.sharedBy.name}</p>
-                  <div className="mt-2 flex gap-2">
-                    <button type="button" className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">Abrir</button>
-                    <button type="button" className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">Reportar</button>
-                  </div>
-                </article>
-              )) : <p>No hay enlaces compartidos.</p>}
+              {conversation.sharedLinks.length ? (
+                conversation.sharedLinks.map((link) => (
+                  <article
+                    key={link.id}
+                    className="rounded-xl border border-slate-200 p-3"
+                  >
+                    <p className="font-semibold text-slate-900">{link.title}</p>
+                    <p className="text-xs text-slate-500">
+                      {link.domain} · compartido por {link.sharedBy.name}
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700"
+                      >
+                        Abrir
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700"
+                      >
+                        Reportar
+                      </button>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p>No hay enlaces compartidos.</p>
+              )}
             </div>
           ) : null}
 
           {activeTab === "materials" ? (
             <div className="space-y-3">
-              {conversation.materials.length ? conversation.materials.map((material) => (
-                <article key={material.id} className="rounded-xl border border-slate-200 p-3">
-                  <p className="font-semibold text-slate-900">{material.title}</p>
-                  <p className="text-xs text-slate-500">{material.type.toUpperCase()}{material.size ? ` · ${material.size}` : ""}</p>
-                  <div className="mt-2 flex gap-2">
-                    <button type="button" className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">Ver</button>
-                    <button type="button" className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">Guardar</button>
-                  </div>
-                </article>
-              )) : <p>No hay materiales compartidos.</p>}
+              {conversation.materials.length ? (
+                conversation.materials.map((material) => (
+                  <article
+                    key={material.id}
+                    className="rounded-xl border border-slate-200 p-3"
+                  >
+                    <p className="font-semibold text-slate-900">
+                      {material.title}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {material.type.toUpperCase()}
+                      {material.size ? ` · ${material.size}` : ""}
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700"
+                      >
+                        Ver
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700"
+                      >
+                        Guardar
+                      </button>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p>No hay materiales compartidos.</p>
+              )}
             </div>
           ) : null}
         </div>
