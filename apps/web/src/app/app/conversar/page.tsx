@@ -150,9 +150,23 @@ export default function ConversarPage() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <main className="space-y-4">
           {filteredConversations.length ? (
-            filteredConversations.map((conversation) => (
-              <ConversarConversationCard key={conversation.id} conversation={conversation} />
-            ))
+            filteredConversations.map((conversation) => {
+              const canOpenRoom =
+                (conversation.status === "live" || conversation.status === "waiting") &&
+                conversation.type !== "debate";
+
+              return (
+                <ConversarConversationCard
+                  key={conversation.id}
+                  conversation={conversation}
+                  isPrimaryDisabled={!canOpenRoom}
+                  onPrimaryAction={(selectedConversation) => {
+                    if (!canOpenRoom) return;
+                    router.push(`/app/conversar/${selectedConversation.id}`);
+                  }}
+                />
+              );
+            })
           ) : (
             <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
               <h3 className="text-lg font-bold text-slate-900">No encontramos conversaciones</h3>

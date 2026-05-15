@@ -3,7 +3,17 @@ import type { Conversation } from "@/modules/conversar/types";
 import { formatParticipantSummary, getConversationActionLabel } from "@/modules/conversar/utils";
 import { ConversarStatusBadge, ConversarTypeBadge } from "./ConversarStatusBadge";
 
-export function ConversarConversationCard({ conversation }: { conversation: Conversation }) {
+interface ConversarConversationCardProps {
+  conversation: Conversation;
+  onPrimaryAction?: (conversation: Conversation) => void;
+  isPrimaryDisabled?: boolean;
+}
+
+export function ConversarConversationCard({
+  conversation,
+  onPrimaryAction,
+  isPrimaryDisabled = true,
+}: ConversarConversationCardProps) {
   return (
     <article className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-soft">
       <div className="flex flex-wrap items-center gap-2">
@@ -48,7 +58,9 @@ export function ConversarConversationCard({ conversation }: { conversation: Conv
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-slate-700">{formatParticipantSummary(conversation)}</p>
         <div className="flex flex-wrap gap-2">
-          <PrimaryButton type="button" disabled>{getConversationActionLabel(conversation)}</PrimaryButton>
+          <PrimaryButton type="button" disabled={isPrimaryDisabled} onClick={() => onPrimaryAction?.(conversation)}>
+            {getConversationActionLabel(conversation)}
+          </PrimaryButton>
           <SecondaryButton type="button" disabled>Ver detalles</SecondaryButton>
         </div>
       </div>
