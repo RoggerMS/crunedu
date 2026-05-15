@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useSearch } from "@/hooks/useSearch";
+import { ConversarInternalSidebar } from "@/components/conversar/ConversarInternalSidebar";
 
 function isNavActive(itemHref: string, pathname: string) {
   if (itemHref === "/app") return pathname === "/app";
@@ -29,6 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const searchContext = useMemo(() => getSearchContext(pathname), [pathname]);
   const isMomentsPortal = pathname.startsWith("/app/momentos");
   const isStoreRoute = pathname.startsWith("/app/tienda");
+  const isConversarRoute = pathname.startsWith("/app/conversar");
   const isStoreCreateRoute = pathname === "/app/tienda/nuevo";
   const isNewCommunityCreationRoute = pathname === "/app/comunidades/nueva";
   const { results, loading, error } = useSearch(query, searchType, searchPage);
@@ -111,6 +113,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <aside className="fixed left-0 top-0 hidden h-full w-64 border-r border-slate-200 bg-white px-4 py-6 lg:block">
+        {isConversarRoute ? (
+          <ConversarInternalSidebar />
+        ) : (
         <div className="flex h-full flex-col">
           <Link
             href="/app"
@@ -184,6 +189,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
         </div>
+        )}
       </aside>
 
       <main className={`lg:pl-64 ${isQuickActionsOpen ? "lg:pr-72" : ""}`}>
