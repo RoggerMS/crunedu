@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { PrimaryButton, SecondaryButton } from "@/components/ui";
 import { ConversarConversationCard } from "@/components/conversar/ConversarConversationCard";
 import { ConversarFilters } from "@/components/conversar/ConversarFilters";
@@ -30,6 +31,7 @@ const academicCategories = new Set([
 ]);
 
 export default function ConversarPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState("all");
@@ -101,7 +103,7 @@ export default function ConversarPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <PrimaryButton type="button" disabled>
+            <PrimaryButton type="button" onClick={() => router.push("/app/conversar/nueva")}>
               Crear conversación
             </PrimaryButton>
             <SecondaryButton type="button" disabled>
@@ -157,7 +159,7 @@ export default function ConversarPage() {
               <p className="mt-2 text-sm text-slate-600">
                 Prueba con otro tema, cambia los filtros o crea una nueva conversación cuando el módulo esté disponible.
               </p>
-              <PrimaryButton type="button" disabled className="mt-4">
+              <PrimaryButton type="button" onClick={() => router.push("/app/conversar/nueva")} className="mt-4">
                 Crear conversación
               </PrimaryButton>
             </article>
