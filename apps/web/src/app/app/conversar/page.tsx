@@ -112,7 +112,7 @@ export default function ConversarPage() {
             <Link href="/app/conversar/grabaciones">
               <SecondaryButton type="button">Ver grabaciones</SecondaryButton>
             </Link>
-            <SecondaryButton type="button" disabled>
+            <SecondaryButton type="button" onClick={() => router.push("/app/conversar/companeros")}>
               Buscar compañeros
             </SecondaryButton>
           </div>
