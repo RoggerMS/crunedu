@@ -69,7 +69,9 @@ export default function ConversarPage() {
         );
       }
 
-      const isAcademic = academicCategories.has(conversation.category) || (conversation.course ? academicCategories.has(conversation.course) : false);
+      const isAcademic =
+        academicCategories.has(conversation.category) ||
+        (conversation.course ? academicCategories.has(conversation.course) : false);
       if (activeTab === "academic") return isAcademic;
       if (activeTab === "general") return !isAcademic;
       return true;
@@ -94,7 +96,9 @@ export default function ConversarPage() {
     }
 
     if (category !== "all") {
-      conversations = conversations.filter((conversation) => conversation.category === category || conversation.course === category);
+      conversations = conversations.filter(
+        (conversation) => conversation.category === category || conversation.course === category,
+      );
     }
 
     if (type !== "all") {
@@ -110,42 +114,52 @@ export default function ConversarPage() {
 
   return (
     <section className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-      <header className="rounded-3xl border border-indigo-100 bg-gradient-to-r from-white via-indigo-50/40 to-violet-50/30 p-5 shadow-soft sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-black tracking-tight text-slate-900">Conversar</h1>
-            <p className="text-sm text-slate-600 sm:text-base">
-              Encuentra estudiantes para hablar, estudiar, resolver dudas o compartir ideas.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <PrimaryButton type="button" onClick={() => router.push("/app/conversar/nueva")}>
-              Crear conversación
-            </PrimaryButton>
-            <Link href="/app/conversar/grabaciones">
-              <SecondaryButton type="button">Ver grabaciones</SecondaryButton>
-            </Link>
-            <SecondaryButton type="button" onClick={() => router.push("/app/conversar/companeros")}>
-              Buscar compañeros
-            </SecondaryButton>
+      <header className="overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-100 via-blue-100 to-violet-100 p-[1px] shadow-soft">
+        <div className="rounded-[22px] bg-white/90 p-5 backdrop-blur sm:p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-3">
+              <h1 className="text-3xl font-black tracking-tight text-slate-900">Conversar</h1>
+              <p className="max-w-2xl text-sm text-slate-700 sm:text-base">
+                Encuentra estudiantes para hablar, estudiar, resolver dudas o compartir ideas.
+              </p>
+              <p className="text-xs font-medium text-indigo-700 sm:text-sm">
+                Salas de estudio, conversaciones abiertas, debates y grabaciones en un solo lugar.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3 lg:max-w-md lg:justify-end">
+              <PrimaryButton type="button" onClick={() => router.push("/app/conversar/nueva")}>
+                Crear conversación
+              </PrimaryButton>
+              <Link href="/app/conversar/grabaciones">
+                <SecondaryButton type="button">Ver grabaciones</SecondaryButton>
+              </Link>
+              <SecondaryButton type="button" onClick={() => router.push("/app/conversar/companeros")}>
+                Buscar compañeros
+              </SecondaryButton>
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="flex flex-wrap gap-2 rounded-3xl border border-slate-200 bg-white/95 p-3 shadow-soft">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-              activeTab === tab.key ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-            }`}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <nav className="rounded-3xl border border-indigo-100 bg-white/95 p-3 shadow-soft" aria-label="Tipos de conversación">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+                activeTab === tab.key
+                  ? "border-indigo-500 bg-indigo-600 text-white shadow-sm"
+                  : "border-transparent bg-slate-100 text-slate-700 hover:border-slate-200 hover:bg-slate-50"
+              }`}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </nav>
 
       <ConversarFilters
         searchTerm={searchTerm}
@@ -170,12 +184,19 @@ export default function ConversarPage() {
         <main className="space-y-4">
           {filteredConversations.length ? (
             filteredConversations.map((conversation) => {
-              const isLiveOrWaiting = conversation.status === "live" || conversation.status === "waiting";
+              const isLiveOrWaiting =
+                conversation.status === "live" || conversation.status === "waiting";
               const isDebateRoom = conversation.type === "debate" && isLiveOrWaiting;
               const canOpenStandardRoom = isLiveOrWaiting && conversation.type !== "debate";
-              const canOpenFinishedByStatus = conversation.status === "finished" || conversation.status === "recorded";
-              const canOpenFinishedByRecording = !isLiveOrWaiting && conversation.recording?.status === "available";
-              const canOpenPrimary = isDebateRoom || canOpenStandardRoom || canOpenFinishedByStatus || canOpenFinishedByRecording;
+              const canOpenFinishedByStatus =
+                conversation.status === "finished" || conversation.status === "recorded";
+              const canOpenFinishedByRecording =
+                !isLiveOrWaiting && conversation.recording?.status === "available";
+              const canOpenPrimary =
+                isDebateRoom ||
+                canOpenStandardRoom ||
+                canOpenFinishedByStatus ||
+                canOpenFinishedByRecording;
 
               return (
                 <ConversarConversationCard
@@ -183,7 +204,9 @@ export default function ConversarPage() {
                   conversation={conversation}
                   isPrimaryDisabled={!canOpenPrimary}
                   onPrimaryAction={(selectedConversation) => {
-                    const isLiveOrWaiting = selectedConversation.status === "live" || selectedConversation.status === "waiting";
+                    const isLiveOrWaiting =
+                      selectedConversation.status === "live" ||
+                      selectedConversation.status === "waiting";
 
                     if (isLiveOrWaiting && selectedConversation.type === "debate") {
                       router.push(`/app/conversar/${selectedConversation.id}/debate`);
@@ -195,7 +218,10 @@ export default function ConversarPage() {
                       return;
                     }
 
-                    if (selectedConversation.status === "finished" || selectedConversation.status === "recorded") {
+                    if (
+                      selectedConversation.status === "finished" ||
+                      selectedConversation.status === "recorded"
+                    ) {
                       router.push(`/app/conversar/${selectedConversation.id}/finalizada`);
                       return;
                     }
@@ -211,9 +237,14 @@ export default function ConversarPage() {
             <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
               <h3 className="text-lg font-bold text-slate-900">No encontramos conversaciones</h3>
               <p className="mt-2 text-sm text-slate-600">
-                Prueba con otro tema, cambia los filtros o crea una nueva conversación cuando el módulo esté disponible.
+                Prueba con otro tema, cambia los filtros o crea una nueva conversación cuando el módulo
+                esté disponible.
               </p>
-              <PrimaryButton type="button" onClick={() => router.push("/app/conversar/nueva")} className="mt-4">
+              <PrimaryButton
+                type="button"
+                onClick={() => router.push("/app/conversar/nueva")}
+                className="mt-4"
+              >
                 Crear conversación
               </PrimaryButton>
             </article>
