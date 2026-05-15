@@ -43,7 +43,7 @@ export default function ConversarDebatePage({ params }: { params: { id: string }
     <section className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <ConversarDebateHeader conversation={conversation} />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
         <main className="space-y-4">
           {conversation.status === "waiting" ? (
             <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">

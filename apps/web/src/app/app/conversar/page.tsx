@@ -110,7 +110,7 @@ export default function ConversarPage() {
 
   return (
     <section className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-      <header className="rounded-3xl border border-indigo-100 bg-white p-5 shadow-soft sm:p-6">
+      <header className="rounded-3xl border border-indigo-100 bg-gradient-to-r from-white via-indigo-50/40 to-violet-50/30 p-5 shadow-soft sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-2">
             <h1 className="text-3xl font-black tracking-tight text-slate-900">Conversar</h1>
@@ -132,7 +132,7 @@ export default function ConversarPage() {
         </div>
       </header>
 
-      <div className="flex flex-wrap gap-2 rounded-3xl border border-slate-200 bg-white p-3 shadow-soft">
+      <div className="flex flex-wrap gap-2 rounded-3xl border border-slate-200 bg-white/95 p-3 shadow-soft">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -166,7 +166,7 @@ export default function ConversarPage() {
           : `Mostrando ${filteredConversations.length} conversaciones`}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
         <main className="space-y-4">
           {filteredConversations.length ? (
             filteredConversations.map((conversation) => {

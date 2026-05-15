@@ -46,7 +46,7 @@ export default function ConversarNuevaPage() {
 
   return (
     <section className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-      <header className="rounded-3xl border border-indigo-100 bg-white p-5 shadow-soft sm:p-6">
+      <header className="rounded-3xl border border-indigo-100 bg-gradient-to-r from-white via-indigo-50/40 to-violet-50/30 p-5 shadow-soft sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-3">
             <Link href="/app/conversar" className="inline-flex text-sm font-semibold text-indigo-700 transition hover:text-indigo-800">
@@ -187,7 +187,7 @@ export default function ConversarNuevaPage() {
         </article>
 
         {conversationType === "debate" && (
-          <article className="rounded-3xl border border-indigo-100 bg-white p-5 shadow-soft sm:p-6">
+          <article className="rounded-3xl border border-indigo-100 bg-gradient-to-r from-white via-indigo-50/40 to-violet-50/30 p-5 shadow-soft sm:p-6">
             <h2 className="text-xl font-bold text-slate-900">Posturas iniciales</h2>
             <div className="mt-4 grid gap-3">
               <input className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900" defaultValue="A favor" />
