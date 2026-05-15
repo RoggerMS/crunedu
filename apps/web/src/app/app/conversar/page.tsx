@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PrimaryButton, SecondaryButton } from "@/components/ui";
 import { ConversarConversationCard } from "@/components/conversar/ConversarConversationCard";
 import { ConversarFilters } from "@/components/conversar/ConversarFilters";
@@ -10,13 +10,14 @@ import { ConversarRightSidebar } from "@/components/conversar/ConversarRightSide
 import { mockConversations } from "@/modules/conversar/mock-data";
 import type { Conversation, ConversationStatus, ConversationType } from "@/modules/conversar/types";
 
-type TabKey = "all" | "academic" | "general" | "live" | "recordings";
+type TabKey = "all" | "academic" | "general" | "live" | "debates" | "recordings";
 
 const tabs: { key: TabKey; label: string }[] = [
   { key: "all", label: "Todos" },
   { key: "academic", label: "Académicos" },
   { key: "general", label: "Generales" },
   { key: "live", label: "En vivo ahora" },
+  { key: "debates", label: "Debates" },
   { key: "recordings", label: "Grabaciones" },
 ];
 
@@ -33,12 +34,23 @@ const academicCategories = new Set([
 
 export default function ConversarPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabKey>("all");
+  const searchParams = useSearchParams();
+  const initialTab = useMemo<TabKey>(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "debates") return "debates";
+    if (tab === "recordings") return "recordings";
+    return "all";
+  }, [searchParams]);
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState("all");
   const [type, setType] = useState<ConversationType | "all">("all");
   const [status, setStatus] = useState<ConversationStatus | "all">("all");
   const [sort, setSort] = useState<"latest" | "active" | "plays">("latest");
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   const filteredConversations = useMemo(() => {
     let conversations = [...mockConversations];
@@ -46,6 +58,7 @@ export default function ConversarPage() {
     conversations = conversations.filter((conversation) => {
       if (activeTab === "all") return true;
       if (activeTab === "live") return conversation.status === "live";
+      if (activeTab === "debates") return conversation.type === "debate";
       if (activeTab === "recordings") {
         const isLiveOrWaiting = conversation.status === "live" || conversation.status === "waiting";
 
