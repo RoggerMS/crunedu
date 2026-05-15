@@ -151,18 +151,25 @@ export default function ConversarPage() {
         <main className="space-y-4">
           {filteredConversations.length ? (
             filteredConversations.map((conversation) => {
-              const canOpenRoom =
-                (conversation.status === "live" || conversation.status === "waiting") &&
-                conversation.type !== "debate";
+              const isDebate = conversation.type === "debate";
+              const canOpenStandardRoom =
+                (conversation.status === "live" || conversation.status === "waiting") && !isDebate;
+              const canOpenPrimary = isDebate || canOpenStandardRoom;
 
               return (
                 <ConversarConversationCard
                   key={conversation.id}
                   conversation={conversation}
-                  isPrimaryDisabled={!canOpenRoom}
+                  isPrimaryDisabled={!canOpenPrimary}
                   onPrimaryAction={(selectedConversation) => {
-                    if (!canOpenRoom) return;
-                    router.push(`/app/conversar/${selectedConversation.id}`);
+                    if (selectedConversation.type === "debate") {
+                      router.push(`/app/conversar/${selectedConversation.id}/debate`);
+                      return;
+                    }
+
+                    if (selectedConversation.status === "live" || selectedConversation.status === "waiting") {
+                      router.push(`/app/conversar/${selectedConversation.id}`);
+                    }
                   }}
                 />
               );
