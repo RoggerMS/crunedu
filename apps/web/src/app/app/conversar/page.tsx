@@ -47,10 +47,12 @@ export default function ConversarPage() {
       if (activeTab === "all") return true;
       if (activeTab === "live") return conversation.status === "live";
       if (activeTab === "recordings") {
+        const isLiveOrWaiting = conversation.status === "live" || conversation.status === "waiting";
+
         return (
           conversation.status === "finished" ||
           conversation.status === "recorded" ||
-          conversation.recording?.status === "available"
+          (!isLiveOrWaiting && conversation.recording?.status === "available")
         );
       }
 
