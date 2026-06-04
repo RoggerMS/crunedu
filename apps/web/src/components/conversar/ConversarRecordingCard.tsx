@@ -33,7 +33,7 @@ export function ConversarRecordingCard({ conversation }: Props) {
   );
 }
 
-function getRecordingStatusLabel(status?: Conversation["recording"]["status"]) {
+function getRecordingStatusLabel(status?: NonNullable<Conversation["recording"]>["status"]) {
   if (status === "processing") return "Procesándose";
   if (status === "restricted") return "Restringida";
   return "Grabación disponible";
