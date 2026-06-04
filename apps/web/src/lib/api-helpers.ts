@@ -1,5 +1,7 @@
 import type { Community, CreateFeedPostPayload, FeedPost } from "@crunedu/shared";
-import { apiRequest } from "@/lib/http-client";
+import { apiRequest, mapApiError } from "@/lib/http-client";
+
+export { apiRequest, mapApiError };
 
 type LoginResponse = { accessToken: string };
 
@@ -65,7 +67,7 @@ export function login(email: string, password: string) {
 }
 
 export function getFeedPosts(token: string) {
-  return apiRequest<FeedPost[]>("/posts", { headers: { Authorization: `Bearer ${token}` } });
+  return apiRequest<{ items: FeedPost[]; nextCursor: number | null; mode: "recent" | "relevant" }>("/posts", { headers: { Authorization: `Bearer ${token}` } });
 }
 
 export function createFeedPost(payload: CreateFeedPostPayload, token: string) {

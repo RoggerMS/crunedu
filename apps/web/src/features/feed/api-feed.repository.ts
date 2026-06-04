@@ -1,22 +1,90 @@
+import type { CreateFeedPostPayload, FeedPost as ApiFeedPost, PostComment as ApiPostComment } from "@crunedu/shared";
 import { apiRequest } from "@/lib/http-client";
+import { mapApiCommentToFeedComment, mapApiPostToFeedPost, mapApiPostsResponse, type ApiFeedPostsResponse } from "./map-api-post";
 import type { FeedRepository } from "./feed.repository";
-import type { CreateFeedPostInput, FeedComment, FeedPost } from "./feed.types";
+import type { FeedComment, FeedPost } from "./feed.types";
 
-const notReady = (method: string, error: unknown) => new Error(`Feed API ${method} no disponible: ${error instanceof Error ? error.message : "error desconocido"}`);
+let cachedPosts: FeedPost[] = [];
+
+function findCachedPost(postId: string): FeedPost {
+  const post = cachedPosts.find((item) => item.id === postId);
+  if (!post) throw new Error("Publicación no encontrada en el feed actual.");
+  return post;
+}
+
+function replaceCachedPost(post: FeedPost): FeedPost {
+  cachedPosts = cachedPosts.map((item) => (item.id === post.id ? post : item));
+  return post;
+}
+
+function resolveCommunityId(input: Parameters<FeedRepository["createPost"]>[0]): number {
+  const rawCommunityId = input.communityId ?? input.destination?.id;
+  const communityId = typeof rawCommunityId === "string" ? Number(rawCommunityId) : rawCommunityId;
+
+  if (!Number.isInteger(communityId) || Number(communityId) < 1) {
+    throw new Error("Selecciona una comunidad para publicar.");
+  }
+
+  return Number(communityId);
+}
 
 export const apiFeedRepository: FeedRepository = {
-  async listPosts() { try { return await apiRequest<FeedPost[]>("/posts"); } catch (e) { throw notReady("GET /api/posts", e); } },
-  async createPost(input) { try { return await apiRequest<FeedPost>("/posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) }); } catch (e) { throw notReady("POST /api/posts", e); } },
-  async updatePost(post) { return apiRequest<FeedPost>(`/posts/${post.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(post) }); },
-  async deletePost(postId) { await apiRequest(`/posts/${postId}`, { method: "DELETE" }); },
-  async likePost(postId) { return apiRequest<FeedPost>(`/posts/${postId}/like`, { method: "POST" }); },
-  async unlikePost(postId) { return apiRequest<FeedPost>(`/posts/${postId}/like`, { method: "DELETE" }); },
-  async savePost(postId) { return apiRequest<FeedPost>(`/posts/${postId}/save`, { method: "POST" }); },
-  async unsavePost(postId) { return apiRequest<FeedPost>(`/posts/${postId}/save`, { method: "DELETE" }); },
-  async listComments(postId) { return apiRequest<FeedComment[]>(`/posts/${postId}/comments`); },
-  async addComment(postId, content, parentId) { return apiRequest<FeedComment>(`/posts/${postId}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, parentId }) }); },
-  async likeComment(postId, commentId) { return apiRequest<FeedComment[]>(`/posts/${postId}/comments/${commentId}/like`, { method: "POST" }); },
-  async reportPost(postId, reason, detail) { await apiRequest(`/posts/${postId}/report`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason, detail }) }); },
-  async hidePost() {},
-  async sharePost(postId) { return apiRequest<FeedPost>(`/posts/${postId}/share`, { method: "POST" }); },
+  async listPosts() {
+    const response = await apiRequest<ApiFeedPostsResponse>("/posts");
+    cachedPosts = mapApiPostsResponse(response);
+    return cachedPosts;
+  },
+  async createPost(input) {
+    const payload: CreateFeedPostPayload = {
+      content: input.content,
+      communityId: resolveCommunityId(input),
+    };
+    const response = await apiRequest<ApiFeedPost>("/posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const post = mapApiPostToFeedPost(response);
+    cachedPosts = [post, ...cachedPosts.filter((item) => item.id !== post.id)];
+    return post;
+  },
+  async updatePost(post) {
+    const response = await apiRequest<ApiFeedPost>(`/posts/${post.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: post.content, communityId: post.destination.id }) });
+    return replaceCachedPost(mapApiPostToFeedPost(response));
+  },
+  async deletePost(postId) {
+    await apiRequest(`/posts/${postId}`, { method: "DELETE" });
+    cachedPosts = cachedPosts.filter((post) => post.id !== postId);
+  },
+  async likePost(postId) {
+    const post = findCachedPost(postId);
+    return replaceCachedPost({ ...post, stats: { ...post.stats, likes: post.stats.likes + 1 }, viewerState: { ...post.viewerState, liked: true } });
+  },
+  async unlikePost(postId) {
+    const post = findCachedPost(postId);
+    return replaceCachedPost({ ...post, stats: { ...post.stats, likes: Math.max(0, post.stats.likes - 1) }, viewerState: { ...post.viewerState, liked: false } });
+  },
+  async savePost(postId) {
+    const post = findCachedPost(postId);
+    return replaceCachedPost({ ...post, stats: { ...post.stats, saves: post.stats.saves + 1 }, viewerState: { ...post.viewerState, saved: true } });
+  },
+  async unsavePost(postId) {
+    const post = findCachedPost(postId);
+    return replaceCachedPost({ ...post, stats: { ...post.stats, saves: Math.max(0, post.stats.saves - 1) }, viewerState: { ...post.viewerState, saved: false } });
+  },
+  async listComments(postId) {
+    const comments = await apiRequest<ApiPostComment[]>(`/posts/${postId}/comments`);
+    return comments.map((comment) => mapApiCommentToFeedComment(comment, postId));
+  },
+  async addComment(postId, content, parentId) {
+    const comment = await apiRequest<ApiPostComment>(`/posts/${postId}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, parentId }) });
+    return mapApiCommentToFeedComment(comment, postId);
+  },
+  async likeComment(postId) {
+    return this.listComments(postId);
+  },
+  async reportPost() {},
+  async hidePost(postId) {
+    cachedPosts = cachedPosts.filter((post) => post.id !== postId);
+  },
+  async sharePost(postId) {
+    const post = findCachedPost(postId);
+    return replaceCachedPost({ ...post, stats: { ...post.stats, shares: post.stats.shares + 1 } });
+  },
 };

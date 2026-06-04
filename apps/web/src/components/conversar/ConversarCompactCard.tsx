@@ -1,10 +1,10 @@
 "use client";
 
-import { Atom, Bookmark, Clock3, MoreHorizontal, Scale, Sigma, University } from "lucide-react";
+import { Atom, Bookmark, Clock3, MoreHorizontal, Scale, Sigma, University, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { Conversation } from "@/modules/conversar/types";
 
-const iconByCategory: Record<string, { color: string; icon: React.ComponentType<{ size?: number }> }> = {
+const iconByCategory: Record<string, { color: string; icon: LucideIcon }> = {
   "Matemática": { color: "bg-indigo-100 text-indigo-700", icon: Sigma },
   "Historia": { color: "bg-emerald-100 text-emerald-700", icon: University },
   "Física": { color: "bg-blue-100 text-blue-700", icon: Atom },

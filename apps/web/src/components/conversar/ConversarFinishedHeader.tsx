@@ -64,7 +64,7 @@ export function ConversarFinishedHeader({
   );
 }
 
-function getRecordingStatusLabel(status?: Conversation["recording"]["status"]) {
+function getRecordingStatusLabel(status?: NonNullable<Conversation["recording"]>["status"]) {
   if (status === "available") return "Grabación disponible";
   if (status === "processing") return "Grabación procesándose";
   if (status === "restricted") return "Grabación restringida";

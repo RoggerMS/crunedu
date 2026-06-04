@@ -58,6 +58,7 @@ export type FeedComment = {
 
 export type CreateFeedPostInput = {
   content: string;
+  communityId?: number | string;
   attachments?: FeedAttachment[];
   destination?: FeedPost["destination"];
   visibility?: FeedPost["visibility"];

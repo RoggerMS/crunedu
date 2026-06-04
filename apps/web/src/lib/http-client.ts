@@ -1,5 +1,30 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
+type ApiErrorBody = {
+  message?: string | string[];
+  error?: string | { message?: string | string[] };
+  requestId?: string;
+};
+
+const ACCESS_TOKEN_KEY = "crunedu_access_token";
+
+function getAccessTokenFromStorage(): string {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(ACCESS_TOKEN_KEY)?.trim() ?? "";
+}
+
+function withDefaultAuthHeader(init?: RequestInit): RequestInit | undefined {
+  const token = getAccessTokenFromStorage();
+  if (!token) return init;
+
+  const headers = new Headers(init?.headers);
+  if (!headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  return { ...init, headers };
+}
+
 export const ERROR_MESSAGES = {
   network: "No se pudo conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.",
   unauthorized: "Tu sesión expiró o no tienes permisos. Inicia sesión nuevamente.",
@@ -60,15 +85,11 @@ function messageByStatus(status: number): string {
 
 async function extractApiError(response: Response): Promise<HttpClientError> {
   const textBody = await response.text().catch(() => "");
-  let parsedBody: {
-    message?: string | string[];
-    error?: string | { message?: string | string[] };
-    requestId?: string;
-  } | null = null;
+  let parsedBody: ApiErrorBody | null = null;
 
   if (textBody) {
     try {
-      parsedBody = JSON.parse(textBody) as typeof parsedBody;
+      parsedBody = JSON.parse(textBody) as ApiErrorBody;
     } catch {
       parsedBody = null;
     }
@@ -85,7 +106,7 @@ async function extractApiError(response: Response): Promise<HttpClientError> {
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   try {
-    const response = await fetch(buildApiUrl(path), init);
+    const response = await fetch(buildApiUrl(path), withDefaultAuthHeader(init));
     if (!response.ok) {
       throw await extractApiError(response);
     }

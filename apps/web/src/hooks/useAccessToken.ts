@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-const ACCESS_TOKEN_KEY = "crunedu_access_token";
+export const ACCESS_TOKEN_KEY = "crunedu_access_token";
 
-function readStoredAccessToken(): string {
+export function getStoredAccessToken(): string {
   if (typeof window === "undefined") {
     return "";
   }
@@ -16,7 +16,7 @@ export function useAccessToken() {
   const [accessToken, setAccessTokenState] = useState("");
 
   useEffect(() => {
-    setAccessTokenState(readStoredAccessToken());
+    setAccessTokenState(getStoredAccessToken());
   }, []);
 
   const setAccessToken = useCallback((token: string) => {

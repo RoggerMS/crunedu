@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { mapApiError } from "@/lib/http-client";
 import { getFeedRepository } from "./feed.service";
 import type { CreateFeedPostInput, FeedComment, FeedPost } from "./feed.types";
 
@@ -13,10 +14,16 @@ export function useFeed() {
   const reload = useCallback(async () => {
     setLoading(true);
     try { const loadedPosts = await repository.listPosts();
-      const commentsEntries = await Promise.all(loadedPosts.map(async (post) => [post.id, await repository.listComments(post.id)] as const));
+      const commentsEntries = await Promise.all(loadedPosts.map(async (post) => {
+        try {
+          return [post.id, await repository.listComments(post.id)] as const;
+        } catch {
+          return [post.id, []] as const;
+        }
+      }));
       setPosts(loadedPosts);
       setCommentsByPost(Object.fromEntries(commentsEntries));
-      setError(null); } catch (e) { setError(e instanceof Error ? e.message : "No se pudo cargar el feed."); } finally { setLoading(false); }
+      setError(null); } catch (e) { setError(mapApiError(e, "No se pudo cargar el feed.")); } finally { setLoading(false); }
   }, []);
   useEffect(() => { void reload(); }, [reload]);
 
