@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { mapApiError } from "@/lib/http-client";
 import { login } from "@/lib/api-helpers";
 
 
-export default function LoginPage() {
+function LoginPageContent() {
   const { setAccessToken } = useAccessToken();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -74,5 +74,13 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen bg-slate-50" />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }
