@@ -17,12 +17,15 @@ function replaceCachedPost(post: FeedPost): FeedPost {
   return post;
 }
 
-function resolveCommunityId(input: Parameters<FeedRepository["createPost"]>[0]): number {
+function resolveCommunityId(input: Parameters<FeedRepository["createPost"]>[0]): number | undefined {
   const rawCommunityId = input.communityId ?? input.destination?.id;
-  const communityId = typeof rawCommunityId === "string" ? Number(rawCommunityId) : rawCommunityId;
+  if (rawCommunityId === undefined || rawCommunityId === null || rawCommunityId === "") {
+    return undefined;
+  }
 
+  const communityId = typeof rawCommunityId === "string" ? Number(rawCommunityId) : rawCommunityId;
   if (!Number.isInteger(communityId) || Number(communityId) < 1) {
-    throw new Error("Selecciona una comunidad para publicar.");
+    return undefined;
   }
 
   return Number(communityId);
@@ -35,9 +38,10 @@ export const apiFeedRepository: FeedRepository = {
     return cachedPosts;
   },
   async createPost(input) {
+    const communityId = resolveCommunityId(input);
     const payload: CreateFeedPostPayload = {
       content: input.content,
-      communityId: resolveCommunityId(input),
+      ...(communityId ? { communityId } : {}),
     };
     const response = await apiRequest<ApiFeedPost>("/posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const post = mapApiPostToFeedPost(response);

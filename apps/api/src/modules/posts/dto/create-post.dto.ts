@@ -3,14 +3,15 @@ import { IsArray, IsInt, IsOptional, IsString, MaxLength, Min, MinLength, Valida
 
 export class CreatePostDto {
   @IsString()
-  @MinLength(5)
+  @MinLength(1)
   @MaxLength(5000)
   content: string;
 
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  communityId: number;
+  communityId?: number;
 
   @IsOptional()
   @IsArray()

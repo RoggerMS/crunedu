@@ -10,13 +10,35 @@ import { PostCard } from "@/components/feed/PostCard";
 import { RightSidebar } from "@/components/feed/RightSidebar";
 import type { PostDraft, PostType } from "@/components/feed/types";
 import { PrimaryButton, StatusMessage } from "@/components/ui";
+import { saveMediaBlob } from "@/features/feed/feed-media-store";
+import type { FeedAttachment } from "@/features/feed/feed.types";
 import { useFeed } from "@/features/feed/useFeed";
-import { mapApiError } from "@/lib/http-client";
+import { HttpClientError } from "@/lib/http-client";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useCommunities } from "@/hooks/useCommunities";
 
 const DRAFTS_KEY = "crunedu_feed_drafts";
 const REPORT_REASONS = ["Spam", "Contenido ofensivo", "Información falsa", "Acoso", "Otro"];
+
+function publishErrorMessage(error: unknown): string {
+  if (error instanceof HttpClientError) {
+    const message = error.message.toLowerCase();
+    if (error.status === 401) return "Tu sesión terminó. Vuelve a iniciar sesión para publicar.";
+    if (error.status === 429) return "Has publicado varias veces seguidas. Espera un minuto e inténtalo de nuevo.";
+    if (message.includes("comunidad")) return "Esa comunidad no está disponible. Puedes publicar en Feed general.";
+    if (message.includes("contenido") || message.includes("corto")) {
+      return "Tu mensaje es muy corto. Escribe un poco más o adjunta una imagen.";
+    }
+    return error.message;
+  }
+
+  if (error instanceof Error) {
+    if (error.message.includes("community")) return "Revisa la comunidad seleccionada o usa Feed general.";
+    return error.message;
+  }
+
+  return "No pudimos publicar ahora. Inténtalo de nuevo en un momento.";
+}
 
 export default function AppPage() {
   const router = useRouter();
@@ -32,7 +54,7 @@ export default function AppPage() {
 
   const showToast = (message: string, type: "success" | "error" | "info") => { setToast({ message, type }); setTimeout(() => setToast(null), 3200); };
   const handleReport = (postId: string) => { const menu = REPORT_REASONS.map((reason, index) => `${index + 1}. ${reason}`).join("\n"); const selected = window.prompt(`Selecciona motivo de reporte:\n${menu}`, "1"); const index = Number(selected) - 1; const reason = REPORT_REASONS[index] ?? REPORT_REASONS[4]; void feed.reportPost(postId, reason); showToast("Reporte enviado.", "success"); };
-  const requireLogin = () => { showToast("Inicia sesión para publicar.", "info"); router.push("/login?returnUrl=/app"); };
+  const requireLogin = () => { showToast("Para publicar necesitas iniciar sesión.", "info"); router.push("/login?returnUrl=/app"); };
 
   const filteredPosts = filter === "recientes" ? [...feed.posts].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)) : filter === "siguiendo" ? feed.posts.filter((p) => p.destination.type === "community") : feed.posts;
   const activePost = activePostId ? feed.posts.find((post) => post.id === activePostId) ?? null : null;
@@ -43,11 +65,58 @@ export default function AppPage() {
     {toast ? <div className={`fixed bottom-5 right-5 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}
     <CreatePostModal open={isOpen} initialType={selectedType} communities={communities} isAuthenticated={isAuthenticated} onClose={() => setIsOpen(false)} onToast={showToast} onRequireLogin={requireLogin}
       onSaveDraft={(data) => { const draft: PostDraft = { id: crypto.randomUUID(), type: data.type, title: data.title, content: data.content, courseName: data.courseName, stance: data.stance, deadline: data.deadline, visibility: data.visibility, communityId: data.communityId || undefined, tags: data.tags, createdAt: new Date().toISOString() }; const current = JSON.parse(localStorage.getItem(DRAFTS_KEY) ?? "[]") as PostDraft[]; localStorage.setItem(DRAFTS_KEY, JSON.stringify([draft, ...current])); setDraftsCount(current.length + 1); showToast("Borrador guardado.", "success"); }}
-      onSubmit={async (data) => { if (!isAuthenticated) { requireLogin(); throw new Error("login required"); } if (!data.communityId) { showToast("Selecciona una comunidad para publicar.", "error"); throw new Error("community required"); } if (data.content.trim().length < 20) { showToast("Escribe mínimo 20 caracteres con contexto útil.", "error"); throw new Error("content too short"); } try { const community = communities.find((c) => String(c.id) === data.communityId); await feed.createPost({ content: data.content.trim(), communityId: data.communityId, destination: { type: "community", id: data.communityId, label: community?.name ?? "Comunidad" }, visibility: data.visibility === "comunidad" ? "community" : "public" }); showToast("Publicación creada.", "success"); } catch (error) { showToast(mapApiError(error, "No se pudo crear la publicación."), "error"); throw error; } }} />
+      onSubmit={async (data) => {
+        if (!isAuthenticated) {
+          requireLogin();
+          throw new Error("login required");
+        }
+
+        const trimmedContent = data.content.trim();
+        if (!trimmedContent && data.attachedImages.length === 0) {
+          showToast("Escribe un mensaje o adjunta una imagen para publicar.", "info");
+          throw new Error("content required");
+        }
+
+        try {
+          for (const image of data.attachedImages) {
+            const file = data.attachedFiles.find((item) => item.id === image.id)?.file;
+            if (file) await saveMediaBlob(image.mediaId, file);
+          }
+
+          const attachments: FeedAttachment[] = data.attachedImages.map((image) => ({
+            id: image.id,
+            type: "image",
+            name: "imagen",
+            mimeType: "image/*",
+            size: 0,
+            previewUrl: image.previewUrl,
+            storageKey: image.mediaId,
+          }));
+
+          const community = data.communityId ? communities.find((item) => String(item.id) === data.communityId) : undefined;
+          const destination = community
+            ? { type: "community" as const, id: data.communityId, label: community.name }
+            : { type: "general" as const, label: "Feed general" };
+
+          await feed.createPost({
+            content: trimmedContent || " ",
+            communityId: data.communityId || undefined,
+            attachments,
+            destination,
+            visibility: data.visibility === "comunidad" ? "community" : "public",
+          });
+
+          showToast("Listo, tu publicación ya está en el feed.", "success");
+        } catch (error) {
+          showToast(publishErrorMessage(error), "error");
+          throw error;
+        }
+      }}
+    />
 
     <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px]">
       <section className="min-w-0 space-y-3">
-        {!isAuthenticated ? <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900"><p className="font-bold">Inicia sesión para publicar</p><p className="mt-1">Puedes leer el feed públicamente, pero necesitas una sesión para crear publicaciones en comunidades reales.</p><button className="mt-3 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white" onClick={requireLogin}>Ir a iniciar sesión</button></div> : null}
+        {!isAuthenticated ? <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900"><p className="font-bold">Inicia sesión para publicar</p><p className="mt-1">Puedes ver el feed sin cuenta. Para publicar, inicia sesión con tu correo de estudiante.</p><button className="mt-3 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white" onClick={requireLogin}>Ir a iniciar sesión</button></div> : null}
         <FeedComposer onOpen={(type) => { setSelectedType(type); setIsOpen(true); }} />
         <FeedFilters active={filter} onChange={setFilter} />
         {feed.loading ? <StatusMessage type="loading">Cargando publicaciones...</StatusMessage> : null}

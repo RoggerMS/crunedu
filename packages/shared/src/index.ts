@@ -122,7 +122,7 @@ export interface CreatePostImagePayload {
 
 export interface CreateFeedPostPayload {
   content: string;
-  communityId: number;
+  communityId?: number;
   images?: CreatePostImagePayload[];
 }
 

@@ -180,13 +180,33 @@ export class PostsService {
   async create(dto: CreatePostDto, userId: number): Promise<PostResponseDto> {
     this.checkRateLimit(this.postRateLimit, userId, 3, 60_000, "Estás publicando demasiado rápido. Intenta de nuevo en un minuto.");
 
-    const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true } });
-    if (!community) throw new BadRequestException("La comunidad seleccionada no existe.");
+    if (dto.communityId) {
+      const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true } });
+      if (!community) throw new BadRequestException("La comunidad seleccionada no está disponible.");
+    }
 
-    this.validateUsefulContent(dto.content, 20, "El contenido de la publicación debe aportar más contexto útil.");
     this.validateExtremeSize(dto.content, this.MAX_POST_LENGTH, "La publicación es demasiado extensa para el MVP.");
     await this.preventRepeatedPostContent(userId, dto.content);
-    const post = await this.prisma.post.create({ data: { title: "", content: dto.content.trim(), communityId: dto.communityId, userId, images: dto.images?.length ? { create: dto.images.slice(0,4).map((image, index) => ({ imageUrl: image.imageUrl, storageKey: image.storageKey, mimeType: image.mimeType, sizeBytes: image.sizeBytes, position: index })) } : undefined }, select: this.postSelect });
+    const post = await this.prisma.post.create({
+      data: {
+        title: "",
+        content: dto.content.trim(),
+        communityId: dto.communityId ?? null,
+        userId,
+        images: dto.images?.length
+          ? {
+              create: dto.images.slice(0, 4).map((image, index) => ({
+                imageUrl: image.imageUrl,
+                storageKey: image.storageKey,
+                mimeType: image.mimeType,
+                sizeBytes: image.sizeBytes,
+                position: index,
+              })),
+            }
+          : undefined,
+      },
+      select: this.postSelect,
+    });
     this.cache.invalidate("hot:feed:initial");
     await this.jobs.enqueueNotification({ type: "POST_CREATED", userId, postId: post.id, communityId: dto.communityId });
     await this.jobs.enqueueRankingRecalculation({ trigger: "POST_CREATED", postId: post.id });
