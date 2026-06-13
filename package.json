@@ -17,7 +17,8 @@
     "regression:mvp": "npm run test:regression:mvp -w @crunedu/api",
     "regression:quick": "npm run regression:mvp",
     "quality:gate": "npm run quality:gate -w @crunedu/api",
-    "test:release:e2e": "npm run test:release:e2e -w @crunedu/api"
+    "test:release:e2e": "npm run test:release:e2e -w @crunedu/api",
+    "db:validate": "npm run prisma:validate -w @crunedu/database"
   },
   "workspaces": [
     "apps/web",

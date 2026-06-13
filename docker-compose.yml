@@ -18,7 +18,8 @@ services:
       - crunedu_node_modules:/workspace/node_modules
       - crunedu_next_cache:/workspace/apps/web/.next
     depends_on:
-      - api
+      api:
+        condition: service_started
 
   api:
     build:
@@ -50,10 +51,14 @@ services:
       - .:/workspace
       - crunedu_node_modules:/workspace/node_modules
     depends_on:
-      - postgres
-      - redis
-      - minio
-      - mailhog
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+      mailhog:
+        condition: service_started
 
   postgres:
     image: postgres:16-alpine
