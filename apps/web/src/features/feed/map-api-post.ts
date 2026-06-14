@@ -1,4 +1,5 @@
 import type { FeedPost as ApiFeedPost, PostComment as ApiPostComment } from "@crunedu/shared";
+import { API_BASE_URL } from "@/lib/http-client";
 import type { FeedAttachment, FeedComment, FeedPost } from "./feed.types";
 
 type ApiFeedPostsResponse = {
@@ -19,14 +20,22 @@ function formatAuthorName(author: ApiFeedPost["author"] | ApiPostComment["author
   return fullName || author.email || "Estudiante CrunEdu";
 }
 
+function resolveApiImageUrl(imageUrl: string): string {
+  if (/^https?:\/\//i.test(imageUrl) || imageUrl.startsWith("data:") || imageUrl.startsWith("blob:")) return imageUrl;
+  if (imageUrl.startsWith("/api/")) return `${new URL(API_BASE_URL).origin}${imageUrl}`;
+  if (imageUrl.startsWith("/")) return `${API_BASE_URL}${imageUrl}`;
+  return `${API_BASE_URL}/${imageUrl}`;
+}
+
 function mapApiImageToAttachment(image: ApiFeedPost["images"][number]): FeedAttachment {
+  const imageUrl = resolveApiImageUrl(image.imageUrl);
   return {
     id: String(image.id),
     type: "image",
     name: `Imagen ${image.position + 1}`,
     mimeType: image.mimeType,
     size: image.sizeBytes,
-    previewUrl: image.imageUrl,
+    previewUrl: imageUrl,
     storageKey: image.imageUrl,
   };
 }
