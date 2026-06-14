@@ -1,35 +1,56 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { createAnswer, getQuestionById, mapApiError } from "@/lib/api-helpers";
+import { createAnswer, createReport, getQuestionById, markAnswerUseful, mapApiError, uploadAnswerImage, voteAnswer, type UploadedAnswerImage } from "@/lib/api-helpers";
+import { buildApiUrl } from "@/lib/http-client";
+import { useAccessToken } from "@/hooks/useAccessToken";
+import { buildLoginHref } from "@/lib/auth-routes";
 
-type ApiQuestion = {
-  id: number;
-  title: string;
-  content: string;
-  createdAt: string;
-  isResolved: boolean;
-  author: { firstName: string | null; lastName: string | null; email: string };
-  community?: { id: number; name: string } | null;
-  answersCount: number;
-  answers: Array<{ id: number; content: string; createdAt: string; author: { firstName: string | null; lastName: string | null; email: string } }>;
-};
+type ApiImage = { id: number; imageUrl: string; mimeType: string; sizeBytes: number; position: number };
+type ApiAnswer = { id: number; content: string; createdAt: string; isUseful?: boolean; images?: ApiImage[]; votesScore?: number; upvotes?: number; downvotes?: number; viewerVote?: -1 | 0 | 1; author: { firstName: string | null; lastName: string | null; email: string } };
+type ApiQuestion = { id: number; title: string; content: string; createdAt: string; isResolved: boolean; author: { firstName: string | null; lastName: string | null; email: string }; community?: { id: number; name: string } | null; images?: ApiImage[]; answersCount: number; answers: ApiAnswer[] };
+type LocalImage = { id: string; file: File; previewUrl: string };
 
 function authorName(author: ApiQuestion["author"]) {
   return [author.firstName, author.lastName].filter(Boolean).join(" ") || author.email || "Estudiante CrunEdu";
 }
 
+function imageSrc(imageUrl: string) {
+  return buildApiUrl(imageUrl.replace(/^\/api/, ""));
+}
+
+function sortAnswers(answers: ApiAnswer[]) {
+  return [...answers].sort((a, b) => Number(b.isUseful) - Number(a.isUseful) || (b.votesScore ?? 0) - (a.votesScore ?? 0) || +new Date(a.createdAt) - +new Date(b.createdAt));
+}
+
 export default function QuestionDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
+  const { accessToken, isAuthenticated } = useAccessToken();
   const questionId = useMemo(() => Number(params.id), [params.id]);
   const [question, setQuestion] = useState<ApiQuestion | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  const [voted, setVoted] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [answerImages, setAnswerImages] = useState<LocalImage[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const answerSubmitLockRef = useRef(false);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const loginHref = buildLoginHref(`/app/preguntas/${params.id}`);
+
+  function notify(message: string) {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  }
+
+  function requireLogin() {
+    if (isAuthenticated) return false;
+    setError("Inicia sesión para realizar esta acción.");
+    router.push(loginHref);
+    return true;
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -47,32 +68,116 @@ export default function QuestionDetailPage() {
       })
       .catch((err) => mounted && setError(mapApiError(err, "No se pudo cargar la pregunta.")))
       .finally(() => mounted && setLoading(false));
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [questionId]);
 
+  function onAnswerImagesSelected(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    const validFiles = files.filter((file) => ["image/jpeg", "image/png", "image/webp"].includes(file.type) && file.size <= 3 * 1024 * 1024);
+    if (validFiles.length !== files.length) setError("Solo puedes adjuntar imágenes JPG, PNG o WEBP de hasta 3MB.");
+    setAnswerImages((current) => [...current, ...validFiles.slice(0, Math.max(0, 4 - current.length)).map((file) => ({ id: `${file.name}-${file.lastModified}-${Math.random()}`, file, previewUrl: URL.createObjectURL(file) }))]);
+    event.target.value = "";
+  }
+
+  function removeAnswerImage(id: string) {
+    setAnswerImages((current) => {
+      const image = current.find((item) => item.id === id);
+      if (image) URL.revokeObjectURL(image.previewUrl);
+      return current.filter((item) => item.id !== id);
+    });
+  }
+
   async function submitAnswer() {
-    if (!question || !draft.trim()) return;
+    if (!question || !draft.trim() || submitting || answerSubmitLockRef.current) return;
+    if (requireLogin()) return;
+    answerSubmitLockRef.current = true;
     setSubmitting(true);
+    setError(null);
     try {
-      const answer = (await createAnswer(question.id, draft.trim(), "")) as ApiQuestion["answers"][number];
-      setQuestion({ ...question, answers: [...question.answers, answer], answersCount: question.answersCount + 1 });
+      const uploadedImages: UploadedAnswerImage[] = [];
+      for (const image of answerImages) uploadedImages.push(await uploadAnswerImage(image.file));
+      const answer = (await createAnswer(question.id, draft.trim(), accessToken ?? "", uploadedImages)) as ApiAnswer;
+      setQuestion({ ...question, answers: sortAnswers([...question.answers, answer]), answersCount: question.answersCount + 1 });
+      answerImages.forEach((image) => URL.revokeObjectURL(image.previewUrl));
+      setAnswerImages([]);
       setDraft("");
+      notify("Respuesta publicada.");
     } catch (err) {
       setError(mapApiError(err, "No se pudo publicar la respuesta."));
     } finally {
+      answerSubmitLockRef.current = false;
       setSubmitting(false);
     }
   }
 
-  if (loading) return <section className="mx-auto max-w-[1540px] px-4 py-6"><p>Cargando pregunta...</p></section>;
-  if (error || !question) return <section className="mx-auto max-w-[1540px] px-4 py-6"><p>{error ?? "No encontramos esta pregunta."}</p><Link href="/app/preguntas" className="mt-2 inline-block text-indigo-600">Volver a Preguntas</Link></section>;
+  async function toggleUseful(answerId: number) {
+    if (!question || requireLogin()) return;
+    try {
+      const updated = (await markAnswerUseful(question.id, answerId, accessToken ?? "")) as ApiAnswer;
+      const answers = question.answers.map((answer) => answer.id === answerId ? { ...answer, isUseful: updated.isUseful } : { ...answer, isUseful: false });
+      setQuestion({ ...question, isResolved: Boolean(updated.isUseful), answers: sortAnswers(answers) });
+      notify(updated.isUseful ? "Respuesta marcada como útil/correcta." : "Se quitó la marca útil/correcta.");
+    } catch (err) {
+      setError(mapApiError(err, "No se pudo actualizar la respuesta."));
+    }
+  }
 
-  return <section className="mx-auto grid max-w-[1540px] gap-4 px-4 py-6 sm:px-6 lg:px-8 xl:grid-cols-[1fr_320px]"><article className="rounded-2xl border bg-white p-5"><Link className="text-indigo-600" href="/app/preguntas">Volver a Preguntas</Link><h1 className="mt-2 text-2xl font-black">{question.title}</h1><p className="mt-2 text-slate-700">{question.content}</p><p className="mt-2 text-xs text-slate-500">{authorName(question.author)} · {question.community?.name ?? "General"} · {new Date(question.createdAt).toLocaleDateString("es-PE")}</p><div className="mt-2 flex flex-wrap gap-1">{question.community?.name ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs">#{question.community.name}</span> : null}</div>
-  <p className="mt-3 text-sm">{voted ? 1 : 0} votos · {saved ? 1 : 0} guardados · {question.answersCount} respuestas</p>
-  <div className="mt-2 flex flex-wrap gap-2"><button onClick={()=>setVoted((v)=>!v)} className="rounded border px-3 py-1 text-sm">{voted?"Quitar voto":"Votar"}</button><button onClick={()=>setSaved((v)=>!v)} className="rounded border px-3 py-1 text-sm">{saved?"Guardada":"Guardar"}</button><button onClick={async ()=>navigator.clipboard.writeText(`${window.location.origin}/app/preguntas/${question.id}`)} className="rounded border px-3 py-1 text-sm">Compartir</button></div>
-  <h2 className="mt-4 text-lg font-bold">Respuestas</h2><div className="space-y-2">{question.answers.length ? question.answers.map((a)=><div key={a.id} className="rounded-xl border p-3"><p className="text-xs text-slate-500">{authorName(a.author)} · {new Date(a.createdAt).toLocaleDateString("es-PE")}</p><p className="text-sm">{a.content}</p></div>) : <p className="rounded-xl border border-dashed p-3 text-sm text-slate-500">Sé la primera persona en responder.</p>}</div>
-  <div className="mt-4 rounded-xl border p-3"><p className="font-semibold">Responder</p><textarea className="mt-2 w-full rounded border p-2" value={draft} onChange={(e)=>setDraft(e.target.value)} placeholder="Escribe tu respuesta completa" /><button disabled={submitting || !draft.trim()} onClick={() => void submitAnswer()} className="mt-2 rounded bg-indigo-600 px-3 py-1 text-white disabled:bg-slate-300">Publicar respuesta</button></div>
-  </article><aside className="rounded-2xl border bg-white p-4"><h3 className="font-bold">Estado</h3><p className="mt-2 text-sm text-slate-600">{question.isResolved ? "Pregunta resuelta" : question.answersCount > 0 ? "Con respuestas" : "Sin responder"}</p></aside></section>;
+  async function handleVote(answer: ApiAnswer, value: -1 | 1) {
+    if (!question || requireLogin()) return;
+    const nextValue = answer.viewerVote === value ? 0 : value;
+    try {
+      const updated = (await voteAnswer(question.id, answer.id, nextValue, accessToken ?? "")) as ApiAnswer;
+      setQuestion({ ...question, answers: sortAnswers(question.answers.map((item) => item.id === answer.id ? { ...item, ...updated, viewerVote: nextValue } : item)) });
+    } catch (err) {
+      setError(mapApiError(err, "No se pudo registrar el voto."));
+    }
+  }
+
+  async function report(targetType: "QUESTION" | "ANSWER", targetId: number) {
+    if (requireLogin()) return;
+    try {
+      await createReport({ targetType, targetId, reason: targetType === "QUESTION" ? "Reporte de pregunta" : "Reporte de respuesta" }, accessToken ?? "");
+      setOpenMenu(null);
+      notify("Reporte enviado.");
+    } catch (err) {
+      setError(mapApiError(err, "No se pudo enviar el reporte."));
+    }
+  }
+
+  if (loading) return <section className="mx-auto max-w-[1540px] px-4 py-6"><p>Cargando pregunta...</p></section>;
+  if (!question) return <section className="mx-auto max-w-[1540px] px-4 py-6"><p>{error ?? "No encontramos esta pregunta."}</p><Link href="/app/preguntas" className="mt-2 inline-block text-indigo-600">Volver a Preguntas</Link></section>;
+
+  const answers = sortAnswers(question.answers);
+
+  return <section className="mx-auto grid max-w-[1540px] gap-4 px-4 py-6 sm:px-6 lg:px-8 xl:grid-cols-[1fr_320px]">
+    <main className="space-y-4">
+      <article className="rounded-2xl border bg-white p-5">
+        <div className="flex items-start justify-between gap-3"><Link className="text-sm font-semibold text-indigo-700" href="/app/preguntas">← Volver a Preguntas</Link><div className="relative"><button onClick={() => setOpenMenu(openMenu === "question" ? null : "question")} className="rounded-full border px-3 py-1 text-sm font-bold">...</button>{openMenu === "question" ? <div className="absolute right-0 z-10 mt-2 w-44 rounded-xl border bg-white p-2 text-sm shadow"><button onClick={() => void report("QUESTION", question.id)} className="w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50">Reportar pregunta</button></div> : null}</div></div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500"><span>{authorName(question.author)}</span><span>•</span><span>{new Date(question.createdAt).toLocaleDateString("es-PE")}</span><span>•</span><span>{question.community?.name ?? "General"}</span></div>
+        <h1 className="mt-2 text-2xl font-black text-slate-950">{question.title}</h1>
+        <p className="mt-3 whitespace-pre-wrap text-slate-700">{question.content}</p>
+        {question.images?.length ? <ImageGrid images={question.images} alt="Imagen adjunta de la pregunta" /> : null}
+        <div className="mt-4 flex flex-wrap gap-2"><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{question.isResolved ? "Resuelta" : question.answersCount > 0 ? "Con respuestas" : "Abierta"}</span><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{question.answersCount} respuestas</span><button onClick={() => navigator.clipboard.writeText(window.location.href).then(() => notify("Enlace copiado."))} className="rounded-full border px-3 py-1 text-xs font-semibold">Compartir</button><button className="rounded-full border px-3 py-1 text-xs font-semibold" onClick={() => notify("Guardado local próximamente.")}>Guardar</button></div>
+      </article>
+
+      <section className="rounded-2xl border bg-white p-5">
+        <h2 className="text-lg font-bold">Respuestas</h2>
+        <div className="mt-3 space-y-3">{answers.length ? answers.map((answer) => <article key={answer.id} className={`rounded-xl border p-4 ${answer.isUseful ? "border-emerald-200 bg-emerald-50" : "bg-white"}`}><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-slate-500">{authorName(answer.author)} · {new Date(answer.createdAt).toLocaleDateString("es-PE")}</p><div className="relative flex items-center gap-2">{answer.isUseful ? <span className="rounded-full bg-emerald-600 px-2 py-1 text-xs font-semibold text-white">Útil / correcta</span> : null}<button onClick={() => setOpenMenu(openMenu === `answer-${answer.id}` ? null : `answer-${answer.id}`)} className="rounded-full border px-2 py-0.5 text-xs font-bold">...</button>{openMenu === `answer-${answer.id}` ? <div className="absolute right-0 top-7 z-10 w-44 rounded-xl border bg-white p-2 text-sm shadow"><button onClick={() => void report("ANSWER", answer.id)} className="w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50">Reportar respuesta</button></div> : null}</div></div><p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{answer.content}</p>{answer.images?.length ? <ImageGrid images={answer.images} alt="Imagen adjunta de la respuesta" small /> : null}<div className="mt-3 flex flex-wrap items-center gap-2"><button onClick={() => void handleVote(answer, 1)} className={`rounded-lg border px-3 py-1 text-xs font-semibold ${answer.viewerVote === 1 ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "text-slate-700"}`}>▲ {answer.upvotes ?? 0}</button><button onClick={() => void handleVote(answer, -1)} className={`rounded-lg border px-3 py-1 text-xs font-semibold ${answer.viewerVote === -1 ? "border-red-500 bg-red-50 text-red-700" : "text-slate-700"}`}>▼ {answer.downvotes ?? 0}</button><span className="text-xs font-semibold text-slate-500">Neto {answer.votesScore ?? 0}</span><button onClick={() => void toggleUseful(answer.id)} className="rounded-lg border px-3 py-1 text-xs font-semibold text-slate-700">{answer.isUseful ? "Quitar útil/correcta" : "Marcar útil/correcta"}</button></div></article>) : <p className="rounded-xl border border-dashed p-4 text-sm text-slate-500">Sé la primera persona en responder con una explicación clara.</p>}</div>
+      </section>
+
+      <section className="rounded-2xl border bg-white p-5">
+        <h2 className="font-bold">Responder</h2>
+        {!isAuthenticated ? <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">Necesitas iniciar sesión para responder. <Link href={loginHref} className="font-bold text-indigo-700 underline">Iniciar sesión</Link></p> : null}
+        <textarea className="mt-3 min-h-36 w-full rounded-xl border p-3" value={draft} onChange={(e)=>setDraft(e.target.value)} placeholder="Escribe una explicación paso a paso. Puedes adjuntar una imagen de tu procedimiento." />
+        <div className="mt-3"><input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={onAnswerImagesSelected} className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" /><p className="mt-1 text-xs text-slate-500">Hasta 4 imágenes JPG, PNG o WEBP. Máximo 3MB cada una.</p>{answerImages.length ? <div className="mt-3 grid gap-3 sm:grid-cols-2">{answerImages.map((image) => <div key={image.id} className="relative overflow-hidden rounded-xl border"><img src={image.previewUrl} alt="Vista previa de respuesta" className="h-36 w-full object-cover" /><button type="button" onClick={() => removeAnswerImage(image.id)} className="absolute right-2 top-2 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white">Quitar</button></div>)}</div> : null}</div>
+        {error ? <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+        <button disabled={submitting || !draft.trim() || !isAuthenticated} onClick={() => void submitAnswer()} className="mt-3 rounded-xl bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-600">{submitting ? "Publicando respuesta..." : "Publicar respuesta"}</button>
+      </section>
+    </main>
+    <aside className="h-fit rounded-2xl border bg-white p-4"><h3 className="font-bold">Cómo ayudar mejor</h3><ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-600"><li>Explica el procedimiento, no solo el resultado.</li><li>Si una respuesta tiene un error, responde con respeto y corrige el paso.</li><li>Vota las respuestas útiles y reporta contenido problemático.</li></ul></aside>{toast ? <div className="fixed bottom-4 right-4 rounded-xl bg-slate-900 px-3 py-2 text-sm text-white">{toast}</div> : null}
+  </section>;
+}
+
+function ImageGrid({ images, alt, small = false }: { images: ApiImage[]; alt: string; small?: boolean }) {
+  return <div className={`mt-4 grid gap-3 ${small ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>{images.map((image) => <a key={image.id} href={imageSrc(image.imageUrl)} target="_blank" rel="noreferrer" className="overflow-hidden rounded-2xl border bg-slate-50"><img src={imageSrc(image.imageUrl)} alt={alt} onError={(event) => { event.currentTarget.replaceWith(Object.assign(document.createElement("div"), { className: "flex h-32 items-center justify-center p-3 text-sm text-slate-500", textContent: "No se pudo cargar la imagen." })); }} className={`${small ? "max-h-52" : "max-h-[420px]"} w-full object-contain`} /></a>)}</div>;
 }

@@ -13,6 +13,7 @@ export class QuestionsService {
     id: true,
     content: true,
     createdAt: true,
+    isUseful: true,
     user: {
       select: {
         id: true,
@@ -20,6 +21,8 @@ export class QuestionsService {
         profile: { select: { firstName: true, lastName: true } },
       },
     },
+    images: { select: { id: true, imageUrl: true, mimeType: true, sizeBytes: true, position: true }, orderBy: { position: "asc" } },
+    votes: { select: { value: true } },
   } as const;
 
   private readonly questionSelect = {
@@ -38,17 +41,23 @@ export class QuestionsService {
     community: { select: { id: true, name: true, slug: true } },
     answers: {
       where: { status: "PUBLISHED" },
-      orderBy: { createdAt: "asc" },
+      orderBy: [{ isUseful: "desc" }, { createdAt: "asc" }] as any,
       select: this.answerSelect,
     },
+    images: { select: { id: true, imageUrl: true, mimeType: true, sizeBytes: true, position: true }, orderBy: { position: "asc" } },
     _count: { select: { answers: { where: { status: "PUBLISHED" } } } },
   } as const;
 
-  private mapAnswer(answer: { id: number; content: string; createdAt: Date; user: { id: number; email: string; profile: { firstName: string | null; lastName: string | null } | null } }) {
+  private mapAnswer(answer: any) {
     return {
       id: answer.id,
       content: answer.content,
       createdAt: answer.createdAt,
+      isUseful: answer.isUseful,
+      images: answer.images ?? [],
+      votesScore: (answer.votes ?? []).reduce((sum: number, vote: { value: number }) => sum + vote.value, 0),
+      upvotes: (answer.votes ?? []).filter((vote: { value: number }) => vote.value === 1).length,
+      downvotes: (answer.votes ?? []).filter((vote: { value: number }) => vote.value === -1).length,
       author: {
         id: answer.user.id,
         email: answer.user.email,
@@ -72,6 +81,7 @@ export class QuestionsService {
         lastName: question.user.profile?.lastName ?? null,
       },
       community: question.community,
+      images: question.images,
       answersCount: question._count.answers,
       answers: question.answers.map((answer: any) => this.mapAnswer(answer)),
     };
@@ -114,11 +124,88 @@ export class QuestionsService {
     }
 
     const created = await this.prisma.question.create({
-      data: { title: dto.title.trim(), content: dto.content.trim(), communityId: dto.communityId, userId },
+      data: {
+        title: dto.title.trim(),
+        content: dto.content.trim(),
+        communityId: dto.communityId,
+        userId,
+        images: dto.images?.length
+          ? {
+              create: dto.images.slice(0, 4).map((image, index) => ({
+                imageUrl: image.imageUrl,
+                storageKey: image.storageKey,
+                mimeType: image.mimeType,
+                sizeBytes: image.sizeBytes,
+                position: index,
+              })),
+            }
+          : undefined,
+      },
       select: this.questionSelect,
     });
 
     return this.mapQuestion(created);
+  }
+
+  async uploadImage(file: any) {
+    return this.saveUploadedImage(file, "question", "questions", "/api/questions/images");
+  }
+
+  async uploadAnswerImage(file: any) {
+    return this.saveUploadedImage(file, "answer", "answers", "/api/questions/answers/images");
+  }
+
+  private async saveUploadedImage(file: any, prefix: string, folder: string, publicPath: string) {
+    const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+    const maxSizeBytes = 3 * 1024 * 1024;
+    if (!file) throw new BadRequestException("Debes adjuntar una imagen.");
+    if (!allowedTypes.has(file.mimetype)) throw new BadRequestException("Formato no permitido. Solo JPG, PNG o WEBP.");
+    if (file.size > maxSizeBytes) throw new BadRequestException("La imagen supera el límite de 3MB.");
+    const extension = file.originalname.split(".").pop()?.toLowerCase() || "jpg";
+    const filename = `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+    const storageKey = `${folder}/${filename}`;
+    const targetDir = `${process.cwd()}/tmp/uploads/${folder}`;
+    await import("node:fs/promises").then((fs) => fs.mkdir(targetDir, { recursive: true }));
+    await import("node:fs/promises").then((fs) => fs.writeFile(`${targetDir}/${filename}`, file.buffer));
+    return { imageUrl: `${publicPath}/${filename}`, storageKey, mimeType: file.mimetype, sizeBytes: file.size };
+  }
+
+  async markAnswerUseful(questionId: number, answerId: number, userId: number, role: string) {
+    const question = await this.prisma.question.findFirst({ where: { id: questionId, status: "PUBLISHED" }, select: { id: true, userId: true } });
+    if (!question) throw new NotFoundException("Pregunta no encontrada.");
+    if (question.userId !== userId && role !== "ADMIN" && role !== "MODERATOR") throw new BadRequestException("Solo el autor de la pregunta puede marcar una respuesta como útil.");
+    const answer = await this.prisma.answer.findFirst({ where: { id: answerId, questionId, status: "PUBLISHED" }, select: { id: true, isUseful: true } });
+    if (!answer) throw new NotFoundException("Respuesta no encontrada.");
+    if (answer.isUseful) {
+      const updated = await this.prisma.answer.update({ where: { id: answerId }, data: { isUseful: false }, select: this.answerSelect });
+      const remainingUseful = await this.prisma.answer.count({ where: { questionId, status: "PUBLISHED", isUseful: true } });
+      await this.prisma.question.update({ where: { id: questionId }, data: { isResolved: remainingUseful > 0 } });
+      return this.mapAnswer(updated);
+    }
+    await this.prisma.answer.updateMany({ where: { questionId }, data: { isUseful: false } });
+    const updated = await this.prisma.answer.update({ where: { id: answerId }, data: { isUseful: true }, select: this.answerSelect });
+    await this.prisma.question.update({ where: { id: questionId }, data: { isResolved: true } });
+    return this.mapAnswer(updated);
+  }
+
+
+  async voteAnswer(questionId: number, answerId: number, value: -1 | 0 | 1, userId: number) {
+    const answer = await this.prisma.answer.findFirst({ where: { id: answerId, questionId, status: "PUBLISHED" }, select: { id: true } });
+    if (!answer) throw new NotFoundException("Respuesta no encontrada.");
+
+    if (value === 0) {
+      await this.prisma.answerVote.deleteMany({ where: { answerId, userId } });
+    } else {
+      await this.prisma.answerVote.upsert({
+        where: { answerId_userId: { answerId, userId } },
+        create: { answerId, userId, value },
+        update: { value },
+      });
+    }
+
+    const updated = await this.prisma.answer.findUnique({ where: { id: answerId }, select: this.answerSelect });
+    if (!updated) throw new NotFoundException("Respuesta no encontrada.");
+    return this.mapAnswer(updated);
   }
 
   async createAnswer(questionId: number, dto: CreateAnswerDto, userId: number) {
@@ -126,10 +213,26 @@ export class QuestionsService {
     if (!question) throw new NotFoundException("Pregunta no encontrada.");
 
     const answer = await this.prisma.answer.create({
-      data: { questionId, userId, content: dto.content.trim() },
+      data: {
+        questionId,
+        userId,
+        content: dto.content.trim(),
+        images: dto.images?.length
+          ? {
+              create: dto.images.slice(0, 4).map((image, index) => ({
+                imageUrl: image.imageUrl,
+                storageKey: image.storageKey,
+                mimeType: image.mimeType,
+                sizeBytes: image.sizeBytes,
+                position: index,
+              })),
+            }
+          : undefined,
+      },
       select: this.answerSelect,
     });
 
     return this.mapAnswer(answer);
   }
 }
+
