@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useAccessToken } from "@/hooks/useAccessToken";
-import { apiRequest } from "@/lib/http-client";
+import { useMemo } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 type ProfileData = {
   firstName: string;
@@ -26,29 +25,7 @@ const MODULE_LINKS = [
 ] as const;
 
 export default function MiPerfilPage() {
-  const { accessToken, isAuthenticated } = useAccessToken();
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadProfile() {
-      if (!isAuthenticated) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const data = await apiRequest<ProfileData>("/users/me", {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        setProfile(data);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadProfile();
-  }, [accessToken, isAuthenticated]);
+  const { user: profile, isAuthenticated, isLoading } = useAuth();
 
   const displayName = useMemo(() => {
     if (!profile) return "Mi usuario";
@@ -56,8 +33,16 @@ export default function MiPerfilPage() {
     return fullName || "Mi usuario";
   }, [profile]);
 
+  if (isLoading) {
+    return <p className="rounded-2xl border border-slate-200 bg-white p-4 text-slate-600">Cargando perfil...</p>;
+  }
+
   if (!isAuthenticated) {
     return <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">Inicia sesión para ver tu perfil.</p>;
+  }
+
+  if (!profile) {
+    return <p className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800">No pudimos cargar los datos de tu perfil. Intenta recargar la página.</p>;
   }
 
   return (
@@ -88,7 +73,7 @@ export default function MiPerfilPage() {
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">@mi_usuario</p>
-            <h1 className="text-3xl font-black text-slate-900">{loading ? "Cargando perfil..." : displayName}</h1>
+            <h1 className="text-3xl font-black text-slate-900">{displayName}</h1>
           </div>
           <Link href="/app/configuracion-perfil" className="rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
             Editar perfil
