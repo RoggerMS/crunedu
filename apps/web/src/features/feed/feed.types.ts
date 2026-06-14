@@ -18,6 +18,7 @@ export type FeedAttachment = {
   size: number;
   previewUrl?: string;
   storageKey?: string;
+  apiImageUrl?: string;
 };
 
 export type SharedEntity = {

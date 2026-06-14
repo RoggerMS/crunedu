@@ -42,6 +42,18 @@ export const apiFeedRepository: FeedRepository = {
     const payload: CreateFeedPostPayload = {
       content: input.content,
       ...(communityId ? { communityId } : {}),
+      ...(input.attachments?.length
+        ? {
+            images: input.attachments
+              .filter((attachment) => attachment.apiImageUrl && attachment.storageKey)
+              .map((attachment) => ({
+                imageUrl: attachment.apiImageUrl as string,
+                storageKey: attachment.storageKey as string,
+                mimeType: attachment.mimeType,
+                sizeBytes: Math.max(1, attachment.size),
+              })),
+          }
+        : {}),
     };
     const response = await apiRequest<ApiFeedPost>("/posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const post = mapApiPostToFeedPost(response);

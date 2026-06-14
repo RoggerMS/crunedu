@@ -1,16 +1,51 @@
 import { useEffect, useMemo, useState } from "react";
 import { initialQuestions } from "@/components/questions/question-data";
 import type { QuestionItem } from "@/components/questions/types";
+import { apiRequest, createAnswer, createQuestion, mapApiError } from "@/lib/api-helpers";
+
+type ApiQuestion = {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  isResolved: boolean;
+  author: { firstName: string | null; lastName: string | null; email: string };
+  community?: { id: number; name: string } | null;
+  answersCount: number;
+  answers: Array<{ id: number; content: string; createdAt: string; author: { firstName: string | null; lastName: string | null; email: string } }>;
+};
+
+function authorName(author: ApiQuestion["author"]) {
+  return [author.firstName, author.lastName].filter(Boolean).join(" ") || author.email || "Estudiante CrunEdu";
+}
+
+function mapQuestion(question: ApiQuestion): QuestionItem {
+  return {
+    id: String(question.id),
+    title: question.title,
+    description: question.content,
+    course: question.community?.name ?? "General",
+    authorName: authorName(question.author),
+    createdAt: question.createdAt,
+    status: question.isResolved ? "resuelta" : question.answersCount > 0 ? "respondida" : "sin_responder",
+    tags: question.community?.name ? [question.community.name] : [],
+    stats: { answers: question.answersCount, votes: 0, views: 0, saves: 0 },
+    viewerState: { voted: false, saved: false },
+    answersPreview: question.answers.map((answer) => ({
+      id: String(answer.id),
+      authorName: authorName(answer.author),
+      content: answer.content,
+      votes: 0,
+      createdAt: answer.createdAt,
+    })),
+  };
+}
 
 async function fetchQuestions(): Promise<QuestionItem[]> {
-  const response = await fetch("/api/questions", { cache: "no-store" });
-  if (!response.ok) {
-    const error = new Error(response.status === 401 ? "401" : "request_failed");
-    throw error;
-  }
-  const data = (await response.json()) as QuestionItem[];
-  return Array.isArray(data) ? data : [];
+  const data = await apiRequest<{ items: ApiQuestion[]; nextCursor: number | null }>("/questions");
+  return (data.items ?? []).map(mapQuestion);
 }
+
 
 export function useQuestions() {
   const [realQuestions, setRealQuestions] = useState<QuestionItem[]>([]);
@@ -48,12 +83,15 @@ export function useQuestions() {
   const stats = useMemo(() => ({ active: questions.length, answers: questions.reduce((s, q) => s + q.stats.answers, 0), solved: questions.filter((q) => q.bestAnswer || q.status === "resuelta").length }), [questions]);
   const notify = (message: string, type: "success" | "error" | "info" = "info") => { setToast({ message, type }); setTimeout(() => setToast(null), 3000); };
 
-  function addQuestion(payload: Pick<QuestionItem, "title" | "description" | "course" | "tags" | "images" | "files">) {
+  async function addQuestion(payload: Pick<QuestionItem, "title" | "description" | "course" | "tags" | "images" | "files">) {
     if (!payload.title.trim() || !payload.description.trim() || !payload.course) { notify("Completa curso, título y descripción.", "error"); return; }
-    const next: QuestionItem = { id: `q${Date.now()}`, title: payload.title, description: payload.description, course: payload.course, tags: payload.tags, images: payload.images, files: payload.files, createdAt: new Date().toISOString(), authorName: "Tú", status: "sin_responder", stats: { answers: 0, votes: 0, views: 0, saves: 0 }, viewerState: { voted: false, saved: false, isMine: true } };
-    if (shouldUseMock) setLocalQuestions((prev) => [next, ...prev]);
-    else setRealQuestions((prev) => [next, ...prev]);
-    notify("Pregunta publicada correctamente.", "success");
+    try {
+      const created = await createQuestion({ title: payload.title.trim(), content: payload.description.trim() }, "");
+      setRealQuestions((prev) => [mapQuestion(created as ApiQuestion), ...prev]);
+      notify("Pregunta publicada correctamente.", "success");
+    } catch (error) {
+      notify(mapApiError(error, "No se pudo publicar la pregunta."), "error");
+    }
   }
   const updater = (id: string, fn: (q: QuestionItem) => QuestionItem) => {
     if (shouldUseMock) setLocalQuestions((prev) => prev.map((q) => q.id !== id ? q : fn(q)));
@@ -61,7 +99,16 @@ export function useQuestions() {
   };
   const vote = (id: string) => updater(id, (q) => ({ ...q, viewerState: { ...q.viewerState, voted: !q.viewerState.voted }, stats: { ...q.stats, votes: q.stats.votes + (q.viewerState.voted ? -1 : 1) } }));
   const save = (id: string) => updater(id, (q) => ({ ...q, viewerState: { ...q.viewerState, saved: !q.viewerState.saved }, stats: { ...q.stats, saves: q.stats.saves + (q.viewerState.saved ? -1 : 1) } }));
-  const addAnswer = (id: string, content: string) => { if (!content.trim()) return notify("La respuesta no puede estar vacía.", "error"); updater(id, (q) => ({ ...q, status: q.status === "sin_responder" ? "respondida" : q.status, stats: { ...q.stats, answers: q.stats.answers + 1 }, answersPreview: [{ id: `a${Date.now()}`, authorName: "Tú", content, votes: 0, createdAt: new Date().toISOString() }, ...(q.answersPreview ?? [])] })); notify("Respuesta publicada.", "success"); };
+  const addAnswer = async (id: string, content: string) => {
+    if (!content.trim()) return notify("La respuesta no puede estar vacía.", "error");
+    try {
+      const answer = await createAnswer(Number(id), content.trim(), "") as { id: number; content: string; createdAt: string; author: ApiQuestion["author"] };
+      updater(id, (q) => ({ ...q, status: q.status === "sin_responder" ? "respondida" : q.status, stats: { ...q.stats, answers: q.stats.answers + 1 }, answersPreview: [{ id: String(answer.id), authorName: authorName(answer.author), content: answer.content, votes: 0, createdAt: answer.createdAt }, ...(q.answersPreview ?? [])] }));
+      notify("Respuesta publicada.", "success");
+    } catch (error) {
+      notify(mapApiError(error, "No se pudo publicar la respuesta."), "error");
+    }
+  };
   const saveDraft = (payload: Pick<QuestionItem, "title" | "description" | "course" | "tags" | "images" | "files">) => {
     const has = Boolean(payload.title.trim() || payload.description.trim() || payload.tags.length || payload.course || payload.images?.length || payload.files?.length);
     if (!has) return notify("No hay contenido para guardar.", "info");
