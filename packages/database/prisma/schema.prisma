@@ -321,6 +321,7 @@ model Question {
   user      User          @relation(fields: [userId], references: [id])
   community Community?    @relation(fields: [communityId], references: [id])
   answers   Answer[]
+  images    QuestionImage[]
   reports   Report[]
   tags      QuestionTag[]
 
@@ -331,6 +332,22 @@ model Question {
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([communityId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@map("questions")
+}
+
+model QuestionImage {
+  id         Int      @id @default(autoincrement())
+  questionId Int      @map("question_id")
+  imageUrl   String   @map("image_url")
+  storageKey String   @map("storage_key")
+  mimeType   String   @map("mime_type")
+  sizeBytes  Int      @map("size_bytes")
+  position   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@map("question_images")
 }
 
 model Answer {
