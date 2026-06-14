@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PublicFooter } from "@/components/public-footer";
+import { RootProviders } from "@/components/root-providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,8 +12,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body className="flex min-h-screen flex-col bg-white text-slate-900">
-        <div className="flex-1">{children}</div>
-        <PublicFooter />
+        <RootProviders>
+          <div className="flex-1">{children}</div>
+          <PublicFooter />
+        </RootProviders>
       </body>
     </html>
   );

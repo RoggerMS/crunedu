@@ -5,7 +5,7 @@ import { Bell, ChevronLeft, ChevronRight, GraduationCap, Plus, Search, UserCircl
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useAccessToken } from "@/hooks/useAccessToken";
+import { useAuth } from "@/hooks/useAuth";
 import { useSearch } from "@/hooks/useSearch";
 import { ConversarInternalSidebar } from "@/components/conversar/ConversarInternalSidebar";
 
@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { isAuthenticated, setAccessToken } = useAccessToken();
+  const { isAuthenticated, logout } = useAuth();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const [searchType, setSearchType] = useState<"all" | "posts" | "questions" | "communities" | "products">("all");
   const [searchPage, setSearchPage] = useState(1);
@@ -102,7 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [isQuickActionsOpen]);
 
   function handleLogout() {
-    setAccessToken("");
+    logout();
     router.replace("/login");
   }
 

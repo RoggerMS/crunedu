@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { useAccessToken } from "@/hooks/useAccessToken";
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, mapApiError } from "@/lib/http-client";
 
 type ProfileForm = {
@@ -36,7 +36,7 @@ type SocialUser = {
 const EMPTY_FORM: ProfileForm = { username: "", firstName: "", lastName: "", bio: "", faculty: "", career: "", cycle: "" };
 
 export function ProfileSettingsPanel() {
-  const { accessToken, isAuthenticated } = useAccessToken();
+  const { accessToken, isAuthenticated, isLoading, refreshUser } = useAuth();
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
   const [targetUserId, setTargetUserId] = useState("2");
   const [socialProfile, setSocialProfile] = useState<SocialProfile | null>(null);
@@ -48,9 +48,7 @@ export function ProfileSettingsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  useEffect(() => { if (isAuthenticated) loadProfile(); else setLoading(false); }, [isAuthenticated, accessToken]);
-
-  async function loadProfile() {
+  const loadProfile = useCallback(async () => {
     try {
       const data = await apiRequest<ProfileForm>("/users/me", { headers: { Authorization: `Bearer ${accessToken}` } });
       setForm({ ...EMPTY_FORM, ...data });
@@ -59,7 +57,9 @@ export function ProfileSettingsPanel() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [accessToken]);
+
+  useEffect(() => { if (isLoading) return; if (isAuthenticated) void loadProfile(); else setLoading(false); }, [isLoading, isAuthenticated, loadProfile]);
 
   async function loadSocialProfile() {
     if (!targetUserId) return;
@@ -100,10 +100,13 @@ export function ProfileSettingsPanel() {
       const { username: _username, ...profilePayload } = form;
       const profile = await apiRequest<ProfileForm>("/users/me", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(profilePayload) });
       setForm({ ...EMPTY_FORM, ...profile });
+      await refreshUser();
       setSuccess("Perfil actualizado correctamente.");
     } catch (err) { setError(mapApiError(err, "No se pudo guardar tu perfil.")); }
     finally { setSaving(false); }
   }
+
+  if (isLoading) return <p className="rounded-2xl border border-slate-200 bg-white p-4 text-slate-600">Cargando perfil...</p>;
 
   if (!isAuthenticated) return <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">Inicia sesión para editar tu perfil.</p>;
 
