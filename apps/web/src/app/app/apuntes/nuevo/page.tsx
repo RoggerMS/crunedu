@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ModuleHeader } from "@/components/module-header";
+import { buildLoginHref } from "@/lib/auth-routes";
 import { apiRequest, mapApiError } from "@/lib/http-client";
 import { useAccessToken } from "@/hooks/useAccessToken";
 
@@ -19,6 +20,7 @@ export default function NewNotePage() {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loginHref = buildLoginHref("/app/apuntes/nuevo");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,7 +77,14 @@ export default function NewNotePage() {
         <button disabled={!isAuthenticated || !acceptTerms || sending} type="submit" className="rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
           {sending ? "Publicando..." : "Publicar apunte"}
         </button>
-        {!isAuthenticated ? <p className="text-sm text-amber-700">Inicia sesión para publicar apuntes.</p> : null}
+        {!isAuthenticated ? (
+          <p className="text-sm text-amber-700">
+            Inicia sesión para publicar apuntes.
+            <Link href={loginHref} className="ml-2 font-semibold text-indigo-700 underline">
+              Iniciar sesión
+            </Link>
+          </p>
+        ) : null}
         {error ? <p className="text-sm text-rose-700">{error}</p> : null}
       </form>
     </section>

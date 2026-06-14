@@ -65,7 +65,7 @@ export default function ReutilizablePage() {
               <SecondaryButton asChild><Link href="/app/perfil"><UsersRound size={16} />Interactuar con tus amigos</Link></SecondaryButton>
             </>
           ) : (
-            <EmptyState title="Inicia sesión" description="Necesitas sesión para ver actividad de amigos y notificaciones personalizadas." action={<PrimaryButton asChild><Link href="/login">Ir a login</Link></PrimaryButton>} />
+            <EmptyState title="Inicia sesión" description="Necesitas sesión para ver actividad de amigos y notificaciones personalizadas." action={<PrimaryButton asChild><Link href="/login?returnUrl=%2Fapp%2Freutilizable">Ir a login</Link></PrimaryButton>} />
           )}
         </Card>
       </div>

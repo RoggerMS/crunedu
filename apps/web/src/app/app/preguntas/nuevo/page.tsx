@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { createQuestion } from "@/lib/api-helpers";
+import { buildLoginHref } from "@/lib/auth-routes";
 import { mapApiError } from "@/lib/http-client";
 
 export default function NewQuestionPage() {
@@ -14,6 +15,7 @@ export default function NewQuestionPage() {
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loginHref = buildLoginHref("/app/preguntas/nuevo");
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -47,7 +49,16 @@ export default function NewQuestionPage() {
         <label className="block text-sm font-semibold">Imagen del problema (próximamente)</label>
         <input disabled type="file" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-400" />
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? (
+          <p className="text-sm text-red-600">
+            {error}
+            {error.includes("Inicia sesión") ? (
+              <Link href={loginHref} className="ml-2 font-semibold text-indigo-700 underline">
+                Iniciar sesión
+              </Link>
+            ) : null}
+          </p>
+        ) : null}
         <div className="flex gap-2">
           <button type="submit" disabled={submitting} className="rounded-xl bg-brand-600 px-5 py-2 font-semibold text-white disabled:opacity-70">{submitting ? "Publicando..." : "Publicar"}</button>
           <Link href="/app/preguntas" className="rounded-xl border border-slate-300 px-5 py-2 font-semibold text-slate-700">Cancelar</Link>

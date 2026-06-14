@@ -14,6 +14,7 @@ import {
 } from "react";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { createCommunity } from "@/lib/api-helpers";
+import { buildLoginHref } from "@/lib/auth-routes";
 import { mapApiError } from "@/lib/http-client";
 
 type PrivacyValue = "publica" | "privada";
@@ -63,6 +64,7 @@ export default function NewCommunityPage() {
   const [coverPreview, setCoverPreview] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const loginHref = buildLoginHref("/app/comunidades/nueva");
   const inviteWrapperRef = useRef<HTMLDivElement | null>(null);
 
   const trimmedName = name.trim();
@@ -174,7 +176,16 @@ export default function NewCommunityPage() {
                   {showInviteDropdown && filteredSuggestions.length > 0 ? <div className="rounded-xl border border-slate-200 bg-white p-2">{filteredSuggestions.map((p) => <button key={p.id} type="button" className="block w-full rounded-lg px-2 py-1 text-left text-sm hover:bg-slate-50" onClick={() => { setInvitedPeople((prev) => [...prev, p]); setInviteInput(""); setShowInviteDropdown(false); }}>{p.name} <span className="text-xs text-slate-500">{p.handle}</span></button>)}</div> : null}
                   {invitedPeople.length > 0 ? <div className="flex flex-wrap gap-2">{invitedPeople.map((person) => <div key={person.id} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-1"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">{person.name.charAt(0)}</span><span className="text-xs font-medium text-slate-700">{person.name}</span><button type="button" onClick={() => removeInvitedPerson(person.id)} className="rounded-full p-0.5 text-slate-500 hover:bg-slate-200 hover:text-slate-700" aria-label={`Quitar a ${person.name}`}><X size={14} /></button></div>)}</div> : null}
                 </div>
-                {formError ? <p className="text-sm text-red-700">{formError}</p> : null}
+                {formError ? (
+                  <p className="text-sm text-red-700">
+                    {formError}
+                    {formError.includes("Inicia sesión") ? (
+                      <Link href={loginHref} className="ml-2 font-semibold text-indigo-700 underline">
+                        Iniciar sesión
+                      </Link>
+                    ) : null}
+                  </p>
+                ) : null}
                 <div className="flex items-center justify-between pt-2"><button type="button" onClick={() => setStep(1)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Atrás</button><button type="submit" disabled={isSubmitting || !canContinue} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{isSubmitting ? "Creando..." : "Crear comunidad"}</button></div>
               </>
             )}

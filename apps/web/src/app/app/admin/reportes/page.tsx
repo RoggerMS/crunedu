@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { LoginRequiredNotice } from "@/components/auth/login-required-notice";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { AdminReportsTable } from "@/modules/admin-reports/components/AdminReportsTable";
 import { useAdminReports } from "@/modules/admin-reports/hooks/useAdminReports";
@@ -21,7 +22,7 @@ export default function AdminReportsPage() {
   });
   const { actionLoadingId, moderate, bulkLoading, moderateBulk } = useModerationActions({ accessToken, onError: setError, onSuccess: loadReports });
 
-  if (!isAuthenticated) return <p className="text-sm text-slate-600">Inicia sesión para revisar reportes.</p>;
+  if (!isAuthenticated) return <LoginRequiredNotice title="Inicia sesión para revisar reportes." description="El panel de moderación requiere una cuenta con permisos." returnUrl="/app/admin/reportes" />;
   if (role !== "ADMIN") return <p className="text-sm text-red-600">Solo administradores pueden acceder a esta vista.</p>;
 
   return (
