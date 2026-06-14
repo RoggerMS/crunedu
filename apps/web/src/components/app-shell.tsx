@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { buildLoginHref, isAppAuthRequired } from "@/lib/auth-routes";
 import { useSearch } from "@/hooks/useSearch";
 import { ConversarInternalSidebar } from "@/components/conversar/ConversarInternalSidebar";
 
@@ -34,6 +35,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isStoreCreateRoute = pathname === "/app/tienda/nuevo";
   const isNewCommunityCreationRoute = pathname === "/app/comunidades/nueva";
   const { results, loading, error } = useSearch(query, searchType, searchPage);
+  const currentRoute = useMemo(() => {
+    const params = searchParams.toString();
+    return params ? `${pathname}?${params}` : pathname;
+  }, [pathname, searchParams]);
+  const loginHref = useMemo(() => buildLoginHref(currentRoute), [currentRoute]);
+  const requireAuthForAppRoutes = isAppAuthRequired();
   const hasQuery = query.trim().length > 0;
   const hasResults =
     results.posts.length > 0 ||
@@ -151,7 +158,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 Cerrar sesión
               </button>
-            ) : null}
+            ) : (
+              <Link
+                href={loginHref}
+                data-private-mode-ready={requireAuthForAppRoutes ? "true" : "false"}
+                className="mb-3 block w-full rounded-lg bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                Iniciar sesión
+              </Link>
+            )}
             <h2 className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
               Información legal
             </h2>
@@ -235,6 +250,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Bell size={18} />
             </Link>
+            {!isAuthenticated ? (
+              <Link
+                href={loginHref}
+                className="inline-flex shrink-0 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
+                Iniciar sesión
+              </Link>
+            ) : null}
             <Link
               href="/app/perfil"
               className="hidden shrink-0 rounded-xl border border-slate-200 bg-white p-2 text-slate-700 hover:bg-slate-50 lg:inline-flex"

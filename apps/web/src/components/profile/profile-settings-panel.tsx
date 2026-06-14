@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { LoginRequiredNotice } from "@/components/auth/login-required-notice";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, mapApiError } from "@/lib/http-client";
 
@@ -108,7 +109,7 @@ export function ProfileSettingsPanel() {
 
   if (isLoading) return <p className="rounded-2xl border border-slate-200 bg-white p-4 text-slate-600">Cargando perfil...</p>;
 
-  if (!isAuthenticated) return <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">Inicia sesión para editar tu perfil.</p>;
+  if (!isAuthenticated) return <LoginRequiredNotice title="Inicia sesión para editar tu perfil." description="Necesitas una sesión activa para cambiar tus datos." returnUrl="/app/configuracion-perfil" />;
 
   return <section className="mx-auto max-w-3xl space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-soft"><div><h1 className="text-2xl font-black">Configuración de perfil</h1><p className="mt-1 text-sm text-slate-600">Edita tus datos para mantener tu perfil al día.</p></div>
     <p className="rounded-2xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">

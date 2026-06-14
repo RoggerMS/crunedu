@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+import { LoginRequiredNotice } from "@/components/auth/login-required-notice";
 import { useAuth } from "@/hooks/useAuth";
 
 type ProfileData = {
@@ -38,7 +39,7 @@ export default function MiPerfilPage() {
   }
 
   if (!isAuthenticated) {
-    return <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">Inicia sesión para ver tu perfil.</p>;
+    return <LoginRequiredNotice title="Inicia sesión para ver tu perfil." description="Puedes volver a esta pantalla después de autenticarte." returnUrl="/app/perfil" />;
   }
 
   if (!profile) {

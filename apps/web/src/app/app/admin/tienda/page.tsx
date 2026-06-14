@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { LoginRequiredNotice } from "@/components/auth/login-required-notice";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { PageState, PrimaryButton } from "@/components/ui";
 import { createAdminProduct, getAdminStoreInquiries, getAdminStoreMetrics, getAdminStoreProducts, getStoreCategories, updateAdminStoreInquiryStatus } from "@/lib/api-helpers";
@@ -99,7 +100,7 @@ export default function AdminTiendaPage() {
     }
   }
 
-  if (!isAuthenticated) return <p className="text-sm text-slate-600">Inicia sesión para gestionar productos.</p>;
+  if (!isAuthenticated) return <LoginRequiredNotice title="Inicia sesión para gestionar productos." description="Necesitas una sesión activa para entrar al panel de tienda." returnUrl="/app/admin/tienda" />;
   if (loading) return <PageState type="loading" title="Cargando admin tienda" description="Estamos cargando productos, consultas y métricas." />;
   if (loadingError) return <PageState type="error" title="No se pudo cargar el panel" description={loadingError} action={<PrimaryButton type="button" onClick={loadAdminData}>Reintentar</PrimaryButton>} />;
 
