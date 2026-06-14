@@ -17,8 +17,18 @@ export class ReportsService {
       return this.prisma.report.create({ data: { reporterId, reason, postId: dto.targetId } });
     }
 
-    await this.ensureComment(dto.targetId);
-    return this.prisma.report.create({ data: { reporterId, reason, commentId: dto.targetId } });
+    if (dto.targetType === ReportTargetType.COMMENT) {
+      await this.ensureComment(dto.targetId);
+      return this.prisma.report.create({ data: { reporterId, reason, commentId: dto.targetId } });
+    }
+
+    if (dto.targetType === ReportTargetType.QUESTION) {
+      await this.ensureQuestion(dto.targetId);
+      return this.prisma.report.create({ data: { reporterId, reason, questionId: dto.targetId } });
+    }
+
+    await this.ensureAnswer(dto.targetId);
+    return this.prisma.report.create({ data: { reporterId, reason, answerId: dto.targetId } });
   }
 
   async index(filters: { communityId?: number; severity?: "high" | "medium" | "low"; status?: "open" | "reviewing" | "resolved"; dateFrom?: string; dateTo?: string }) {
@@ -26,7 +36,7 @@ export class ReportsService {
       where: {
         ...(filters.communityId
           ? {
-              OR: [{ post: { communityId: filters.communityId } }, { comment: { post: { communityId: filters.communityId } } }],
+              OR: [{ post: { communityId: filters.communityId } }, { comment: { post: { communityId: filters.communityId } } }, { question: { communityId: filters.communityId } }, { answer: { question: { communityId: filters.communityId } } }],
             }
           : {}),
         ...(filters.status ? { status: this.mapStatusToPrisma(filters.status) } : {}),
@@ -44,6 +54,8 @@ export class ReportsService {
         reporter: { select: { id: true, email: true } },
         post: { select: { id: true, title: true, status: true, communityId: true } },
         comment: { select: { id: true, content: true, status: true, postId: true, post: { select: { communityId: true } } } },
+        question: { select: { id: true, title: true, status: true, communityId: true } },
+        answer: { select: { id: true, content: true, status: true, questionId: true, question: { select: { communityId: true } } } },
         moderator: { select: { id: true, email: true } },
       },
     });
@@ -109,7 +121,7 @@ export class ReportsService {
       this.prisma.answer.count({ where: { userId, isUseful: true } }),
       this.prisma.answer.count({ where: { userId, question: { isResolved: true }, isUseful: true } }),
       this.prisma.report.count({
-        where: { status: ReportStatus.RESOLVED, OR: [{ post: { userId } }, { comment: { userId } }] },
+        where: { status: ReportStatus.RESOLVED, OR: [{ post: { userId } }, { comment: { userId } }, { question: { userId } }, { answer: { userId } }] },
       }),
     ]);
 
@@ -188,25 +200,39 @@ export class ReportsService {
   private async findReport(reportId: number) {
     const report = await this.prisma.report.findUnique({ where: { id: reportId } });
     if (!report) throw new NotFoundException("Reporte no encontrado.");
-    if (!report.postId && !report.commentId) throw new BadRequestException("Este reporte no tiene objetivo moderable.");
+    if (!report.postId && !report.commentId && !report.questionId && !report.answerId) throw new BadRequestException("Este reporte no tiene objetivo moderable.");
     return report;
   }
 
-  private async resolveTargetOwner(report: { postId: number | null; commentId: number | null }) {
+  private async resolveTargetOwner(report: { postId: number | null; commentId: number | null; questionId: number | null; answerId: number | null }) {
     if (report.postId) {
       const post = await this.prisma.post.findUnique({ where: { id: report.postId }, select: { userId: true } });
       if (!post) throw new NotFoundException("Publicación no encontrada.");
       return post.userId;
     }
 
-    const comment = await this.prisma.comment.findUnique({ where: { id: report.commentId! }, select: { userId: true } });
-    if (!comment) throw new NotFoundException("Comentario no encontrado.");
-    return comment.userId;
+    if (report.commentId) {
+      const comment = await this.prisma.comment.findUnique({ where: { id: report.commentId }, select: { userId: true } });
+      if (!comment) throw new NotFoundException("Comentario no encontrado.");
+      return comment.userId;
+    }
+
+    if (report.questionId) {
+      const question = await this.prisma.question.findUnique({ where: { id: report.questionId }, select: { userId: true } });
+      if (!question) throw new NotFoundException("Pregunta no encontrada.");
+      return question.userId;
+    }
+
+    const answer = await this.prisma.answer.findUnique({ where: { id: report.answerId! }, select: { userId: true } });
+    if (!answer) throw new NotFoundException("Respuesta no encontrada.");
+    return answer.userId;
   }
 
-  private async updateTargetStatus(tx: Prisma.TransactionClient, report: { postId: number | null; commentId: number | null }, status: ContentStatus) {
+  private async updateTargetStatus(tx: Prisma.TransactionClient, report: { postId: number | null; commentId: number | null; questionId: number | null; answerId: number | null }, status: ContentStatus) {
     if (report.postId) return tx.post.update({ where: { id: report.postId }, data: { status } });
     if (report.commentId) return tx.comment.update({ where: { id: report.commentId }, data: { status } });
+    if (report.questionId) return tx.question.update({ where: { id: report.questionId }, data: { status } });
+    if (report.answerId) return tx.answer.update({ where: { id: report.answerId }, data: { status } });
   }
 
   private async ensurePost(id: number) {
@@ -217,5 +243,15 @@ export class ReportsService {
   private async ensureComment(id: number) {
     const comment = await this.prisma.comment.findUnique({ where: { id }, select: { id: true } });
     if (!comment) throw new NotFoundException("Comentario no encontrado.");
+  }
+
+  private async ensureQuestion(id: number) {
+    const question = await this.prisma.question.findUnique({ where: { id }, select: { id: true } });
+    if (!question) throw new NotFoundException("Pregunta no encontrada.");
+  }
+
+  private async ensureAnswer(id: number) {
+    const answer = await this.prisma.answer.findUnique({ where: { id }, select: { id: true } });
+    if (!answer) throw new NotFoundException("Respuesta no encontrada.");
   }
 }

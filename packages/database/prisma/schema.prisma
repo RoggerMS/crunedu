@@ -112,6 +112,7 @@ model User {
   posts                   Post[]
   questions               Question[]
   answers                 Answer[]
+  answerVotes             AnswerVote[]
   documents               Document[]
   comments                Comment[]
   reactions               Reaction[]
@@ -321,6 +322,7 @@ model Question {
   user      User          @relation(fields: [userId], references: [id])
   community Community?    @relation(fields: [communityId], references: [id])
   answers   Answer[]
+  images    QuestionImage[]
   reports   Report[]
   tags      QuestionTag[]
 
@@ -331,6 +333,22 @@ model Question {
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([communityId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@map("questions")
+}
+
+model QuestionImage {
+  id         Int      @id @default(autoincrement())
+  questionId Int      @map("question_id")
+  imageUrl   String   @map("image_url")
+  storageKey String   @map("storage_key")
+  mimeType   String   @map("mime_type")
+  sizeBytes  Int      @map("size_bytes")
+  position   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@map("question_images")
 }
 
 model Answer {
@@ -346,6 +364,8 @@ model Answer {
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id])
   reports  Report[]
+  images   AnswerImage[]
+  votes    AnswerVote[]
 
   @@index([questionId])
   @@index([userId])
@@ -406,6 +426,39 @@ model PostTag {
   @@id([postId, tagId])
   @@index([tagId])
   @@map("post_tags")
+}
+
+model AnswerImage {
+  id         Int      @id @default(autoincrement())
+  answerId   Int      @map("answer_id")
+  imageUrl   String   @map("image_url")
+  storageKey String   @map("storage_key")
+  mimeType   String   @map("mime_type")
+  sizeBytes  Int      @map("size_bytes")
+  position   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  answer Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+  @@index([answerId])
+  @@map("answer_images")
+}
+
+model AnswerVote {
+  id        Int      @id @default(autoincrement())
+  answerId  Int      @map("answer_id")
+  userId    Int      @map("user_id")
+  value     Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  answer Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([answerId, userId])
+  @@index([answerId])
+  @@index([userId])
+  @@map("answer_votes")
 }
 
 model QuestionTag {

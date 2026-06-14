@@ -10,8 +10,12 @@ type Question = {
   title: string;
   content: string;
   createdAt: string;
+  isResolved?: boolean;
   author: { firstName: string | null; lastName: string | null; email: string };
-  answers: Array<{ id: number; content: string }>;
+  community?: { id: number; name: string } | null;
+  images?: Array<{ id: number; imageUrl: string; mimeType: string; sizeBytes: number; position: number }>;
+  answersCount?: number;
+  answers: Array<{ id: number; content: string; createdAt?: string; isUseful?: boolean; author?: { firstName: string | null; lastName: string | null; email: string } }>;
 };
 
 export type StoreProduct = {
@@ -95,12 +99,39 @@ export function createCommunity(payload: { name: string; description?: string; r
   return apiRequest<Community>("/communities", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
 }
 
-export function createQuestion(payload: { title: string; content: string; communityId?: number }, token: string) {
+export type UploadedQuestionImage = { imageUrl: string; storageKey: string; mimeType: string; sizeBytes: number };
+export type UploadedAnswerImage = UploadedQuestionImage;
+
+export function uploadQuestionImage(file: File) {
+  const formData = new FormData();
+  formData.append("image", file);
+  return apiRequest<UploadedQuestionImage>("/questions/images", { method: "POST", body: formData });
+}
+
+export function uploadAnswerImage(file: File) {
+  const formData = new FormData();
+  formData.append("image", file);
+  return apiRequest<UploadedAnswerImage>("/questions/answers/images", { method: "POST", body: formData });
+}
+
+export function createQuestion(payload: { title: string; content: string; communityId?: number; images?: UploadedQuestionImage[] }, token: string) {
   return apiRequest<Question>("/questions", { method: "POST", headers: authJsonHeaders(token), body: JSON.stringify(payload) });
 }
 
-export function createAnswer(questionId: number, content: string, token: string) {
-  return apiRequest(`/questions/${questionId}/answers`, { method: "POST", headers: authJsonHeaders(token), body: JSON.stringify({ content }) });
+export function createAnswer(questionId: number, content: string, token: string, images?: UploadedAnswerImage[]) {
+  return apiRequest(`/questions/${questionId}/answers`, { method: "POST", headers: authJsonHeaders(token), body: JSON.stringify({ content, images }) });
+}
+
+export function voteAnswer(questionId: number, answerId: number, value: -1 | 0 | 1, token: string) {
+  return apiRequest(`/questions/${questionId}/answers/${answerId}/vote`, { method: "POST", headers: authJsonHeaders(token), body: JSON.stringify({ value }) });
+}
+
+export function createReport(payload: { targetType: "QUESTION" | "ANSWER" | "POST" | "COMMENT"; targetId: number; reason: string }, token: string) {
+  return apiRequest("/reports", { method: "POST", headers: authJsonHeaders(token), body: JSON.stringify(payload) });
+}
+
+export function markAnswerUseful(questionId: number, answerId: number, token: string) {
+  return apiRequest(`/questions/${questionId}/answers/${answerId}/useful`, { method: "PATCH", headers: token ? { Authorization: `Bearer ${token}` } : undefined });
 }
 
 export function getQuestionById(questionId: number) {
