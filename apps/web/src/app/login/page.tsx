@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
-import { useAccessToken } from "@/hooks/useAccessToken";
+import { useAuth } from "@/hooks/useAuth";
 import { mapApiError } from "@/lib/http-client";
 import { login } from "@/lib/api-helpers";
 
 
 function LoginPageContent() {
-  const { setAccessToken } = useAccessToken();
+  const { login: startSession } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -27,7 +27,7 @@ function LoginPageContent() {
 
     try {
       const data = await login(email.trim(), password);
-      setAccessToken(data.accessToken);
+      await startSession(data.accessToken);
       setSuccessMessage("Sesión iniciada. Redirigiendo...");
       setPassword("");
 
