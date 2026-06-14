@@ -161,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     accessToken,
     isLoading,
-    isAuthenticated: Boolean(accessToken && user),
+    isAuthenticated: Boolean(accessToken),
     login,
     logout,
     refreshUser,

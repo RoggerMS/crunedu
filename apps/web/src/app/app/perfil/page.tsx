@@ -41,6 +41,10 @@ export default function MiPerfilPage() {
     return <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">Inicia sesión para ver tu perfil.</p>;
   }
 
+  if (!profile) {
+    return <p className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800">No pudimos cargar los datos de tu perfil. Intenta recargar la página.</p>;
+  }
+
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft">
       <div className="relative h-40 bg-gradient-to-r from-indigo-700 via-blue-600 to-cyan-500">
