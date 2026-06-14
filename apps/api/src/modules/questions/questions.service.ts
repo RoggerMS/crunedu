@@ -13,6 +13,7 @@ export class QuestionsService {
     id: true,
     content: true,
     createdAt: true,
+    isUseful: true,
     user: {
       select: {
         id: true,
@@ -41,14 +42,16 @@ export class QuestionsService {
       orderBy: { createdAt: "asc" },
       select: this.answerSelect,
     },
+    images: { select: { id: true, imageUrl: true, mimeType: true, sizeBytes: true, position: true }, orderBy: { position: "asc" } },
     _count: { select: { answers: { where: { status: "PUBLISHED" } } } },
   } as const;
 
-  private mapAnswer(answer: { id: number; content: string; createdAt: Date; user: { id: number; email: string; profile: { firstName: string | null; lastName: string | null } | null } }) {
+  private mapAnswer(answer: { id: number; content: string; createdAt: Date; isUseful: boolean; user: { id: number; email: string; profile: { firstName: string | null; lastName: string | null } | null } }) {
     return {
       id: answer.id,
       content: answer.content,
       createdAt: answer.createdAt,
+      isUseful: answer.isUseful,
       author: {
         id: answer.user.id,
         email: answer.user.email,
@@ -72,6 +75,7 @@ export class QuestionsService {
         lastName: question.user.profile?.lastName ?? null,
       },
       community: question.community,
+      images: question.images,
       answersCount: question._count.answers,
       answers: question.answers.map((answer: any) => this.mapAnswer(answer)),
     };
@@ -114,11 +118,54 @@ export class QuestionsService {
     }
 
     const created = await this.prisma.question.create({
-      data: { title: dto.title.trim(), content: dto.content.trim(), communityId: dto.communityId, userId },
+      data: {
+        title: dto.title.trim(),
+        content: dto.content.trim(),
+        communityId: dto.communityId,
+        userId,
+        images: dto.images?.length
+          ? {
+              create: dto.images.slice(0, 4).map((image, index) => ({
+                imageUrl: image.imageUrl,
+                storageKey: image.storageKey,
+                mimeType: image.mimeType,
+                sizeBytes: image.sizeBytes,
+                position: index,
+              })),
+            }
+          : undefined,
+      },
       select: this.questionSelect,
     });
 
     return this.mapQuestion(created);
+  }
+
+  async uploadImage(file: any) {
+    const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+    const maxSizeBytes = 3 * 1024 * 1024;
+    if (!file) throw new BadRequestException("Debes adjuntar una imagen.");
+    if (!allowedTypes.has(file.mimetype)) throw new BadRequestException("Formato no permitido. Solo JPG, PNG o WEBP.");
+    if (file.size > maxSizeBytes) throw new BadRequestException("La imagen supera el límite de 3MB.");
+    const extension = file.originalname.split(".").pop()?.toLowerCase() || "jpg";
+    const filename = `question-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+    const storageKey = `questions/${filename}`;
+    const targetDir = process.cwd() + "/tmp/uploads/questions";
+    await import("node:fs/promises").then((fs) => fs.mkdir(targetDir, { recursive: true }));
+    await import("node:fs/promises").then((fs) => fs.writeFile(`${targetDir}/${filename}`, file.buffer));
+    return { imageUrl: `/api/questions/images/${filename}`, storageKey, mimeType: file.mimetype, sizeBytes: file.size };
+  }
+
+  async markAnswerUseful(questionId: number, answerId: number, userId: number, role: string) {
+    const question = await this.prisma.question.findFirst({ where: { id: questionId, status: "PUBLISHED" }, select: { id: true, userId: true } });
+    if (!question) throw new NotFoundException("Pregunta no encontrada.");
+    if (question.userId !== userId && role !== "ADMIN" && role !== "MODERATOR") throw new BadRequestException("Solo el autor de la pregunta puede marcar una respuesta como útil.");
+    const answer = await this.prisma.answer.findFirst({ where: { id: answerId, questionId, status: "PUBLISHED" }, select: { id: true } });
+    if (!answer) throw new NotFoundException("Respuesta no encontrada.");
+    await this.prisma.answer.updateMany({ where: { questionId }, data: { isUseful: false } });
+    const updated = await this.prisma.answer.update({ where: { id: answerId }, data: { isUseful: true }, select: this.answerSelect });
+    await this.prisma.question.update({ where: { id: questionId }, data: { isResolved: true } });
+    return this.mapAnswer(updated);
   }
 
   async createAnswer(questionId: number, dto: CreateAnswerDto, userId: number) {
@@ -133,3 +180,4 @@ export class QuestionsService {
     return this.mapAnswer(answer);
   }
 }
+

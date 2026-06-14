@@ -1,5 +1,23 @@
 import { Type } from "class-transformer";
-import { IsInt, IsOptional, IsString, MaxLength, Min, MinLength } from "class-validator";
+import { IsArray, IsInt, IsOptional, IsString, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
+
+export class CreateQuestionImageDto {
+  @IsString()
+  @MinLength(1)
+  imageUrl: string;
+
+  @IsString()
+  @MinLength(1)
+  storageKey: string;
+
+  @IsString()
+  @MinLength(1)
+  mimeType: string;
+
+  @IsInt()
+  @Min(1)
+  sizeBytes: number;
+}
 
 export class CreateQuestionDto {
   @IsString()
@@ -17,4 +35,10 @@ export class CreateQuestionDto {
   @IsInt()
   @Min(1)
   communityId?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateQuestionImageDto)
+  images?: CreateQuestionImageDto[];
 }
