@@ -70,8 +70,20 @@ export function getFeedPosts(token: string) {
   return apiRequest<{ items: FeedPost[]; nextCursor: number | null; mode: "recent" | "relevant" }>("/posts", { headers: { Authorization: `Bearer ${token}` } });
 }
 
+function authJsonHeaders(token?: string): Record<string, string> {
+  return token ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } : { "Content-Type": "application/json" };
+}
+
 export function createFeedPost(payload: CreateFeedPostPayload, token: string) {
-  return apiRequest<FeedPost>("/posts", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+  return apiRequest<FeedPost>("/posts", { method: "POST", headers: authJsonHeaders(token), body: JSON.stringify(payload) });
+}
+
+export type UploadedPostImage = { imageUrl: string; storageKey: string; mimeType: string; sizeBytes: number };
+
+export function uploadPostImage(file: File) {
+  const formData = new FormData();
+  formData.append("image", file);
+  return apiRequest<UploadedPostImage>("/posts/images", { method: "POST", body: formData });
 }
 
 export function getRecommendedCommunities(token: string) {
@@ -84,11 +96,11 @@ export function createCommunity(payload: { name: string; description?: string; r
 }
 
 export function createQuestion(payload: { title: string; content: string; communityId?: number }, token: string) {
-  return apiRequest<Question>("/questions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+  return apiRequest<Question>("/questions", { method: "POST", headers: authJsonHeaders(token), body: JSON.stringify(payload) });
 }
 
 export function createAnswer(questionId: number, content: string, token: string) {
-  return apiRequest(`/questions/${questionId}/answers`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ content }) });
+  return apiRequest(`/questions/${questionId}/answers`, { method: "POST", headers: authJsonHeaders(token), body: JSON.stringify({ content }) });
 }
 
 export function getQuestionById(questionId: number) {

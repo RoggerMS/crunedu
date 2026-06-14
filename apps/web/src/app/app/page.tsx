@@ -13,6 +13,7 @@ import { PrimaryButton, StatusMessage } from "@/components/ui";
 import { saveMediaBlob } from "@/features/feed/feed-media-store";
 import type { FeedAttachment } from "@/features/feed/feed.types";
 import { useFeed } from "@/features/feed/useFeed";
+import { uploadPostImage } from "@/lib/api-helpers";
 import { HttpClientError } from "@/lib/http-client";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useCommunities } from "@/hooks/useCommunities";
@@ -78,20 +79,23 @@ export default function AppPage() {
         }
 
         try {
+          const attachments: FeedAttachment[] = [];
           for (const image of data.attachedImages) {
             const file = data.attachedFiles.find((item) => item.id === image.id)?.file;
-            if (file) await saveMediaBlob(image.mediaId, file);
+            if (!file) continue;
+            await saveMediaBlob(image.mediaId, file);
+            const uploaded = await uploadPostImage(file);
+            attachments.push({
+              id: image.id,
+              type: "image",
+              name: file.name || "imagen",
+              mimeType: uploaded.mimeType,
+              size: uploaded.sizeBytes,
+              previewUrl: uploaded.imageUrl,
+              storageKey: uploaded.storageKey,
+              apiImageUrl: uploaded.imageUrl,
+            });
           }
-
-          const attachments: FeedAttachment[] = data.attachedImages.map((image) => ({
-            id: image.id,
-            type: "image",
-            name: "imagen",
-            mimeType: "image/*",
-            size: 0,
-            previewUrl: image.previewUrl,
-            storageKey: image.mediaId,
-          }));
 
           const community = data.communityId ? communities.find((item) => String(item.id) === data.communityId) : undefined;
           const destination = community

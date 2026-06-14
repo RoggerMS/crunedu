@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useAccessToken } from "@/hooks/useAccessToken";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest, HttpClientError } from "@/lib/http-client";
+import { createQuestion, uploadPostImage } from "@/lib/api-helpers";
 import { PageState, PrimaryButton } from "@/components/ui";
 import { CommunityHero } from "@/components/communities/detail/CommunityHero";
 import { CommunityTabs } from "@/components/communities/detail/CommunityTabs";
@@ -13,9 +15,14 @@ import { CommunityMembersCard } from "@/components/communities/detail/CommunityM
 import { CommunityInviteCard } from "@/components/communities/detail/CommunityInviteCard";
 import { CommunityRulesCard } from "@/components/communities/detail/CommunityRulesCard";
 import { CommunityInfoPanel } from "@/components/communities/detail/CommunityInfoPanel";
+import { CreatePostModal } from "@/components/feed/CreatePostModal";
+import { CreateQuestionModal } from "@/components/questions/CreateQuestionModal";
 import type { CommunityDetailModel, CommunityPostModel } from "@/components/communities/detail/types";
+import type { CreatePostSubmitPayload, LocalAttachmentFile } from "@/components/feed/types";
+import type { FeedAttachment } from "@/features/feed/feed.types";
 
 export default function CommunityDetailPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
   const communityId = Number(params.id);
   const { accessToken, isAuthenticated, setAccessToken } = useAccessToken();
   const [community, setCommunity] = useState<CommunityDetailModel | null>(null);
@@ -27,6 +34,8 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const [postModalOpen, setPostModalOpen] = useState(false);
+  const [questionModalOpen, setQuestionModalOpen] = useState(false);
 
   const inviteUrl = useMemo(() => (typeof window === "undefined" ? "" : `${window.location.origin}/app/comunidades/${communityId}`), [communityId]);
   const showToast = (message: string, type: "success" | "error" | "info" = "info") => {
@@ -39,6 +48,66 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
     await navigator.clipboard.writeText(inviteUrl);
     showToast(message, "success");
   };
+  const requireLogin = () => {
+    showToast("Inicia sesión para participar en la comunidad.", "info");
+    router.push(`/login?returnUrl=/app/comunidades/${communityId}`);
+  };
+
+  async function createCommunityPost(data: CreatePostSubmitPayload) {
+    if (!isAuthenticated || !accessToken) return requireLogin();
+    const trimmedContent = data.content.trim();
+    if (!trimmedContent && data.attachedImages.length === 0) {
+      showToast("Escribe un mensaje o adjunta una imagen para publicar.", "info");
+      return;
+    }
+
+    const attachments: FeedAttachment[] = [];
+    for (const image of data.attachedImages) {
+      const file = data.attachedFiles.find((item: LocalAttachmentFile) => item.id === image.id)?.file;
+      if (!file) continue;
+      const uploaded = await uploadPostImage(file);
+      attachments.push({
+        id: image.id,
+        type: "image",
+        name: file.name || "imagen",
+        mimeType: uploaded.mimeType,
+        size: uploaded.sizeBytes,
+        previewUrl: uploaded.imageUrl,
+        storageKey: uploaded.storageKey,
+        apiImageUrl: uploaded.imageUrl,
+      });
+    }
+
+    await apiRequest("/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({
+        content: trimmedContent || " ",
+        communityId,
+        images: attachments.map((attachment) => ({
+          imageUrl: attachment.apiImageUrl,
+          storageKey: attachment.storageKey,
+          mimeType: attachment.mimeType,
+          sizeBytes: attachment.size,
+        })),
+      }),
+    });
+    setPostModalOpen(false);
+    showToast("Publicación creada en la comunidad.", "success");
+    await load();
+  }
+
+  async function createCommunityQuestion(payload: { title: string; description: string }) {
+    if (!isAuthenticated || !accessToken) return requireLogin();
+    if (!payload.title.trim() || !payload.description.trim()) {
+      showToast("Completa título y contenido de la pregunta.", "error");
+      return;
+    }
+    await createQuestion({ title: payload.title.trim(), content: payload.description.trim(), communityId }, accessToken);
+    setQuestionModalOpen(false);
+    showToast("Pregunta creada en la comunidad.", "success");
+  }
+
 
   async function load() {
     setLoading(true);
@@ -135,5 +204,5 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
   if (loading) return <PageState type="loading" title="Cargando comunidad…" description="Estamos preparando el espacio de tu comunidad." />;
   if (error || !community) return <PageState type="error" title="No encontramos esta comunidad." description="Es posible que no exista o ya no esté disponible." action={<PrimaryButton type="button"><Link href="/app/comunidades">Volver a comunidades</Link></PrimaryButton>} />;
 
-  return <main className="mx-auto w-full max-w-[1500px] space-y-4 px-2 py-2 md:px-4 md:py-4">{toast ? <div className={`fixed bottom-5 right-5 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}<Link href="/app/comunidades" className="inline-flex text-sm font-semibold text-indigo-700">← Comunidades</Link><CommunityHero community={community} isCreator={isCreator} isMember={isMember} isPrivate={community.isPrivate} joining={joining} onJoin={onJoin} onInvite={() => showToast("Invitaciones próximamente.", "info")} onEdit={() => showToast("Configuración de comunidad próximamente.", "info")} onShare={() => void copyLink("Enlace copiado.")} onMenu={() => showToast(isCreator ? "Opciones de administración próximamente." : "Opciones de comunidad próximamente.", "info")} /><CommunityTabs activeTab={activeTab} onChange={setActiveTab} showSettings={isCreator} /><div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]"><section className="min-w-0 space-y-4">{isMember || isCreator ? <CommunityComposer onOpenPost={() => showToast("Crear publicación estará disponible pronto.", "info")} onOpenQuestion={() => showToast("Crear pregunta estará disponible pronto.", "info")} showToast={showToast} /> : <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Únete a esta comunidad para publicar y participar.</div>}{activeTab !== "informacion" ? <CommunityPostsPanel posts={posts} onCreatePost={() => showToast("Crear publicación estará disponible pronto.", "info")} /> : <CommunityInfoPanel community={community} />}</section><aside className="space-y-4 xl:sticky xl:top-24 xl:self-start"><CommunityMembersCard count={community.membersCount} creatorName={community.creatorName ?? "Creador"} members={community.members} /><CommunityInviteCard url={inviteUrl} onCopy={() => void copyLink("Enlace copiado.")} onInvite={() => showToast("Invitaciones próximamente.", "info")} /><CommunityRulesCard rules={community.rules} /></aside></div></main>;
+  return <main className="mx-auto w-full max-w-[1500px] space-y-4 px-2 py-2 md:px-4 md:py-4"><CreatePostModal open={postModalOpen} initialType="publicacion" communities={community ? [{ id: community.id, name: community.name }] : []} isAuthenticated={isAuthenticated} onClose={() => setPostModalOpen(false)} onRequireLogin={requireLogin} onToast={showToast} onSaveDraft={() => showToast("Los borradores de comunidad se guardarán desde el feed principal.", "info")} onSubmit={createCommunityPost} /><CreateQuestionModal open={questionModalOpen} initialTitle="" onClose={() => setQuestionModalOpen(false)} onSaveDraft={() => showToast("Los borradores de preguntas siguen disponibles en Preguntas.", "info")} onSubmit={(payload) => void createCommunityQuestion(payload)} />{toast ? <div className={`fixed bottom-5 right-5 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}<Link href="/app/comunidades" className="inline-flex text-sm font-semibold text-indigo-700">← Comunidades</Link><CommunityHero community={community} isCreator={isCreator} isMember={isMember} isPrivate={community.isPrivate} joining={joining} onJoin={onJoin} onInvite={() => showToast("Invitaciones próximamente.", "info")} onEdit={() => showToast("Configuración de comunidad próximamente.", "info")} onShare={() => void copyLink("Enlace copiado.")} onMenu={() => showToast(isCreator ? "Opciones de administración próximamente." : "Opciones de comunidad próximamente.", "info")} /><CommunityTabs activeTab={activeTab} onChange={setActiveTab} showSettings={isCreator} /><div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]"><section className="min-w-0 space-y-4">{isMember || isCreator ? <CommunityComposer onOpenPost={() => setPostModalOpen(true)} onOpenQuestion={() => setQuestionModalOpen(true)} showToast={showToast} /> : <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Únete a esta comunidad para publicar y participar.</div>}{activeTab !== "informacion" ? <CommunityPostsPanel posts={posts} onCreatePost={() => setPostModalOpen(true)} /> : <CommunityInfoPanel community={community} />}</section><aside className="space-y-4 xl:sticky xl:top-24 xl:self-start"><CommunityMembersCard count={community.membersCount} creatorName={community.creatorName ?? "Creador"} members={community.members} /><CommunityInviteCard url={inviteUrl} onCopy={() => void copyLink("Enlace copiado.")} onInvite={() => showToast("Invitaciones próximamente.", "info")} /><CommunityRulesCard rules={community.rules} /></aside></div></main>;
 }
