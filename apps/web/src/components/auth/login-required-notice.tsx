@@ -13,7 +13,7 @@ export function LoginRequiredNotice({
   title,
   description,
   returnUrl,
-  label = "Iniciar sesión",
+  label = "Ir a iniciar sesión",
   className = "rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900",
 }: LoginRequiredNoticeProps) {
   return (

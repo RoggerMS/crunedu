@@ -253,7 +253,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {!isAuthenticated ? (
               <Link
                 href={loginHref}
-                className="hidden shrink-0 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 sm:inline-flex"
+                className="inline-flex shrink-0 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
               >
                 Iniciar sesión
               </Link>
