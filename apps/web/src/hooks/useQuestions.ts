@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { initialQuestions } from "@/components/questions/question-data";
 import type { QuestionItem } from "@/components/questions/types";
 import { apiRequest, createAnswer, createQuestion, mapApiError } from "@/lib/api-helpers";
-import { buildApiUrl } from "@/lib/http-client";
 
 type ApiQuestion = {
   id: number;
@@ -13,8 +12,7 @@ type ApiQuestion = {
   author: { firstName: string | null; lastName: string | null; email: string };
   community?: { id: number; name: string } | null;
   answersCount: number;
-  images?: Array<{ id: number; imageUrl: string; mimeType: string; sizeBytes: number; position: number }>;
-  answers: Array<{ id: number; content: string; createdAt: string; isUseful?: boolean; author: { firstName: string | null; lastName: string | null; email: string } }>;
+  answers: Array<{ id: number; content: string; createdAt: string; author: { firstName: string | null; lastName: string | null; email: string } }>;
 };
 
 function authorName(author: ApiQuestion["author"]) {
@@ -31,7 +29,6 @@ function mapQuestion(question: ApiQuestion): QuestionItem {
     createdAt: question.createdAt,
     status: question.isResolved ? "resuelta" : question.answersCount > 0 ? "respondida" : "sin_responder",
     tags: question.community?.name ? [question.community.name] : [],
-    images: (question.images ?? []).map((image) => ({ id: String(image.id), url: buildApiUrl(image.imageUrl.replace(/^\/api/, "")), alt: question.title })),
     stats: { answers: question.answersCount, votes: 0, views: 0, saves: 0 },
     viewerState: { voted: false, saved: false },
     answersPreview: question.answers.map((answer) => ({
@@ -40,7 +37,6 @@ function mapQuestion(question: ApiQuestion): QuestionItem {
       content: answer.content,
       votes: 0,
       createdAt: answer.createdAt,
-      isBest: Boolean(answer.isUseful),
     })),
   };
 }
@@ -81,7 +77,7 @@ export function useQuestions() {
 
   const shouldUseMock = process.env.NODE_ENV === "development" && realQuestions.length === 0 && !loading && !error;
   // Fallback local only: used when backend endpoint is not available yet in development.
-  const [localQuestions, setLocalQuestions] = useState<QuestionItem[]>(initialQuestions.map((question) => ({ ...question, authorName: `${question.authorName} (demo)` })));
+  const [localQuestions, setLocalQuestions] = useState<QuestionItem[]>(initialQuestions);
   const questions = shouldUseMock ? localQuestions : realQuestions;
 
   const stats = useMemo(() => ({ active: questions.length, answers: questions.reduce((s, q) => s + q.stats.answers, 0), solved: questions.filter((q) => q.bestAnswer || q.status === "resuelta").length }), [questions]);

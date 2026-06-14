@@ -10,12 +10,8 @@ type Question = {
   title: string;
   content: string;
   createdAt: string;
-  isResolved?: boolean;
   author: { firstName: string | null; lastName: string | null; email: string };
-  community?: { id: number; name: string } | null;
-  images?: Array<{ id: number; imageUrl: string; mimeType: string; sizeBytes: number; position: number }>;
-  answersCount?: number;
-  answers: Array<{ id: number; content: string; createdAt?: string; isUseful?: boolean; author?: { firstName: string | null; lastName: string | null; email: string } }>;
+  answers: Array<{ id: number; content: string }>;
 };
 
 export type StoreProduct = {
@@ -99,24 +95,12 @@ export function createCommunity(payload: { name: string; description?: string; r
   return apiRequest<Community>("/communities", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
 }
 
-export type UploadedQuestionImage = { imageUrl: string; storageKey: string; mimeType: string; sizeBytes: number };
-
-export function uploadQuestionImage(file: File) {
-  const formData = new FormData();
-  formData.append("image", file);
-  return apiRequest<UploadedQuestionImage>("/questions/images", { method: "POST", body: formData });
-}
-
-export function createQuestion(payload: { title: string; content: string; communityId?: number; images?: UploadedQuestionImage[] }, token: string) {
+export function createQuestion(payload: { title: string; content: string; communityId?: number }, token: string) {
   return apiRequest<Question>("/questions", { method: "POST", headers: authJsonHeaders(token), body: JSON.stringify(payload) });
 }
 
 export function createAnswer(questionId: number, content: string, token: string) {
   return apiRequest(`/questions/${questionId}/answers`, { method: "POST", headers: authJsonHeaders(token), body: JSON.stringify({ content }) });
-}
-
-export function markAnswerUseful(questionId: number, answerId: number, token: string) {
-  return apiRequest(`/questions/${questionId}/answers/${answerId}/useful`, { method: "PATCH", headers: token ? { Authorization: `Bearer ${token}` } : undefined });
 }
 
 export function getQuestionById(questionId: number) {
