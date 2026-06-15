@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { createQuestion, uploadQuestionImage, type UploadedQuestionImage } from "@/lib/api-helpers";
 import { AcademicComposer, type AcademicComposerImage } from "@/components/questions/AcademicComposer";
@@ -11,6 +11,7 @@ import { mapApiError } from "@/lib/http-client";
 
 export default function NewQuestionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { accessToken, isAuthenticated } = useAccessToken();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -18,7 +19,11 @@ export default function NewQuestionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submitLockRef = useRef(false);
-  const loginHref = buildLoginHref("/app/preguntas/nuevo");
+  const communityIdParam = searchParams.get("communityId");
+  const communityId = communityIdParam ? Number(communityIdParam) : undefined;
+  const communityName = searchParams.get("communityName")?.trim() ?? "";
+  const newQuestionPath = communityId && Number.isFinite(communityId) ? `/app/preguntas/nuevo?${searchParams.toString()}` : "/app/preguntas/nuevo";
+  const loginHref = buildLoginHref(newQuestionPath);
   const canSubmit = useMemo(() => title.trim().length >= 5 && content.trim().length >= 10 && !submitting, [title, content, submitting]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -32,7 +37,7 @@ export default function NewQuestionPage() {
     try {
       const uploadedImages: UploadedQuestionImage[] = [];
       for (const image of images) uploadedImages.push(await uploadQuestionImage(image.file));
-      const created = await createQuestion({ title: title.trim(), content: content.trim(), images: uploadedImages }, accessToken ?? "");
+      const created = await createQuestion({ title: title.trim(), content: content.trim(), communityId: communityId && Number.isFinite(communityId) ? communityId : undefined, images: uploadedImages }, accessToken ?? "");
       shouldUnlock = false;
       router.push(`/app/preguntas/${created.id}`);
     } catch (err) {
@@ -52,6 +57,7 @@ export default function NewQuestionPage() {
           <Link href="/app/preguntas" className="text-sm font-semibold text-indigo-700">← Volver a Preguntas</Link>
           <h1 className="mt-2 text-2xl font-black">Hacer una pregunta</h1>
           <p className="mt-2 text-slate-600">Escribe el enunciado completo, sube una foto clara de tu tarea y explica qué parte no entiendes.</p>
+          {communityId && Number.isFinite(communityId) ? <p className="mt-3 rounded-xl bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-800">Pregunta para la comunidad{communityName ? `: ${communityName}` : ` #${communityId}`}</p> : null}
         </header>
 
         {!isAuthenticated ? (
