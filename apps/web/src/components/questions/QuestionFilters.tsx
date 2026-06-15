@@ -1,4 +1,4 @@
-const top = ["Para ti","Sin responder","Respondidas","Resueltas","Mis preguntas","Más recientes","Más votadas","Semana actual"];
+const top = ["Para ti","Sin responder","Respondidas","Resueltas","Mis preguntas","Más recientes","Semana actual"];
 export function QuestionFilters({ active, onChange, course, onCourseChange, courses }: { active: string; onChange: (v: string) => void; course: string; onCourseChange: (v: string) => void; courses: string[] }) {
   return <div className="space-y-2"><div className="flex gap-2 overflow-x-auto">{top.map((f) => <button key={f} onClick={() => onChange(f)} className={`whitespace-nowrap rounded-full px-3 py-1 text-sm ${active===f?"bg-indigo-600 text-white":"bg-white border"}`}>{f}</button>)}</div><div className="flex gap-2 overflow-x-auto">{["Todos", ...courses].map((c)=><button key={c} onClick={()=>onCourseChange(c)} className={`whitespace-nowrap rounded-full px-3 py-1 text-sm ${course===c?"bg-slate-900 text-white":"bg-white border"}`}>{c}</button>)}</div></div>;
 }
