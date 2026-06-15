@@ -1,7 +1,4 @@
-"use client";
-
 import { AlignLeft, FileUp, MessageCircle, MessageSquarePlus, NotebookPen, Sparkles, X } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FeedAttachmentPreview } from "./FeedAttachmentPreview";
 import { MAX_FEED_IMAGES } from "./constants";
@@ -28,7 +25,6 @@ type CreatePostModalProps = {
 };
 
 export function CreatePostModal(props: CreatePostModalProps) {
-  const router = useRouter();
   const [type, setType] = useState<PostType>(props.initialType);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -142,18 +138,7 @@ export function CreatePostModal(props: CreatePostModalProps) {
             <button
               key={id}
               type="button"
-              onClick={() => {
-                if (id === "publicacion") {
-                  setType(id);
-                  return;
-                }
-                if (id === "pregunta") {
-                  props.onClose();
-                  router.push("/app/preguntas/nuevo?returnUrl=/app");
-                  return;
-                }
-                props.onToast(blockedMessages[id], "info");
-              }}
+              onClick={() => (id === "publicacion" ? setType(id) : props.onToast(blockedMessages[id], "info"))}
               className={`rounded-xl border px-2 py-2 text-left ${type === id ? "border-indigo-500 bg-indigo-50" : "border-slate-200"} ${id !== "publicacion" ? "opacity-70" : ""}`}
             >
               <Icon size={14} />

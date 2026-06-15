@@ -1,25 +1,42 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { createQuestion, uploadQuestionImage, type UploadedQuestionImage } from "@/lib/api-helpers";
-import { AcademicComposer, type AcademicComposerImage } from "@/components/questions/AcademicComposer";
 import { buildLoginHref } from "@/lib/auth-routes";
 import { mapApiError } from "@/lib/http-client";
+
+type LocalImage = { id: string; file: File; previewUrl: string };
 
 export default function NewQuestionPage() {
   const router = useRouter();
   const { accessToken, isAuthenticated } = useAccessToken();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [images, setImages] = useState<AcademicComposerImage[]>([]);
+  const [images, setImages] = useState<LocalImage[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submitLockRef = useRef(false);
   const loginHref = buildLoginHref("/app/preguntas/nuevo");
   const canSubmit = useMemo(() => title.trim().length >= 5 && content.trim().length >= 10 && !submitting, [title, content, submitting]);
+
+  function onImagesSelected(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    const validFiles = files.filter((file) => ["image/jpeg", "image/png", "image/webp"].includes(file.type) && file.size <= 3 * 1024 * 1024);
+    if (validFiles.length !== files.length) setError("Solo puedes adjuntar imágenes JPG, PNG o WEBP de hasta 3MB.");
+    setImages((current) => [...current, ...validFiles.slice(0, Math.max(0, 4 - current.length)).map((file) => ({ id: `${file.name}-${file.lastModified}-${Math.random()}`, file, previewUrl: URL.createObjectURL(file) }))]);
+    event.target.value = "";
+  }
+
+  function removeImage(id: string) {
+    setImages((current) => {
+      const image = current.find((item) => item.id === id);
+      if (image) URL.revokeObjectURL(image.previewUrl);
+      return current.filter((item) => item.id !== id);
+    });
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,19 +84,18 @@ export default function NewQuestionPage() {
             <p className="mt-1 text-xs text-slate-500">Entre 5 y 160 caracteres.</p>
           </div>
 
-          <AcademicComposer
-            mode="question"
-            label="Descripción completa"
-            value={content}
-            onChange={setContent}
-            placeholder="Copia el enunciado, cuenta qué intentaste y dónde te quedaste. Puedes usar **negrita**, listas y símbolos como x²."
-            maxLength={5000}
-            allowImages
-            images={images}
-            onImagesChange={setImages}
-            onError={setError}
-            disabled={submitting}
-          />
+          <div>
+            <label className="block text-sm font-semibold">Descripción completa</label>
+            <textarea className="mt-1 min-h-56 w-full rounded-xl border border-slate-300 px-4 py-3" maxLength={5000} value={content} onChange={(e) => setContent(e.target.value)} placeholder="Copia el enunciado, cuenta qué intentaste y dónde te quedaste." required />
+            <p className="mt-1 text-xs text-slate-500">Puedes escribir hasta 5000 caracteres.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold">Imágenes de tu tarea</label>
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={onImagesSelected} className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3" />
+            <p className="mt-1 text-xs text-slate-500">Hasta 4 imágenes JPG, PNG o WEBP. Máximo 3MB cada una.</p>
+            {images.length ? <div className="mt-3 grid gap-3 sm:grid-cols-2">{images.map((image) => <div key={image.id} className="relative overflow-hidden rounded-xl border"><img src={image.previewUrl} alt="Vista previa de la tarea" className="h-44 w-full object-cover" /><button type="button" onClick={() => removeImage(image.id)} className="absolute right-2 top-2 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white">Quitar</button></div>)}</div> : null}
+          </div>
 
           {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
           <div className="flex flex-wrap gap-2">
