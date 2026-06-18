@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { mapApiError } from "@/lib/http-client";
-import { login } from "@/lib/api-helpers";
+import { login as apiLogin } from "@/lib/api-helpers";
 
 
 function LoginPageContent() {
@@ -26,7 +26,7 @@ function LoginPageContent() {
     setSuccessMessage(null);
 
     try {
-      const data = await login(email.trim(), password);
+      const data = await apiLogin(email.trim(), password);
       await startSession(data.accessToken);
       setSuccessMessage("Sesión iniciada. Redirigiendo...");
       setPassword("");

@@ -4,6 +4,24 @@ import { mapApiCommentToFeedComment, mapApiPostToFeedPost, mapApiPostsResponse, 
 import type { FeedRepository } from "./feed.repository";
 import type { FeedComment, FeedPost } from "./feed.types";
 
+const HIDDEN_POSTS_KEY = "crunedu_hidden_posts";
+
+function getHiddenPostIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(HIDDEN_POSTS_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function persistHiddenPostId(postId: string): void {
+  const hidden = getHiddenPostIds();
+  hidden.add(postId);
+  localStorage.setItem(HIDDEN_POSTS_KEY, JSON.stringify([...hidden]));
+}
+
 let cachedPosts: FeedPost[] = [];
 
 function findCachedPost(postId: string): FeedPost {
@@ -35,6 +53,10 @@ export const apiFeedRepository: FeedRepository = {
   async listPosts() {
     const response = await apiRequest<ApiFeedPostsResponse>("/posts");
     cachedPosts = mapApiPostsResponse(response);
+    const hiddenIds = getHiddenPostIds();
+    if (hiddenIds.size > 0) {
+      cachedPosts = cachedPosts.filter((post) => !hiddenIds.has(post.id));
+    }
     return cachedPosts;
   },
   async createPost(input) {
@@ -70,18 +92,22 @@ export const apiFeedRepository: FeedRepository = {
     cachedPosts = cachedPosts.filter((post) => post.id !== postId);
   },
   async likePost(postId) {
+    // TODO: Conectar con POST /api/posts/:id/like cuando el endpoint esté disponible
     const post = findCachedPost(postId);
     return replaceCachedPost({ ...post, stats: { ...post.stats, likes: post.stats.likes + 1 }, viewerState: { ...post.viewerState, liked: true } });
   },
   async unlikePost(postId) {
+    // TODO: Conectar con POST /api/posts/:id/like (toggle) cuando el endpoint esté disponible
     const post = findCachedPost(postId);
     return replaceCachedPost({ ...post, stats: { ...post.stats, likes: Math.max(0, post.stats.likes - 1) }, viewerState: { ...post.viewerState, liked: false } });
   },
   async savePost(postId) {
+    // TODO: Conectar con POST /api/posts/:id/save cuando el endpoint esté disponible
     const post = findCachedPost(postId);
     return replaceCachedPost({ ...post, stats: { ...post.stats, saves: post.stats.saves + 1 }, viewerState: { ...post.viewerState, saved: true } });
   },
   async unsavePost(postId) {
+    // TODO: Conectar con DELETE /api/posts/:id/save cuando el endpoint esté disponible
     const post = findCachedPost(postId);
     return replaceCachedPost({ ...post, stats: { ...post.stats, saves: Math.max(0, post.stats.saves - 1) }, viewerState: { ...post.viewerState, saved: false } });
   },
@@ -110,8 +136,10 @@ export const apiFeedRepository: FeedRepository = {
   },
   async hidePost(postId) {
     cachedPosts = cachedPosts.filter((post) => post.id !== postId);
+    persistHiddenPostId(postId);
   },
   async sharePost(postId) {
+    // TODO: Conectar con POST /api/posts/:id/share cuando el endpoint esté disponible
     const post = findCachedPost(postId);
     return replaceCachedPost({ ...post, stats: { ...post.stats, shares: post.stats.shares + 1 } });
   },

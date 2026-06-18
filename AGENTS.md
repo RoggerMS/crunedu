@@ -457,6 +457,9 @@ Keep this section updated when new execution plans are created in `docs/*.md`.
 | `docs/FEED_PUBLISHING_UI_PLAN.md` | Rediseño de experiencia de publicación en feed principal (`/app`) | In progress | Alta: 2026-05-10. Iteración mock Fase 1/2 aplicada: chips de contexto, layout 2 columnas desktop y panel lateral de descubrimiento; pendiente toolbar rica/adjuntos documento. |
 | `docs/LOCAL_AI_COMPLETION_PROMPT.md` | Prompt maestro para IA local que finalizará y verificará CrunEdu con Docker | Completed | Alta: 2026-06-18. Ejecutado localmente con Docker; build, quality gate, endpoints críticos y QA visual verificados. |
 
+| `docs/TRAMITES_GUIDES_PLAN.md` | Guía estática de trámites universitarios (trámites, pasos, documentos) | Completed | Alta: 2026-06-18. Implementado en `/app/tramites` y `/app/tramites/[id]` con datos estáticos referenciales de La Cantuta. |
+| `docs/DEBATES_REDIRECT_REPLACEMENT.md` | Reemplazo de redirects en `/app/debates*` por landing informativas | Completed | Alta: 2026-06-18. Las páginas ahora explican el flujo hacia Conversar. |
+
 Status values:
 
 - `Pending`: not started
