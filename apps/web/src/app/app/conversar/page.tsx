@@ -10,6 +10,7 @@ export default function ConversarPage() {
 
   return (
     <section className="mx-auto max-w-6xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Salas de Audio en desarrollo: Navega por los prototipos de debates y salas de estudio. El audio en vivo llegará en la versión 2.0.</div>
       <ConversarActionBar />
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold text-slate-900">Conversaciones activas</h2>

@@ -164,12 +164,14 @@ export default function NewCommunityPage() {
               </>
             ) : (
               <>
+                {/* TODO: En futuro, subir avatar/cover al backend (POST /api/communities/:id/images) y pasar URL real en createCommunity(). Actualmente solo preview local con URL.createObjectURL(). */}
                 <div className="grid gap-3">
                   <label className="flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-slate-300 p-3 text-sm text-slate-700"><ImagePlus size={16} /> Imagen de la comunidad<input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageChange(e, "avatar")} /></label>
                   <label className="flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-slate-300 p-3 text-sm text-slate-700"><ImagePlus size={16} /> Imagen de portada<input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageChange(e, "cover")} /></label>
                 </div>
                 <FloatingField label="Etiquetas" active={Boolean(tagInput) || tags.length > 0}><input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => { if (event.key === "Enter" || event.key === ",") { event.preventDefault(); appendTag(tagInput); setTagInput(""); }}} onBlur={() => { if (tagInput.trim()) { appendTag(tagInput); setTagInput(""); }}} className="w-full bg-transparent text-sm outline-none" /></FloatingField>
                 <FloatingField label="Reglas" active={Boolean(rules)}><textarea value={rules} onChange={(e) => setRules(e.target.value.slice(0, 500))} rows={4} className="w-full resize-none bg-transparent text-sm outline-none" /></FloatingField>
+                {/* TODO: En futuro, conectar invitaciones a API real de búsqueda de usuarios y enviar invitación real (POST /api/communities/:id/invite). Actualmente usa INVITE_SUGGESTIONS mock. */}
                 <div ref={inviteWrapperRef} className="space-y-2">
                   <FloatingField label="Invitar amigos" active={Boolean(inviteInput) || invitedPeople.length > 0}><input value={inviteInput} onChange={(e) => { setInviteInput(e.target.value); setShowInviteDropdown(true); }} onFocus={() => setShowInviteDropdown(true)} className="w-full bg-transparent text-sm outline-none" /></FloatingField>
                   <p className="text-xs text-slate-500">Puedes invitarlos ahora o hacerlo después.</p>

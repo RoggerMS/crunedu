@@ -5,7 +5,6 @@ import { fallbackMoments, fallbackNews } from "@/components/moments/moments-data
 import type { MomentComment, MomentItem, MomentNewsSummary, MomentView } from "@/components/moments/types";
 
 const PREF_KEY = "crunedu_moments_default_view";
-const DRAFT_KEY = "crunedu_moment_drafts";
 
 export function useMoments() {
   const viewerAge: number | undefined = undefined; // TODO: connect real profile age from backend.
@@ -42,8 +41,8 @@ export function useMoments() {
   function saveMoment(id: string) { const target = moments.find((m) => m.id === id); const next = !target?.viewerState.saved; mutateMoment(id, (m) => ({ ...m, viewerState: { ...m.viewerState, saved: next } })); setToast(next ? "Momento guardado." : "Momento quitado de guardados."); }
   async function shareMoment(id: string) { const link = `/app/momentos/${id}`; if (typeof navigator !== "undefined" && navigator.clipboard) await navigator.clipboard.writeText(link); setToast("Enlace copiado."); }
   function commentMoment(momentId: string, content: string) { setComments((v) => [{ id: `${Date.now()}`, momentId, content, author: "Tú", createdAt: new Date().toISOString() }, ...v]); mutateMoment(momentId, (m) => ({ ...m, stats: { ...m.stats, comments: m.stats.comments + 1 } })); }
-  function createMoment(input: Pick<MomentItem, "title" | "description" | "location" | "type" | "tags" | "media"> & { durationHours: number }) { const item: MomentItem = { id: `local-${Date.now()}`, title: input.title, description: input.description, location: input.location, type: input.type, tags: input.tags, media: input.media, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + input.durationHours * 3600_000).toISOString(), author: { id: "local", name: "Tú" }, stats: { boosts: 0, confirmations: 0, comments: 0, shares: 0, views: 0 }, viewerState: { boosted: false, passed: false, saved: false, confirmed: false }, status: "active" }; setMoments((v) => [item, ...v]); setToast("Momento publicado."); }
-  function saveDraft(payload: unknown) { if (typeof window !== "undefined") { const current = JSON.parse(window.localStorage.getItem(DRAFT_KEY) ?? "[]"); window.localStorage.setItem(DRAFT_KEY, JSON.stringify([payload, ...current].slice(0, 20))); setToast("Borrador guardado."); } }
+  function createMoment(_input: Pick<MomentItem, "title" | "description" | "location" | "type" | "tags" | "media"> & { durationHours: number }) { setToast("La publicación de Momentos se activará en la próxima actualización."); }
+  function saveDraft(_payload: unknown) { setToast("La publicación de Momentos se activará en la próxima actualización."); }
   function openDetails(id: string) { return `/app/momentos/${id}`; }
   function selectFromHistory(id: string) { const idx = filteredMoments.findIndex((m) => m.id === id); if (idx >= 0) setCurrentMomentIndex(idx); }
   function nextMoment() { setCurrentMomentIndex((v) => (filteredMoments.length ? (v + 1) % filteredMoments.length : 0)); }

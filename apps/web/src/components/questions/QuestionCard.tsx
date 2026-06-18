@@ -9,14 +9,13 @@ import type { QuestionItem } from "./types";
 type QuestionCardProps = {
   question: QuestionItem;
   canReport?: boolean;
-  onSave: () => void;
   onShare: () => void;
   onReport?: () => void;
   onRespond: () => void;
   onToggleAnswers: () => void;
 };
 
-export function QuestionCard({ question, canReport = false, onSave, onShare, onReport, onRespond, onToggleAnswers }: QuestionCardProps) {
+export function QuestionCard({ question, canReport = false, onShare, onReport, onRespond, onToggleAnswers }: QuestionCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   function stopCardNavigation(event: MouseEvent<HTMLButtonElement>) {
@@ -51,7 +50,6 @@ export function QuestionCard({ question, canReport = false, onSave, onShare, onR
               {menuOpen ? (
                 <div className="absolute right-0 z-20 mt-2 w-44 rounded-xl border border-slate-200 bg-white p-2 text-xs shadow-lg">
                   <button onClick={(event) => { stopCardNavigation(event); setMenuOpen(false); onShare(); }} className="w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50" type="button">Copiar enlace</button>
-                  <button onClick={(event) => { stopCardNavigation(event); setMenuOpen(false); onSave(); }} className="w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50" type="button">{question.viewerState.saved ? "Quitar guardado" : "Guardar"}</button>
                   {canReport && onReport ? <button onClick={(event) => { stopCardNavigation(event); setMenuOpen(false); onReport(); }} className="w-full rounded-lg px-3 py-2 text-left text-rose-700 hover:bg-rose-50" type="button">Reportar pregunta</button> : null}
                 </div>
               ) : null}
@@ -61,7 +59,6 @@ export function QuestionCard({ question, canReport = false, onSave, onShare, onR
           <div className="flex flex-wrap gap-2">
             <button onClick={(e)=>{e.preventDefault();e.stopPropagation();onRespond();}} className="rounded-lg bg-indigo-600 px-2 py-1 text-xs font-semibold text-white" type="button">Responder</button>
             <button onClick={(e)=>{e.preventDefault();e.stopPropagation();onToggleAnswers();}} className="rounded-lg border px-2 py-1 text-xs" type="button">Ver respuestas</button>
-            <button onClick={(e)=>{e.preventDefault();e.stopPropagation();onSave();}} className="rounded-lg border px-2 py-1 text-xs" type="button">{question.viewerState.saved ? "Guardada" : "Guardar"}</button>
             <button onClick={(e)=>{e.preventDefault();e.stopPropagation();onShare();}} className="rounded-lg border px-2 py-1 text-xs" type="button">Compartir</button>
           </div>
         </div>

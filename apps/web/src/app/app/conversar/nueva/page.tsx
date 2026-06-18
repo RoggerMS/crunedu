@@ -42,6 +42,7 @@ export default function ConversarNuevaPage() {
   const handleFakeSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setShowLocalMessage(true);
+    window.setTimeout(() => setShowLocalMessage(false), 4000);
   };
 
   return (
@@ -216,7 +217,7 @@ export default function ConversarNuevaPage() {
 
         {showLocalMessage && (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            La creación real se conectará más adelante.
+            Esta función estará disponible en la próxima versión.
           </div>
         )}
       </form>
