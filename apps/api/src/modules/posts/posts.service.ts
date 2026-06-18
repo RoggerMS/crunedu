@@ -20,6 +20,7 @@ interface FeedEventPayload {
 
 type PostWithRelations = {
   id: number;
+  title: string;
   content: string;
   createdAt: Date;
   user: { id: number; email: string; profile: { firstName: string | null; lastName: string | null } | null };
@@ -40,6 +41,7 @@ export class PostsService {
 
   private readonly postSelect = {
     id: true,
+    title: true,
     content: true,
     createdAt: true,
     user: {
@@ -80,7 +82,7 @@ export class PostsService {
   private readonly commentSelect = { id: true, content: true, createdAt: true, user: { select: { id: true, email: true, profile: { select: { firstName: true, lastName: true } } } } } as const;
 
   private mapPostResponse(post: PostWithRelations): PostResponseDto {
-    return { id: post.id, content: post.content, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, commentsCount: post._count?.comments ?? 0, images: post.images };
+    return { id: post.id, title: post.title, content: post.content, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, commentsCount: post._count?.comments ?? 0, images: post.images };
   }
 
   private mapCommentResponse(comment: any): PostCommentResponseDto {
@@ -189,7 +191,7 @@ export class PostsService {
     await this.preventRepeatedPostContent(userId, dto.content);
     const post = await this.prisma.post.create({
       data: {
-        title: "",
+        title: dto.title?.trim() ?? "",
         content: dto.content.trim(),
         communityId: dto.communityId ?? null,
         userId,

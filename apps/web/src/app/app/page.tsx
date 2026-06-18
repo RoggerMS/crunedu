@@ -103,6 +103,7 @@ export default function AppPage() {
             : { type: "general" as const, label: "Feed general" };
 
           await feed.createPost({
+            title: data.title.trim() || undefined,
             content: trimmedContent || " ",
             communityId: data.communityId || undefined,
             attachments,

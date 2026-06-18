@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { Request } from "express";
 import { JwtAuthGuard, JwtPayload } from "../auth/guards/jwt-auth.guard";
+import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard";
 import { UpdateMeDto } from "./dto/update-me.dto";
 import { UsersService } from "./users.service";
 import { RateLimit } from "../core/rate-limit.decorator";
@@ -26,6 +27,7 @@ export class UsersController {
   }
 
   @Get("users/:id")
+  @UseGuards(OptionalJwtAuthGuard)
   getUserProfile(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
     return this.service.getUserProfile(id, request.user?.sub);
   }
@@ -44,16 +46,19 @@ export class UsersController {
   }
 
   @Get("users/:id/followers")
+  @UseGuards(OptionalJwtAuthGuard)
   getFollowers(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
     return this.service.getFollowers(id, request.user?.sub);
   }
 
   @Get("users/:id/following")
+  @UseGuards(OptionalJwtAuthGuard)
   getFollowing(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
     return this.service.getFollowing(id, request.user?.sub);
   }
 
   @Get("users/:id/friends")
+  @UseGuards(OptionalJwtAuthGuard)
   getFriends(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
     return this.service.getFriends(id, request.user?.sub);
   }

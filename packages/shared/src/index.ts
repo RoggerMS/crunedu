@@ -81,6 +81,7 @@ export interface FeedPostImage {
 
 export interface FeedPost {
   id: number;
+  title: string;
   content: string;
   createdAt: string;
   author: FeedAuthor;
@@ -121,6 +122,7 @@ export interface CreatePostImagePayload {
 }
 
 export interface CreateFeedPostPayload {
+  title?: string;
   content: string;
   communityId?: number;
   images?: CreatePostImagePayload[];

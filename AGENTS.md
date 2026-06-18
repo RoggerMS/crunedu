@@ -455,7 +455,7 @@ Keep this section updated when new execution plans are created in `docs/*.md`.
 
 | `docs/STORE_CORE_PLAN.md` | Tienda núcleo (MVP gestionado por CrunEdu + base para marketplace futuro) | In progress | Alta: 2026-05-04. Define fases, endpoints y apertura futura para sellers externos sin habilitarlos aún. |
 | `docs/FEED_PUBLISHING_UI_PLAN.md` | Rediseño de experiencia de publicación en feed principal (`/app`) | In progress | Alta: 2026-05-10. Iteración mock Fase 1/2 aplicada: chips de contexto, layout 2 columnas desktop y panel lateral de descubrimiento; pendiente toolbar rica/adjuntos documento. |
-| `docs/LOCAL_AI_COMPLETION_PROMPT.md` | Prompt maestro para IA local que finalizará y verificará CrunEdu con Docker | Pending | Alta: 2026-06-18. Guía operativa creada; pendiente ejecución local completa por IA con acceso a Docker Desktop. |
+| `docs/LOCAL_AI_COMPLETION_PROMPT.md` | Prompt maestro para IA local que finalizará y verificará CrunEdu con Docker | Completed | Alta: 2026-06-18. Ejecutado localmente con Docker; build, quality gate, endpoints críticos y QA visual verificados. |
 
 Status values:
 

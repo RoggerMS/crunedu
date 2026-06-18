@@ -11,6 +11,7 @@ export function PostCard({ post, onLike, onSave, onShare, onReport, onHide, onDe
   return <article className="rounded-2xl border border-slate-200 bg-white p-4">
     <p className="text-sm font-semibold">{post.author.name}</p><p className="text-xs text-slate-500">{new Date(post.createdAt).toLocaleString("es-PE")}</p>
     <p className="mt-1 text-xs text-indigo-700">publicación · {post.destination.label}</p>
+    {post.title ? <h2 className="mt-2 text-base font-bold text-slate-900">{post.title}</h2> : null}
     {post.content ? <button className="mt-2 text-left text-sm text-slate-700" onClick={() => onOpenPost(post.id)}>{post.content}</button> : null}
     {media.length ? <div className="mt-2"><FeedMediaGallery images={media} onSelect={setViewerIndex} /></div> : null}
     {post.sharedEntity ? <div className="mt-2"><SharedEntityCard entity={post.sharedEntity} /></div> : null}

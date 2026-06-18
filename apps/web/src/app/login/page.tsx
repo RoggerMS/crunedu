@@ -12,11 +12,11 @@ function LoginPageContent() {
   const { login: startSession } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(searchParams.get("registered") === "1" ? "Cuenta creada. Ya puedes iniciar sesiÃ³n." : null);
   const [retryCount, setRetryCount] = useState(0);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -70,6 +70,7 @@ function LoginPageContent() {
         </form>
 
         <div className="mt-5 text-sm text-slate-600">
+          <p className="mb-2">¿Aún no tienes cuenta? <Link href="/register" className="font-semibold text-indigo-600 hover:text-indigo-700">Regístrate</Link></p>
           <Link href="/app" className="font-semibold text-indigo-600 hover:text-indigo-700">Volver al feed</Link>
         </div>
       </div>

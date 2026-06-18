@@ -1,22 +1,35 @@
-import { Injectable, Logger, OnModuleInit, Optional } from "@nestjs/common";
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { createClient, RedisClientType } from "redis";
+import { createClient } from "redis";
 
 @Injectable()
-export class JobsService implements OnModuleInit {
+export class JobsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(JobsService.name);
-  private redis: RedisClientType | null = null;
+  private redis: ReturnType<typeof createClient> | null = null;
 
   constructor(@Optional() private readonly config?: ConfigService) {}
 
   async onModuleInit() {
     const url = this.config?.get<string>("REDIS_URL") ?? process.env.REDIS_URL ?? "redis://localhost:6379";
-    this.redis = createClient({ url });
-    this.redis.on("error", (error) => this.logger.warn(`Redis unavailable: ${String(error)}`));
+    const client = createClient({ url });
+    client.on("error", (error) => this.logger.warn(`Redis unavailable: ${String(error)}`));
     try {
-      await this.redis.connect();
+      await client.connect();
+      this.redis = client;
     } catch {
       this.redis = null;
+    }
+  }
+
+  async onModuleDestroy() {
+    const client = this.redis;
+    this.redis = null;
+    if (!client?.isOpen) return;
+
+    try {
+      await client.quit();
+    } catch {
+      await client.disconnect().catch(() => undefined);
     }
   }
 

@@ -52,14 +52,6 @@ export class ReportsController {
     });
   }
 
-  @Patch(":id/moderate")
-  @UseGuards(JwtAuthGuard)
-  moderate(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest, @Body() dto: ModerateReportDto) {
-    this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden moderar contenido.");
-
-    return this.service.moderate(id, request.user.sub, dto);
-  }
-
   @Patch("bulk/moderate")
   @UseGuards(JwtAuthGuard)
   moderateBulk(
@@ -68,6 +60,14 @@ export class ReportsController {
   ) {
     this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden moderar contenido.");
     return this.service.moderateBulk(body.reportIds, request.user.sub, body.moderation);
+  }
+
+  @Patch(":id/moderate")
+  @UseGuards(JwtAuthGuard)
+  moderate(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest, @Body() dto: ModerateReportDto) {
+    this.devSecurity.assertAdmin(request.user.role, "Solo administradores pueden moderar contenido.");
+
+    return this.service.moderate(id, request.user.sub, dto);
   }
 
   @Get(":id/audit")

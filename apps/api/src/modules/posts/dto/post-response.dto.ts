@@ -2,6 +2,7 @@ import { PostImageResponseDto } from "./post-image-response.dto";
 
 export class PostResponseDto {
   id: number;
+  title: string;
   content: string;
   createdAt: Date;
   author: {

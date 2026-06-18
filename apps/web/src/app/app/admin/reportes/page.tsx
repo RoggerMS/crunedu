@@ -16,10 +16,15 @@ export default function AdminReportsPage() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [auditLog, setAuditLog] = useState<string[]>([]);
   const [filters, setFilters] = useState({ status: "" as "" | "open" | "reviewing" | "resolved", severity: "" as "" | "high" | "medium" | "low", communityId: "", dateFrom: "", dateTo: "" });
+  const reportFilters = useMemo(() => ({
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(filters.severity ? { severity: filters.severity } : {}),
+    ...(filters.communityId ? { communityId: Number(filters.communityId) } : {}),
+    ...(filters.dateFrom ? { dateFrom: filters.dateFrom } : {}),
+    ...(filters.dateTo ? { dateTo: filters.dateTo } : {}),
+  }), [filters]);
 
-  const { reports, loading, error, setError, loadReports } = useAdminReports(accessToken, {
-    ...(filters.status ? { status: filters.status } : {}), ...(filters.severity ? { severity: filters.severity } : {}), ...(filters.communityId ? { communityId: Number(filters.communityId) } : {}), ...(filters.dateFrom ? { dateFrom: filters.dateFrom } : {}), ...(filters.dateTo ? { dateTo: filters.dateTo } : {}),
-  });
+  const { reports, loading, error, setError, loadReports } = useAdminReports(accessToken, reportFilters);
   const { actionLoadingId, moderate, bulkLoading, moderateBulk } = useModerationActions({ accessToken, onError: setError, onSuccess: loadReports });
 
   if (!isAuthenticated) return <LoginRequiredNotice title="Inicia sesión para revisar reportes." description="El panel de moderación requiere una cuenta con permisos." returnUrl="/app/admin/reportes" />;

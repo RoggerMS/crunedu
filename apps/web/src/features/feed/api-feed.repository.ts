@@ -40,6 +40,7 @@ export const apiFeedRepository: FeedRepository = {
   async createPost(input) {
     const communityId = resolveCommunityId(input);
     const payload: CreateFeedPostPayload = {
+      ...(input.title?.trim() ? { title: input.title.trim() } : {}),
       content: input.content,
       ...(communityId ? { communityId } : {}),
       ...(input.attachments?.length
@@ -95,7 +96,18 @@ export const apiFeedRepository: FeedRepository = {
   async likeComment(postId) {
     return this.listComments(postId);
   },
-  async reportPost() {},
+  async reportPost(postId, reason, detail) {
+    await apiRequest("/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        targetType: "POST",
+        targetId: Number(postId),
+        reason,
+        ...(detail?.trim() ? { description: detail.trim() } : {}),
+      }),
+    });
+  },
   async hidePost(postId) {
     cachedPosts = cachedPosts.filter((post) => post.id !== postId);
   },

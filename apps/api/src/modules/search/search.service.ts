@@ -21,8 +21,9 @@ export class SearchService {
     const title = item.title.toLowerCase();
     const content = item.content.toLowerCase();
 
-    const titleMatches = (title.match(new RegExp(normalizedQuery, "g")) ?? []).length;
-    const contentMatches = (content.match(new RegExp(normalizedQuery, "g")) ?? []).length;
+    const countLiteralMatches = (value: string) => value.split(normalizedQuery).length - 1;
+    const titleMatches = countLiteralMatches(title);
+    const contentMatches = countLiteralMatches(content);
 
     const textScore = titleMatches * 4 + contentMatches * 2;
     const daysSinceCreation = Math.max(0, (Date.now() - new Date(item.createdAt).getTime()) / (1000 * 60 * 60 * 24));
@@ -58,7 +59,7 @@ export class SearchService {
       };
     }
 
-    const shouldSearch = (value: string) => !type || type === value;
+    const shouldSearch = (value: string) => !type || type === "all" || type === value;
 
     const [posts, questions, communities, products] = await Promise.all([
       shouldSearch("posts")

@@ -33,6 +33,7 @@ export type SharedEntity = {
 
 export type FeedPost = {
   id: string;
+  title?: string;
   type: FeedPostType;
   author: { id: string; name: string; avatarUrl?: string };
   content: string;
@@ -58,6 +59,7 @@ export type FeedComment = {
 };
 
 export type CreateFeedPostInput = {
+  title?: string;
   content: string;
   communityId?: number | string;
   attachments?: FeedAttachment[];

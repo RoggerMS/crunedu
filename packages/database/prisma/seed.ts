@@ -54,7 +54,20 @@ async function main() {
     },
   });
 
-  // Communities are user-created in this MVP stage.
+  const communities = [
+    { name: "Cachimbos", slug: "cachimbos", description: "Orientación y apoyo para estudiantes que empiezan su vida universitaria." },
+    { name: "Apuntes", slug: "apuntes", description: "Materiales permitidos, recomendaciones y recursos para estudiar." },
+    { name: "Trámites", slug: "tramites", description: "Ayuda estudiantil sobre matrícula, constancias y procedimientos universitarios." },
+    { name: "General", slug: "general", description: "Conversación y consultas generales de la comunidad CrunEdu." },
+  ];
+
+  for (const community of communities) {
+    await prisma.community.upsert({
+      where: { slug: community.slug },
+      update: {},
+      create: { ...community, createdBy: admin.id },
+    });
+  }
 
   const categories = [
     { name: "Materiales de estudio", slug: "materiales-estudio" },

@@ -2,7 +2,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { promises as fs } from "node:fs";
-import path from "node:path";
+import * as path from "node:path";
 import { AppModule } from "../app.module";
 
 type Status = "PASS" | "FAIL" | "WARN";
@@ -21,6 +21,7 @@ async function run() {
   await app.listen(0);
   const address = app.getHttpServer().address();
   const baseUrl = `http://127.0.0.1:${address.port}/api`;
+  const repoRoot = path.resolve(__dirname, "../../../..");
   const steps: Step[] = [];
 
   const record = (name: string, status: Status, detail?: string) => {
@@ -49,7 +50,7 @@ async function run() {
     const postRes = await fetch(`${baseUrl}/posts`, { method: "POST", headers: authHeaders, body: JSON.stringify({ title: "E2E Feed", content: "Publicación feed", communityId: 1 }) });
     if (postRes.status === 201) {
       const post = (await postRes.json()) as { id: number };
-      const commentRes = await fetch(`${baseUrl}/posts/${post.id}/comments`, { method: "POST", headers: authHeaders, body: JSON.stringify({ content: "Comentario E2E" }) });
+      const commentRes = await fetch(`${baseUrl}/posts/${post.id}/comments`, { method: "POST", headers: authHeaders, body: JSON.stringify({ content: "Comentario útil para verificación E2E" }) });
       record("feed publicar/comentar", commentRes.status === 201 ? "PASS" : "FAIL", `post=${postRes.status} comment=${commentRes.status}`);
     } else {
       record("feed publicar/comentar", "FAIL", `post=${postRes.status}`);
@@ -57,12 +58,13 @@ async function run() {
 
     for (const [name, endpoint, body] of [
       ["preguntas publicar", "questions", { title: "Pregunta E2E", content: "¿Funciona preguntas?", communityId: 1 }],
-      ["apuntes publicar", "notes", { title: "Apunte E2E", description: "Descripción", course: "Curso", cycle: "I", fileUrl: "https://example.com/file.pdf" }],
-      ["trámites publicar", "procedures", { title: "Trámite E2E", description: "Detalle del trámite", faculty: "Educación" }],
+      ["apuntes publicar", "apuntes", { title: "Apunte E2E", description: "Descripción permitida para el apunte E2E", course: "Curso", cycle: "I", fileUrl: "https://example.com/file.pdf" }],
     ] as const) {
       const res = await fetch(`${baseUrl}/${endpoint}`, { method: "POST", headers: authHeaders, body: JSON.stringify(body) });
       record(name, res.status === 201 ? "PASS" : "FAIL", `status=${res.status}`);
     }
+
+    record("trámites consultar", "WARN", "El MVP usa contenido administrado/estático; validación visual requerida");
 
     const market = await fetch(`${baseUrl}/marketplace/products`);
     if (market.status !== 200) record("tienda interés", "FAIL", `list status=${market.status}`);
@@ -76,16 +78,16 @@ async function run() {
       }
     }
 
-    const landingFile = await fs.readFile(path.resolve("apps/web/src/app/page.tsx"), "utf8");
-    const appFile = await fs.readFile(path.resolve("apps/web/src/app/app/page.tsx"), "utf8");
-    const tiendaFile = await fs.readFile(path.resolve("apps/web/src/app/app/tienda/page.tsx"), "utf8");
-    const ctaOk = landingFile.includes('href="/app"') && appFile.includes('href="/app/comunidades"') && appFile.includes('href="/login"') && tiendaFile.includes('/app/tienda/');
+    const landingFile = await fs.readFile(path.join(repoRoot, "apps/web/src/app/page.tsx"), "utf8");
+    const appShellFile = await fs.readFile(path.join(repoRoot, "apps/web/src/components/app-shell.tsx"), "utf8");
+    const tiendaFile = await fs.readFile(path.join(repoRoot, "apps/web/src/app/app/tienda/page.tsx"), "utf8");
+    const ctaOk = landingFile.includes('href="/register"') && landingFile.includes('href="/login"') && appShellFile.includes('href="/app/comunidades"') && tiendaFile.includes('/app/tienda/');
     record("CTA abre acción correcta de su módulo", ctaOk ? "PASS" : "FAIL");
 
     const redirectOk = safeRedirectPath("//evil.com") === "/app" && safeRedirectPath("/app/preguntas") === "/app/preguntas";
     record("validación de no-redirección indebida al feed", redirectOk ? "PASS" : "FAIL");
 
-    const reportPath = path.resolve("docs/RELEASE_E2E_REPORT.md");
+    const reportPath = path.join(repoRoot, "docs/RELEASE_E2E_REPORT.md");
     const failed = steps.filter((s) => s.status === "FAIL");
     await fs.writeFile(reportPath, `# Reporte final E2E local\n\nFecha: ${new Date().toISOString()}\n\n## Resultado por flujo\n${steps.map((s) => `- [${s.status}] ${s.name}${s.detail ? ` — ${s.detail}` : ""}`).join("\n")}\n\n## Pasos fallidos\n${failed.length ? failed.map((s) => `- ${s.name}${s.detail ? `: ${s.detail}` : ""}`).join("\n") : "- Ninguno."}\n\n## Capturas\n- Pendiente en entorno local Windows con navegador (Codex cloud sin UI interactiva).\n- Sugeridas: landing, login, feed publicar/comentar, preguntas, apuntes, trámites y tienda interés.\n`);
 

@@ -45,6 +45,7 @@ export function mapApiPostToFeedPost(apiPost: ApiFeedPost): FeedPost {
 
   return {
     id: String(apiPost.id),
+    title: apiPost.title,
     type: "text",
     author: {
       id: String(apiPost.author.id),

@@ -2,6 +2,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "../app.module";
+import { RateLimitGuard } from "../modules/core/rate-limit.guard";
 
 type CheckStatus = "PASS" | "FAIL" | "SKIP";
 
@@ -31,6 +32,7 @@ async function run() {
   const app = await NestFactory.create(AppModule, { logger: false });
   app.get(ConfigService);
   app.setGlobalPrefix("api");
+  app.useGlobalGuards(app.get(RateLimitGuard));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
 
   await app.listen(0);
@@ -47,14 +49,14 @@ async function run() {
     const registerA = await fetch(`${baseUrl}/auth/register`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: firstUserEmail, password, firstName: "Inte", lastName: "A" }),
+      body: JSON.stringify({ email: firstUserEmail, password, firstName: "Inte", lastName: "AA" }),
     });
     assertStatus(registerA.status, 201, "register A");
 
     const registerB = await fetch(`${baseUrl}/auth/register`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: secondUserEmail, password, firstName: "Inte", lastName: "B" }),
+      body: JSON.stringify({ email: secondUserEmail, password, firstName: "Inte", lastName: "BB" }),
     });
     assertStatus(registerB.status, 201, "register B");
 
@@ -111,7 +113,7 @@ async function run() {
     const createCommentRes = await fetch(`${baseUrl}/posts/${createdPost.id}/comments`, {
       method: "POST",
       headers: authHeaderA,
-      body: JSON.stringify({ content: "Comentario de integración" }),
+      body: JSON.stringify({ content: "Comentario útil de integración académica" }),
     });
     assertStatus(createCommentRes.status, 201, "create comment");
 
@@ -169,7 +171,7 @@ async function run() {
       const comment = await fetch(`${baseUrl}/posts/${createdPost.id}/comments`, {
         method: "POST",
         headers: authHeaderA,
-        body: JSON.stringify({ content: `Comentario límite ${i}` }),
+        body: JSON.stringify({ content: `Comentario académico de límite ${i}` }),
       });
       assertStatus(comment.status, 201, `comment ${i}`);
     }
@@ -186,7 +188,7 @@ async function run() {
       const register = await fetch(`${baseUrl}/auth/register`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: `integration.${seed}.spam${i}@crunedu.local`, password, firstName: "Spam", lastName: `${i}` }),
+        body: JSON.stringify({ email: `integration.${seed}.spam${i}@crunedu.local`, password, firstName: "Spam", lastName: `S${i}` }),
       });
       assertStatus(register.status, 201, `register rate iteration ${i}`);
     }

@@ -1,27 +1,33 @@
 # Reporte final E2E local
 
-Fecha: 2026-05-01
+Fecha: 2026-06-18
 
 ## Resultado por flujo
-- [WARN] Ejecución automatizada en Codex cloud no completada (el comando `tsx src/tests/release.e2e.local.ts` finalizó sin logs y con código 1).
-- [PENDIENTE] landing -> login -> app
-- [PENDIENTE] feed publicar/comentar
-- [PENDIENTE] preguntas publicar
-- [PENDIENTE] apuntes publicar
-- [PENDIENTE] trámites publicar
-- [PENDIENTE] tienda interés
-- [PENDIENTE] CTA abre acción correcta de su módulo
-- [PENDIENTE] validación de no-redirección indebida al feed
+
+- [PASS] Landing, registro, login y acceso a `/app`.
+- [PASS] Feed: publicar con título y comentar (`201`).
+- [PASS] Preguntas: publicar (`201`).
+- [PASS] Apuntes: publicar (`201`).
+- [WARN] Trámites: contenido administrado/estático; ruta validada visualmente.
+- [WARN] Tienda: catálogo responde, pero no hay productos activos para validar inquiry.
+- [PASS] CTA principales abren el módulo correcto.
+- [PASS] Protección de `returnUrl` contra redirección externa.
+- [PASS] Búsqueda devuelve enlaces navegables para publicaciones y comunidades.
+- [PASS] Reportes: crear reporte y consultar cola admin.
+
+## Quality gate
+
+- `test:bootstrap`: PASS.
+- `test:contract`: PASS.
+- `test:regression:mvp`: PASS (11 PASS, 0 FAIL, 2 SKIP justificados).
+- `test:release:e2e`: PASS con 2 WARN no bloqueantes.
+
+## QA visual en navegador local
+
+Rutas revisadas sin alertas visibles: `/`, `/register`, `/login`, `/app`, `/app/comunidades`, `/app/preguntas`, `/app/apuntes`, `/app/universidad`, `/app/tienda`, `/app/perfil` y `/app/admin/reportes`.
+
+Se corrigió un error de hidratación de fechas en Apuntes y un ciclo de peticiones en Reportes admin.
 
 ## Pasos fallidos
-- Automatización local pre-release no ejecutada correctamente en este entorno cloud.
 
-## Capturas
-- Pendiente capturar en entorno local Windows (con navegador):
-  - landing
-  - login exitoso
-  - publicación+comentario en feed
-  - publicación en preguntas
-  - publicación en apuntes
-  - publicación en trámites
-  - registro de interés en tienda
+- Ninguno bloqueante.

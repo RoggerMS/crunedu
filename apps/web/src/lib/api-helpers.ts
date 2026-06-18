@@ -4,6 +4,7 @@ import { apiRequest, mapApiError } from "@/lib/http-client";
 export { apiRequest, mapApiError };
 
 type LoginResponse = { accessToken: string };
+type RegisterResponse = { message: string; user: { id: number; email: string } };
 
 type Question = {
   id: number;
@@ -68,6 +69,14 @@ export type AdminStoreInquiry = StoreInquiryResponse & {
 
 export function login(email: string, password: string) {
   return apiRequest<LoginResponse>("/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+}
+
+export function register(payload: { email: string; password: string; firstName: string; lastName: string }) {
+  return apiRequest<RegisterResponse>("/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }
 
 export function getFeedPosts(token: string) {

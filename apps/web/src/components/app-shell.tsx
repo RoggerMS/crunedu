@@ -291,7 +291,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   No se encontraron resultados para tu búsqueda.
                 </p>
               ) : null}
-              {!loading && !error && hasResults ? <p className="text-xs text-slate-500">Resultados: {results.total ?? 0}.</p> : null}
+              {!loading && !error && hasResults ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-slate-500">Resultados: {results.total ?? 0}.</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {results.posts.map((item) => <Link key={`post-${item.id}`} href={`/app?post=${item.id}`} className="rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"><span className="block font-semibold text-slate-900">{item.title || "PublicaciÃ³n"}</span><span className="line-clamp-1 text-xs text-slate-500">{item.content}</span></Link>)}
+                    {results.questions.map((item) => <Link key={`question-${item.id}`} href={`/app/preguntas/${item.id}`} className="rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"><span className="block font-semibold text-slate-900">{item.title}</span><span className="line-clamp-1 text-xs text-slate-500">Pregunta</span></Link>)}
+                    {results.communities.map((item) => <Link key={`community-${item.id}`} href={`/app/comunidades/${item.id}`} className="rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"><span className="block font-semibold text-slate-900">{item.name}</span><span className="line-clamp-1 text-xs text-slate-500">{item.description || "Comunidad estudiantil"}</span></Link>)}
+                    {results.products.map((item) => <Link key={`product-${item.id}`} href={`/app/tienda/${item.id}`} className="rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"><span className="block font-semibold text-slate-900">{item.title}</span><span className="line-clamp-1 text-xs text-slate-500">Producto de CrunEdu</span></Link>)}
+                  </div>
+                </div>
+              ) : null}
               {!loading && !error && (results.total ?? 0) > 5 ? (
                 <div className="mt-2 flex items-center gap-2">
                   <button type="button" onClick={() => setSearchPage((value) => Math.max(1, value - 1))} disabled={searchPage === 1} className="rounded border border-slate-300 px-2 py-1 text-xs disabled:opacity-50">Anterior</button>

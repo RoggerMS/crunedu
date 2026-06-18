@@ -15,6 +15,8 @@ import { ObservabilityModule } from "./modules/observability/observability.modul
 import { CoreModule } from "./modules/core/core.module";
 import { RateLimitGuard } from "./modules/core/rate-limit.guard";
 import { MarketplaceModule } from "./modules/marketplace/marketplace.module";
+import { ReportsModule } from "./modules/reports/reports.module";
+import { SearchModule } from "./modules/search/search.module";
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { MarketplaceModule } from "./modules/marketplace/marketplace.module";
     DocumentsModule,
     DebatesModule,
     MarketplaceModule,
+    SearchModule,
+    ReportsModule,
     ObservabilityModule,
   ],
   providers: [RateLimitGuard],

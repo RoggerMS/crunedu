@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsString, MaxLength, Min } from "class-validator";
+import { IsEnum, IsInt, IsOptional, IsString, MaxLength, Min } from "class-validator";
 
 export enum ReportTargetType {
   POST = "POST",
@@ -18,4 +18,9 @@ export class CreateReportDto {
   @IsString()
   @MaxLength(500)
   reason!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
 }

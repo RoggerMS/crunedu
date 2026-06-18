@@ -27,7 +27,9 @@ async function run() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ email, password, firstName: "Contract", lastName: "Spec" }),
     });
-    assert(register.status === 201, `register expected 201 got ${register.status}`);
+    if (register.status !== 201) {
+      throw new Error(`register expected 201 got ${register.status}: ${await register.text()}`);
+    }
 
     const login = await fetch(`${baseUrl}/auth/login`, {
       method: "POST",
@@ -44,6 +46,19 @@ async function run() {
     const postsJson = (await posts.json()) as { items?: unknown[]; nextCursor?: number | null };
     assert(Array.isArray(postsJson.items), "GET /posts must return items array");
     assert(postsJson.nextCursor === null || typeof postsJson.nextCursor === "number", "GET /posts nextCursor must be number|null");
+
+    const postTitle = `Contrato ${seed}`;
+    const createPost = await fetch(`${baseUrl}/posts`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${loginJson.accessToken}`,
+      },
+      body: JSON.stringify({ title: postTitle, content: "PublicaciÃ³n creada por la prueba de contrato." }),
+    });
+    assert(createPost.status === 201, `POST /posts expected 201 got ${createPost.status}`);
+    const createdPostJson = (await createPost.json()) as { title?: string };
+    assert(createdPostJson.title === postTitle, "POST /posts must preserve the optional title");
 
     const marketplace = await fetch(`${baseUrl}/marketplace/products`);
     assert(marketplace.status === 200, `GET /marketplace/products expected 200 got ${marketplace.status}`);

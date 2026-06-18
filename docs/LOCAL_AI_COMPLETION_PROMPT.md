@@ -1,7 +1,7 @@
 # Prompt para IA local: finalización y pulido integral de CrunEdu
 
 Alta: 2026-06-18  
-Estado: Pending  
+Estado: Completed
 Responsable sugerido: IA local con acceso a Docker Desktop en Windows 11
 
 ## Prompt listo para copiar y pegar
@@ -259,3 +259,12 @@ Al terminar, entrega un resumen en español con:
 7. Siguientes pasos recomendados.
 
 Si quedan tareas pendientes, no las ocultes. Déjalas en un `.md` de plan y registra ese `.md` en `AGENTS.md`.
+
+## Resultado de ejecución — 2026-06-18
+
+- Docker reconstruido y servicios principales operativos.
+- Build completo, lint, Prisma validate y `quality:gate` ejecutados.
+- Auth, registro web, comunidades semilla, feed con título, comentarios, preguntas, apuntes, búsqueda, reportes, perfil y tienda básica revisados.
+- QA visual realizada en landing, registro, login, feed, comunidades, preguntas, apuntes, universidad, tienda, perfil y reportes admin.
+- No se modificó `schema.prisma` y no se crearon migraciones.
+- Riesgos no bloqueantes: no hay productos activos para validar inquiry de tienda; Trámites permanece como contenido administrado/estático; lint conserva advertencias de optimización de imágenes y dependencias de hooks preexistentes.

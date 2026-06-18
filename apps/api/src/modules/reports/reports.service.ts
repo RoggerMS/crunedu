@@ -14,21 +14,21 @@ export class ReportsService {
 
     if (dto.targetType === ReportTargetType.POST) {
       await this.ensurePost(dto.targetId);
-      return this.prisma.report.create({ data: { reporterId, reason, postId: dto.targetId } });
+      return this.prisma.report.create({ data: { reporterId, reason, description: dto.description?.trim() || null, postId: dto.targetId } });
     }
 
     if (dto.targetType === ReportTargetType.COMMENT) {
       await this.ensureComment(dto.targetId);
-      return this.prisma.report.create({ data: { reporterId, reason, commentId: dto.targetId } });
+      return this.prisma.report.create({ data: { reporterId, reason, description: dto.description?.trim() || null, commentId: dto.targetId } });
     }
 
     if (dto.targetType === ReportTargetType.QUESTION) {
       await this.ensureQuestion(dto.targetId);
-      return this.prisma.report.create({ data: { reporterId, reason, questionId: dto.targetId } });
+      return this.prisma.report.create({ data: { reporterId, reason, description: dto.description?.trim() || null, questionId: dto.targetId } });
     }
 
     await this.ensureAnswer(dto.targetId);
-    return this.prisma.report.create({ data: { reporterId, reason, answerId: dto.targetId } });
+    return this.prisma.report.create({ data: { reporterId, reason, description: dto.description?.trim() || null, answerId: dto.targetId } });
   }
 
   async index(filters: { communityId?: number; severity?: "high" | "medium" | "low"; status?: "open" | "reviewing" | "resolved"; dateFrom?: string; dateTo?: string }) {
