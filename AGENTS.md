@@ -435,17 +435,16 @@ Regla operativa:
   - fecha de alta
 - Este registro debe permitir retomar la implementación en tareas futuras sin perder contexto.
 
-
 ## 13. Plan and MD progress registry
 
 Keep this section updated when new execution plans are created in `docs/*.md`.
 
-| Plan / MD | Scope | Status | Notes |
-|---|---|---|---|
-| `docs/PAGE_QA_MATRIX.md` | QA page-by-page verification before merge | In progress | Matrix created; keep PASS/FAIL execution logs per release. |
-| `docs/DEBATES_SPEC.md` | Debates module product definition (general, specialty, extras) | In progress | MVP spec created; next step is backend persistence and UI compose/respond flow. |
-| `docs/UI_POLISH_PLAN.md` | Home compact actions, reusable section, notifications entry points | In progress | Added `/app/reutilizable`, `/app/notificaciones`, compact buttons and header icons. |
-| `docs/DEBATES_IMPLEMENTATION_PLAN.md` | Debates usable flow: create, list by week, respond, status handling | In progress | Implemented frontend interaction; pending persistence and moderation. |
+| Plan / MD                             | Scope                                                               | Status      | Notes                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------- |
+| `docs/PAGE_QA_MATRIX.md`              | QA page-by-page verification before merge                           | In progress | Matrix created; keep PASS/FAIL execution logs per release.                          |
+| `docs/DEBATES_SPEC.md`                | Debates module product definition (general, specialty, extras)      | In progress | MVP spec created; next step is backend persistence and UI compose/respond flow.     |
+| `docs/UI_POLISH_PLAN.md`              | Home compact actions, reusable section, notifications entry points  | In progress | Added `/app/reutilizable`, `/app/notificaciones`, compact buttons and header icons. |
+| `docs/DEBATES_IMPLEMENTATION_PLAN.md` | Debates usable flow: create, list by week, respond, status handling | In progress | Implemented frontend interaction; pending persistence and moderation.               |
 
 | `docs/API_ROUTES.md` | Backend API technical route catalog (NestJS controllers + DTOs + auth) | Completed | Added endpoint-by-endpoint PowerShell usage docs. Alta: 2026-05-02. |
 
@@ -456,8 +455,10 @@ Keep this section updated when new execution plans are created in `docs/*.md`.
 
 | `docs/STORE_CORE_PLAN.md` | Tienda núcleo (MVP gestionado por CrunEdu + base para marketplace futuro) | In progress | Alta: 2026-05-04. Define fases, endpoints y apertura futura para sellers externos sin habilitarlos aún. |
 | `docs/FEED_PUBLISHING_UI_PLAN.md` | Rediseño de experiencia de publicación en feed principal (`/app`) | In progress | Alta: 2026-05-10. Iteración mock Fase 1/2 aplicada: chips de contexto, layout 2 columnas desktop y panel lateral de descubrimiento; pendiente toolbar rica/adjuntos documento. |
+| `docs/LOCAL_AI_COMPLETION_PROMPT.md` | Prompt maestro para IA local que finalizará y verificará CrunEdu con Docker | Pending | Alta: 2026-06-18. Guía operativa creada; pendiente ejecución local completa por IA con acceso a Docker Desktop. |
 
 Status values:
+
 - `Pending`: not started
 - `In progress`: partially implemented
 - `Completed`: implemented and verified locally
