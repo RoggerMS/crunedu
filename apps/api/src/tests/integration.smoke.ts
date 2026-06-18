@@ -96,7 +96,7 @@ async function run() {
     const createPostNoToken = await fetch(`${baseUrl}/posts`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title: "sin token", content: "debe fallar", communityId: 1 }),
+      body: JSON.stringify({ title: "sin token", content: "debe fallar" }),
     });
     assertStatus(createPostNoToken.status, 401, "create post without token");
     record("auth", "POST /posts sin token devuelve 401", "PASS");
@@ -104,7 +104,7 @@ async function run() {
     const createPost = await fetch(`${baseUrl}/posts`, {
       method: "POST",
       headers: authHeaderA,
-      body: JSON.stringify({ title: "Post integración", content: "Contenido de prueba para integración", communityId: 1 }),
+      body: JSON.stringify({ title: "Post integración", content: "Contenido de prueba para integración" }),
     });
     assertStatus(createPost.status, 201, "create post");
     const createdPost = (await createPost.json()) as { id: number };

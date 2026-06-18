@@ -47,7 +47,7 @@ async function run() {
 
     const authHeaders: Record<string, string> = { "content-type": "application/json" };
     if (token) authHeaders.authorization = `Bearer ${token}`;
-    const postRes = await fetch(`${baseUrl}/posts`, { method: "POST", headers: authHeaders, body: JSON.stringify({ title: "E2E Feed", content: "Publicación feed", communityId: 1 }) });
+    const postRes = await fetch(`${baseUrl}/posts`, { method: "POST", headers: authHeaders, body: JSON.stringify({ title: "E2E Feed", content: "Publicación feed" }) });
     if (postRes.status === 201) {
       const post = (await postRes.json()) as { id: number };
       const commentRes = await fetch(`${baseUrl}/posts/${post.id}/comments`, { method: "POST", headers: authHeaders, body: JSON.stringify({ content: "Comentario útil para verificación E2E" }) });
@@ -57,7 +57,7 @@ async function run() {
     }
 
     for (const [name, endpoint, body] of [
-      ["preguntas publicar", "questions", { title: "Pregunta E2E", content: "¿Funciona preguntas?", communityId: 1 }],
+      ["preguntas publicar", "questions", { title: "Pregunta E2E", content: "¿Funciona preguntas?" }],
       ["apuntes publicar", "apuntes", { title: "Apunte E2E", description: "Descripción permitida para el apunte E2E", course: "Curso", cycle: "I", fileUrl: "https://example.com/file.pdf" }],
     ] as const) {
       const res = await fetch(`${baseUrl}/${endpoint}`, { method: "POST", headers: authHeaders, body: JSON.stringify(body) });
