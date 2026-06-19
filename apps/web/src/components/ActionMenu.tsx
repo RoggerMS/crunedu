@@ -56,7 +56,7 @@ export function ActionMenu({ items, ariaLabel, align = "right", triggerClassName
       {open ? (
         <div
           role="menu"
-          className={`absolute z-40 mt-1 min-w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg ${align === "right" ? "right-0" : "left-0"}`}
+          className={`absolute z-[80] mt-2 min-w-[200px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl ring-1 ring-black/5 ${align === "right" ? "right-0" : "left-0"}`}
         >
           {items.map((item) => {
             const Icon = item.icon;

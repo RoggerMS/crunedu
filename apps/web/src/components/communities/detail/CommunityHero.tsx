@@ -27,8 +27,8 @@ export function CommunityHero({ community, isCreator, isMember, isPrivate, joini
   ];
 
   return (
-    <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <div className="h-56 bg-gradient-to-r from-indigo-600 via-violet-600 to-sky-500 md:h-64">
+    <article className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div className="h-56 overflow-hidden rounded-t-3xl bg-gradient-to-r from-indigo-600 via-violet-600 to-sky-500 md:h-64">
         {community.coverUrl ? <img src={community.coverUrl} alt={`Portada de ${community.name}`} className="h-full w-full object-cover" /> : null}
       </div>
       <div className="px-5 pb-6">
