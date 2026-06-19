@@ -16,7 +16,7 @@ import { CommunityMembersCard } from "@/components/communities/detail/CommunityM
 import { CommunityRulesCard } from "@/components/communities/detail/CommunityRulesCard";
 import { CommunityInfoPanel } from "@/components/communities/detail/CommunityInfoPanel";
 import { CreatePostModal } from "@/components/feed/CreatePostModal";
-import type { CommunityDetailModel, CommunityPostModel } from "@/components/communities/detail/types";
+import type { CommunityDetailModel, CommunityFileItem, CommunityMediaItem, CommunityPostModel } from "@/components/communities/detail/types";
 import type { CreatePostSubmitPayload, LocalAttachmentFile } from "@/components/feed/types";
 import type { FeedAttachment } from "@/features/feed/feed.types";
 
@@ -168,6 +168,12 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
         liked: false,
         saved: false,
         isMine: Boolean(user && post.author?.id === user.id),
+        images: Array.isArray(post.images) ? post.images.map((image: any) => ({
+          id: image.id,
+          imageUrl: image.imageUrl,
+          mimeType: image.mimeType,
+          sizeBytes: image.sizeBytes,
+        })) : [],
       })) as CommunityPostModel[];
 
       const hiddenIds = readHiddenPostIds();
@@ -300,6 +306,17 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
     showToast("Publicación oculta.", "info");
   };
 
+  const mediaItems = useMemo<CommunityMediaItem[]>(() => posts.flatMap((post) => (post.images ?? []).map((image, index) => ({
+    id: `${post.id}-${image.id ?? index}`,
+    postId: post.id,
+    imageUrl: image.imageUrl,
+    alt: `Imagen compartida en ${community?.name ?? "la comunidad"}`,
+    authorName: post.authorName,
+    createdAt: post.createdAt,
+  }))), [posts, community?.name]);
+
+  const fileItems = useMemo<CommunityFileItem[]>(() => [], []);
+
   const handleDeletePost = async (postId: number) => {
     if (!isAuthenticated || !accessToken) return requireLogin();
     try {
@@ -354,6 +371,10 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
             <CommunityInfoPanel community={community} />
           ) : activeTab === "miembros" ? (
             <CommunityMembersView members={community.members ?? []} count={community.membersCount} />
+          ) : activeTab === "multimedia" ? (
+            <CommunityMultimediaView items={mediaItems} onOpenPost={handleCommentPost} />
+          ) : activeTab === "archivos" ? (
+            <CommunityFilesView items={fileItems} />
           ) : (
             <>
               {isMember || isCreator ? (
@@ -386,6 +407,61 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
         </aside>
       </div>
     </main>
+  );
+}
+
+function CommunityMultimediaView({ items, onOpenPost }: { items: CommunityMediaItem[]; onOpenPost: (postId: number) => void }) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="mb-4">
+        <h2 className="text-lg font-bold text-slate-950">Multimedia</h2>
+        <p className="text-sm text-slate-500">Imágenes compartidas en publicaciones reales de esta comunidad.</p>
+      </div>
+      {items.length ? (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          {items.map((item) => (
+            <button key={item.id} type="button" onClick={() => onOpenPost(item.postId)} className="group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 text-left">
+              <img src={item.imageUrl} alt={item.alt} className="aspect-square w-full object-cover transition group-hover:scale-105" />
+              <div className="space-y-0.5 p-2">
+                <p className="truncate text-xs font-semibold text-slate-800">{item.authorName ?? "Estudiante CrunEdu"}</p>
+                <p className="text-[11px] text-slate-500">{item.createdAt ?? "Hace poco"}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
+          <h3 className="font-bold text-slate-900">Aún no hay multimedia</h3>
+          <p className="mt-1 text-sm text-slate-600">Las imágenes compartidas en publicaciones aparecerán aquí cuando existan datos reales.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CommunityFilesView({ items }: { items: CommunityFileItem[] }) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="mb-4">
+        <h2 className="text-lg font-bold text-slate-950">Archivos</h2>
+        <p className="text-sm text-slate-500">Aquí se ordenarán documentos vinculados con Apuntes y Preguntas.</p>
+      </div>
+      {items.length ? (
+        <ul className="divide-y divide-slate-100">
+          {items.map((item) => (
+            <li key={item.id} className="py-3">
+              <p className="text-sm font-semibold text-slate-900">{item.name}</p>
+              <p className="text-xs text-slate-500">{item.source} · {item.createdAt ?? "Fecha no disponible"}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
+          <h3 className="font-bold text-slate-900">Aún no hay archivos</h3>
+          <p className="mt-1 text-sm text-slate-600">Cuando Preguntas o Apuntes compartan documentos reales con esta comunidad, aparecerán en esta sección.</p>
+        </div>
+      )}
+    </section>
   );
 }
 
