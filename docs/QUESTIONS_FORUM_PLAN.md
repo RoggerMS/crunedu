@@ -101,6 +101,41 @@ Feed for future cross-posting.
 - [x] Clean up list page (no "Modo demo", honest empty/error states).
 - [x] Add delete option in detail page when `isMine`.
 
+### Phase 1b (2026-06-19) — WYSIWYG editor + UX redesign
+- [x] Implement `status=answered` filter in `QuestionsService.index`
+      (`open` = not resolved + no published answers, `answered` = not
+      resolved + has published answers, `resolved` = isResolved).
+- [x] Add `viewerVote` to answer mapper (computed from votes by viewer id).
+- [x] Add `canMarkUseful` to question response (author or admin/moderator).
+- [x] Pass viewer `role` to `index`/`findOne` via OptionalJwtAuthGuard.
+- [x] Change permission error in `markAnswerUseful` to `ForbiddenException`.
+- [x] Replace Markdown "Escribir/Vista previa" editor with WYSIWYG
+      `RichAcademicEditor` (contentEditable + execCommand, no preview tab).
+- [x] Toolbar: negrita, cursiva, subrayado, listas, símbolos, ecuaciones, imagen.
+- [x] `SymbolPicker` with 8 categories (potencias, operaciones, relaciones,
+      flechas/lógica, conjuntos, griegas, cálculo, geometría/unidades).
+- [x] `EquationPicker` with frequent structures (x², √x, fracción, ∑, ∫, lim...).
+- [x] Insert at cursor position; paste as plain text.
+- [x] `AcademicContentRenderer` now renders sanitized HTML (new content) AND
+      legacy Markdown (old questions) for backward compatibility.
+- [x] `html-utils.ts`: server-safe `sanitizeHtml` (allowlist via DOMParser,
+      strips scripts/on-handlers/img/a), `htmlToPlainText`, `looksLikeHtml`.
+- [x] List page 3-zone layout: left subjects rail, center ask+search+list,
+      right user summary + tips + collaborator ranking + sidebar.
+- [x] Responsive: single column on mobile, no global horizontal scroll.
+- [x] `QuestionCard` redesign: author, course, relative date, status badge,
+      answers/votes stats, attached image, 3-dot menu (copy/report/delete if
+      mine), "Ayudar / Responder" button.
+- [x] `nuevo` page: community/asignatura selector (`useCommunities`),
+      rich editor, plain-text validation via `htmlToPlainText`.
+- [x] `[id]` detail: `ImageGallery` (main + thumbnails + lightbox), answers
+      sorted (useful first, then votes, then date), up/down vote buttons with
+      `viewerVote` state, mark-useful gated by `canMarkUseful` (hidden for
+      non-authors), report question/answer, answer editor with templates
+      ("Respuesta final" / "Procedimiento").
+- [x] `CollaboratorRankingCard` computed from accepted answers (no points
+      system needed; uses existing `Answer.isUseful`).
+
 ### Phase 2 (future) — Feed integration
 - [ ] Show questions in feed as `shared_question` items.
 - [ ] Composer "Pregunta" button creates real question (currently redirects to
@@ -113,6 +148,19 @@ Feed for future cross-posting.
 - [ ] Show question-linked documents in Apuntes.
 - [ ] Cross-publish from Apuntes to Feed/Community.
 
+## Deferred (require schema work — not in MVP scope)
+
+- **Points system** (Brainly-style): `User`/`Profile` has no points field and
+  no points history model. Implementing offered points + delivery on accept
+  would need a migration and transactional logic. Left as documented pending.
+  The UI shows no fake points counters.
+- **Save / follow questions**: no `SavedQuestion`/follow-for-questions model
+  exists. "Guardar/seguir" buttons are NOT shown to avoid fake UI. "Copiar
+  enlace" and "Reportar" are the available actions.
+- **Subject model**: `Question` uses `communityId`, not `subjectId`. For MVP
+  the left rail uses the visual `QUESTION_COURSES` list + real communities as
+  the filter. A dedicated `Subject` model is deferred.
+
 ## Risks
 - Feed does not show questions yet (separate models, no union query).
 - Composer "Pregunta" in feed redirects to `/app/preguntas/nuevo` instead of
@@ -122,3 +170,9 @@ Feed for future cross-posting.
 - `vote` and `save` on `QuestionItem` in the list page are local-only (no
   backend vote/save for questions, only for answers).
 - Image uploads use local filesystem (`tmp/uploads/`), not MinIO/S3.
+- WYSIWYG editor uses `document.execCommand` (deprecated but widely supported)
+  and `contentEditable`; rich pasting is forced to plain text for safety.
+- HTML content is sanitized via an allowlist (`html-utils.sanitizeHtml`) before
+  rendering with `dangerouslySetInnerHTML`; legacy Markdown questions still
+  render through the old block parser.
+- Points / save-follow / dedicated subjects are deferred (see above).

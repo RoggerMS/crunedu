@@ -24,7 +24,7 @@ export class QuestionsController {
   @Get()
   @UseGuards(OptionalJwtAuthGuard)
   index(@Query() query: GetQuestionsQueryDto, @Req() request: AuthenticatedRequest) {
-    return this.service.index(query, request.user?.sub);
+    return this.service.index(query, request.user?.sub, request.user?.role);
   }
 
   @Post("images")
@@ -66,7 +66,7 @@ export class QuestionsController {
   @Get(":id")
   @UseGuards(OptionalJwtAuthGuard)
   findOne(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
-    return this.service.findOne(id, request.user?.sub);
+    return this.service.findOne(id, request.user?.sub, request.user?.role);
   }
 
   @Post()

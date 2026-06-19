@@ -27,6 +27,7 @@ export type QuestionItem = {
   files?: QuestionFile[];
   stats: { answers: number; votes: number; views: number; saves: number };
   viewerState: { voted: boolean; saved: boolean; isMine?: boolean };
+  canMarkUseful?: boolean;
   bestAnswer?: QuestionAnswer;
   answersPreview?: QuestionAnswer[];
 };

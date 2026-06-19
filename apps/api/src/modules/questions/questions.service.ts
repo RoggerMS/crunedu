@@ -26,7 +26,7 @@ export class QuestionsService {
       },
     },
     images: { select: { id: true, imageUrl: true, mimeType: true, sizeBytes: true, position: true }, orderBy: { position: "asc" } },
-    votes: { select: { value: true } },
+    votes: { select: { userId: true, value: true } },
   } as const;
 
   private readonly questionSelect = {
@@ -52,16 +52,19 @@ export class QuestionsService {
     _count: { select: { answers: { where: { status: "PUBLISHED" } } } },
   } as const;
 
-  private mapAnswer(answer: any) {
+  private mapAnswer(answer: any, viewerUserId?: number) {
+    const votes: { userId: number; value: number }[] = answer.votes ?? [];
+    const viewerVote = viewerUserId != null ? votes.find((vote) => vote.userId === viewerUserId)?.value ?? 0 : 0;
     return {
       id: answer.id,
       content: answer.content,
       createdAt: answer.createdAt,
       isUseful: answer.isUseful,
       images: answer.images ?? [],
-      votesScore: (answer.votes ?? []).reduce((sum: number, vote: { value: number }) => sum + vote.value, 0),
-      upvotes: (answer.votes ?? []).filter((vote: { value: number }) => vote.value === 1).length,
-      downvotes: (answer.votes ?? []).filter((vote: { value: number }) => vote.value === -1).length,
+      votesScore: votes.reduce((sum, vote) => sum + vote.value, 0),
+      upvotes: votes.filter((vote) => vote.value === 1).length,
+      downvotes: votes.filter((vote) => vote.value === -1).length,
+      viewerVote: viewerVote as -1 | 0 | 1,
       author: {
         id: answer.user.id,
         email: answer.user.email,
@@ -71,7 +74,8 @@ export class QuestionsService {
     };
   }
 
-  private mapQuestion(question: any, viewerUserId?: number) {
+  private mapQuestion(question: any, viewerUserId?: number, viewerRole?: string) {
+    const canMarkUseful = viewerUserId != null && (question.user.id === viewerUserId || viewerRole === "ADMIN" || viewerRole === "MODERATOR");
     return {
       id: question.id,
       title: question.title,
@@ -87,12 +91,13 @@ export class QuestionsService {
       community: question.community,
       images: question.images,
       answersCount: question._count.answers,
-      answers: question.answers.map((answer: any) => this.mapAnswer(answer)),
+      answers: question.answers.map((answer: any) => this.mapAnswer(answer, viewerUserId)),
       isMine: viewerUserId != null && question.user.id === viewerUserId,
+      canMarkUseful,
     };
   }
 
-  async index(query: GetQuestionsQueryDto, viewerUserId?: number) {
+  async index(query: GetQuestionsQueryDto, viewerUserId?: number, viewerRole?: string) {
     const limit = query.limit ?? PAGINATION_LIMITS.questions.default;
     const safeLimit = Math.min(limit, PAGINATION_LIMITS.questions.max);
 
@@ -104,8 +109,15 @@ export class QuestionsService {
         { content: { contains: query.q, mode: "insensitive" } },
       ];
     }
-    if (query.status === "open") where.isResolved = false;
-    else if (query.status === "resolved") where.isResolved = true;
+    if (query.status === "open") {
+      where.isResolved = false;
+      where.answers = { none: { status: "PUBLISHED" } };
+    } else if (query.status === "answered") {
+      where.isResolved = false;
+      where.answers = { some: { status: "PUBLISHED" } };
+    } else if (query.status === "resolved") {
+      where.isResolved = true;
+    }
 
     const questions = await this.prisma.question.findMany({
       where,
@@ -117,13 +129,13 @@ export class QuestionsService {
 
     const nextCursor = questions.length > safeLimit ? questions[safeLimit].id : null;
     return {
-      items: questions.slice(0, safeLimit).map((question: (typeof questions)[number]) => this.mapQuestion(question, viewerUserId)),
+      items: questions.slice(0, safeLimit).map((question: (typeof questions)[number]) => this.mapQuestion(question, viewerUserId, viewerRole)),
       nextCursor,
     };
   }
 
 
-  async findOne(id: number, viewerUserId?: number) {
+  async findOne(id: number, viewerUserId?: number, viewerRole?: string) {
     const question = await this.prisma.question.findFirst({
       where: { id, status: "PUBLISHED" },
       select: this.questionSelect,
@@ -131,7 +143,7 @@ export class QuestionsService {
 
     if (!question) throw new NotFoundException("Pregunta no encontrada.");
 
-    return this.mapQuestion(question, viewerUserId);
+    return this.mapQuestion(question, viewerUserId, viewerRole);
   }
 
   async create(dto: CreateQuestionDto, userId: number) {
@@ -163,7 +175,7 @@ export class QuestionsService {
       select: this.questionSelect,
     });
 
-    return this.mapQuestion(created);
+    return this.mapQuestion(created, userId);
   }
 
   async uploadImage(file: any) {
@@ -192,7 +204,7 @@ export class QuestionsService {
   async markAnswerUseful(questionId: number, answerId: number, userId: number, role: string) {
     const question = await this.prisma.question.findFirst({ where: { id: questionId, status: "PUBLISHED" }, select: { id: true, userId: true } });
     if (!question) throw new NotFoundException("Pregunta no encontrada.");
-    if (question.userId !== userId && role !== "ADMIN" && role !== "MODERATOR") throw new BadRequestException("Solo el autor de la pregunta puede marcar una respuesta como útil.");
+    if (question.userId !== userId && role !== "ADMIN" && role !== "MODERATOR") throw new ForbiddenException("Solo el autor de la pregunta puede marcar una respuesta como útil.");
     const answer = await this.prisma.answer.findFirst({ where: { id: answerId, questionId, status: "PUBLISHED" }, select: { id: true, isUseful: true } });
     if (!answer) throw new NotFoundException("Respuesta no encontrada.");
     if (answer.isUseful) {
@@ -278,7 +290,7 @@ export class QuestionsService {
       select: this.questionSelect,
     });
 
-    return this.mapQuestion(updated, userId);
+    return this.mapQuestion(updated, userId, role);
   }
 
   async remove(id: number, userId: number, role: string) {

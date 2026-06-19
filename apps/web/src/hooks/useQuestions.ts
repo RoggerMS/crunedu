@@ -7,6 +7,7 @@ import { useAccessToken } from "@/hooks/useAccessToken";
 
 type ApiAuthor = { id?: number; firstName: string | null; lastName: string | null; email: string };
 
+type ApiAnswer = { id: number; content: string; createdAt: string; isUseful?: boolean; votesScore?: number; upvotes?: number; downvotes?: number; viewerVote?: -1 | 0 | 1; images?: Array<{ id: number; imageUrl: string; mimeType: string; sizeBytes: number; position: number }>; author: ApiAuthor };
 type ApiQuestion = {
   id: number;
   title: string;
@@ -14,11 +15,12 @@ type ApiQuestion = {
   createdAt: string;
   isResolved: boolean;
   isMine?: boolean;
+  canMarkUseful?: boolean;
   author: ApiAuthor;
   community?: { id: number; name: string } | null;
   answersCount: number;
   images?: Array<{ id: number; imageUrl: string; mimeType: string; sizeBytes: number; position: number }>;
-  answers: Array<{ id: number; content: string; createdAt: string; isUseful?: boolean; votesScore?: number; upvotes?: number; downvotes?: number; images?: Array<{ id: number; imageUrl: string; mimeType: string; sizeBytes: number; position: number }>; author: ApiAuthor }>;
+  answers: ApiAnswer[];
 };
 
 function authorName(author: ApiAuthor) {
@@ -26,6 +28,16 @@ function authorName(author: ApiAuthor) {
 }
 
 function mapQuestion(question: ApiQuestion): QuestionItem {
+  const answersPreview = question.answers.map((answer) => ({
+    id: String(answer.id),
+    authorName: authorName(answer.author),
+    content: answer.content,
+    votes: answer.votesScore ?? 0,
+    createdAt: answer.createdAt,
+    isBest: Boolean(answer.isUseful),
+    viewerState: { voted: (answer.viewerVote ?? 0) !== 0 },
+  }));
+  const best = answersPreview.find((answer) => answer.isBest);
   return {
     id: String(question.id),
     title: question.title,
@@ -36,16 +48,11 @@ function mapQuestion(question: ApiQuestion): QuestionItem {
     status: question.isResolved ? "resuelta" : question.answersCount > 0 ? "respondida" : "sin_responder",
     tags: question.community?.name ? [question.community.name] : [],
     images: (question.images ?? []).map((image) => ({ id: String(image.id), url: buildApiUrl(image.imageUrl.replace(/^\/api/, "")), alt: question.title })),
-    stats: { answers: question.answersCount, votes: 0, views: 0, saves: 0 },
+    stats: { answers: question.answersCount, votes: answersPreview.reduce((sum, answer) => sum + Math.max(0, answer.votes), 0), views: 0, saves: 0 },
     viewerState: { voted: false, saved: false, isMine: Boolean(question.isMine) },
-    answersPreview: question.answers.map((answer) => ({
-      id: String(answer.id),
-      authorName: authorName(answer.author),
-      content: answer.content,
-      votes: 0,
-      createdAt: answer.createdAt,
-      isBest: Boolean(answer.isUseful),
-    })),
+    bestAnswer: best,
+    canMarkUseful: Boolean(question.canMarkUseful),
+    answersPreview,
   };
 }
 

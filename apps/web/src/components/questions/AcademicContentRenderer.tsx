@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { looksLikeHtml, sanitizeHtml } from "./html-utils";
 
 type AcademicContentImage = {
   id: number | string;
@@ -18,21 +19,39 @@ type AcademicContentRendererProps = {
 type AcademicBlock = { type: "p"; text: string } | { type: "ul"; items: string[] } | { type: "ol"; items: string[] };
 
 export function AcademicContentRenderer({ content, images = [], imageAlt = "Imagen adjunta", resolveImageUrl = (url) => url, smallImages = false }: AcademicContentRendererProps) {
-  const blocks = buildBlocks(content);
+  const isHtml = looksLikeHtml(content);
   return (
     <div className="space-y-3 text-slate-700">
-      {blocks.map((block, index) => {
-        if (block.type === "ul") return <ul key={index} className="list-disc space-y-1 pl-5 text-sm sm:text-base">{block.items.map((item, itemIndex) => <li key={itemIndex}>{renderInline(item)}</li>)}</ul>;
-        if (block.type === "ol") return <ol key={index} className="list-decimal space-y-1 pl-5 text-sm sm:text-base">{block.items.map((item, itemIndex) => <li key={itemIndex}>{renderInline(item)}</li>)}</ol>;
-        return <p key={index} className="whitespace-pre-wrap text-sm leading-6 sm:text-base">{renderInline(block.text)}</p>;
-      })}
-      {images.length ? <div className={`grid gap-3 ${smallImages ? "sm:grid-cols-3" : images.length === 1 ? "max-w-2xl" : "sm:grid-cols-2"}`}>{images.map((image) => {
-        const src = image.previewUrl ?? (image.imageUrl ? resolveImageUrl(image.imageUrl) : "");
-        if (!src) return null;
-        return <a key={image.id} href={src} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-2xl border bg-slate-50"><img src={src} alt={image.alt ?? imageAlt} className={`${smallImages ? "max-h-48" : images.length === 1 ? "max-h-96" : "max-h-80"} w-full object-contain transition group-hover:brightness-95`} /><span className="block border-t bg-white px-3 py-2 text-xs font-semibold text-slate-500">Abrir imagen en nueva pestaña</span></a>;
-      })}</div> : null}
+      {isHtml ? (
+        <div className="prose-academic text-sm leading-6 sm:text-base" dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }} />
+      ) : (
+        renderLegacyBlocks(content)
+      )}
+      {images.length ? (
+        <div className={`grid gap-3 ${smallImages ? "sm:grid-cols-3" : images.length === 1 ? "max-w-2xl" : "sm:grid-cols-2"}`}>
+          {images.map((image) => {
+            const src = image.previewUrl ?? (image.imageUrl ? resolveImageUrl(image.imageUrl) : "");
+            if (!src) return null;
+            return (
+              <a key={image.id} href={src} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-2xl border bg-slate-50">
+                <img src={src} alt={image.alt ?? imageAlt} className={`${smallImages ? "max-h-48" : images.length === 1 ? "max-h-96" : "max-h-80"} w-full object-contain transition group-hover:brightness-95`} />
+                <span className="block border-t bg-white px-3 py-2 text-xs font-semibold text-slate-500">Abrir imagen en nueva pestaña</span>
+              </a>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
+}
+
+function renderLegacyBlocks(content: string): ReactNode {
+  const blocks = buildBlocks(content);
+  return blocks.map((block, index) => {
+    if (block.type === "ul") return <ul key={index} className="list-disc space-y-1 pl-5 text-sm sm:text-base">{block.items.map((item, itemIndex) => <li key={itemIndex}>{renderInline(item)}</li>)}</ul>;
+    if (block.type === "ol") return <ol key={index} className="list-decimal space-y-1 pl-5 text-sm sm:text-base">{block.items.map((item, itemIndex) => <li key={itemIndex}>{renderInline(item)}</li>)}</ol>;
+    return <p key={index} className="whitespace-pre-wrap text-sm leading-6 sm:text-base">{renderInline(block.text)}</p>;
+  });
 }
 
 function buildBlocks(content: string) {
