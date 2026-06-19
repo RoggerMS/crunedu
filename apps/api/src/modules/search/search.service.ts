@@ -56,12 +56,13 @@ export class SearchService {
         questions: [],
         communities: [],
         products: [],
+        documents: [],
       };
     }
 
     const shouldSearch = (value: string) => !type || type === "all" || type === value;
 
-    const [posts, questions, communities, products] = await Promise.all([
+    const [posts, questions, communities, products, documents] = await Promise.all([
       shouldSearch("posts")
         ? this.prisma.post.findMany({ where: { status: "PUBLISHED", OR: [{ title: { contains: text, mode: "insensitive" } }, { content: { contains: text, mode: "insensitive" } }] }, select: { id: true, title: true, content: true, createdAt: true, _count: { select: { comments: true, reactions: true } }, community: { select: { id: true, name: true, slug: true } } }, take: 60 })
         : Promise.resolve([]),
@@ -74,20 +75,25 @@ export class SearchService {
       shouldSearch("products")
         ? this.prisma.product.findMany({ where: { status: "ACTIVE", OR: [{ title: { contains: text, mode: "insensitive" } }, { description: { contains: text, mode: "insensitive" } }] }, select: { id: true, title: true, description: true, createdAt: true, viewCount: true, contactClickCount: true, category: { select: { id: true, name: true } } }, take: 60 })
         : Promise.resolve([]),
+      shouldSearch("documents")
+        ? this.prisma.document.findMany({ where: { status: "PUBLISHED", visibility: "PUBLIC", OR: [{ title: { contains: text, mode: "insensitive" } }, { description: { contains: text, mode: "insensitive" } }, { course: { contains: text, mode: "insensitive" } }] }, select: { id: true, title: true, description: true, course: true, createdAt: true, downloadsCount: true, viewsCount: true }, take: 60 })
+        : Promise.resolve([]),
     ]);
 
     const rankedPosts = posts.map((item) => ({ ...item, relevance: this.scoreItem({ id: item.id, title: item.title, content: item.content, createdAt: item.createdAt, interactions: item._count.comments + item._count.reactions }, text) })).sort((a, b) => b.relevance - a.relevance);
     const rankedQuestions = questions.map((item) => ({ ...item, relevance: this.scoreItem({ id: item.id, title: item.title, content: item.content, createdAt: item.createdAt, interactions: item._count.answers }, text) })).sort((a, b) => b.relevance - a.relevance);
     const rankedCommunities = communities.map((item) => ({ ...item, relevance: this.scoreItem({ id: item.id, title: item.name, content: item.description ?? "", createdAt: item.createdAt, interactions: item._count.posts + item._count.questions + item._count.members }, text) })).sort((a, b) => b.relevance - a.relevance);
     const rankedProducts = products.map((item) => ({ ...item, relevance: this.scoreItem({ id: item.id, title: item.title, content: item.description, createdAt: item.createdAt, interactions: item.viewCount + item.contactClickCount }, text) })).sort((a, b) => b.relevance - a.relevance);
+    const rankedDocuments = documents.map((item) => ({ ...item, relevance: this.scoreItem({ id: item.id, title: item.title, content: item.description ?? "", createdAt: item.createdAt, interactions: item.downloadsCount + item.viewsCount }, text) })).sort((a, b) => b.relevance - a.relevance);
 
     const paginate = <T>(items: T[]) => items.slice((page - 1) * limit, page * limit);
     const pagedPosts = paginate(rankedPosts);
     const pagedQuestions = paginate(rankedQuestions);
     const pagedCommunities = paginate(rankedCommunities);
     const pagedProducts = paginate(rankedProducts);
+    const pagedDocuments = paginate(rankedDocuments);
 
-    const total = rankedPosts.length + rankedQuestions.length + rankedCommunities.length + rankedProducts.length;
+    const total = rankedPosts.length + rankedQuestions.length + rankedCommunities.length + rankedProducts.length + rankedDocuments.length;
 
     return {
       query: text,
@@ -100,6 +106,7 @@ export class SearchService {
       questions: pagedQuestions.map((item) => ({ ...item, titleHighlighted: this.highlight(item.title, text), contentHighlighted: this.highlight(item.content, text) })),
       communities: pagedCommunities.map((item) => ({ ...item, nameHighlighted: this.highlight(item.name, text), descriptionHighlighted: this.highlight(item.description ?? "", text) })),
       products: pagedProducts.map((item) => ({ ...item, titleHighlighted: this.highlight(item.title, text), descriptionHighlighted: this.highlight(item.description, text) })),
+      documents: pagedDocuments.map((item) => ({ ...item, titleHighlighted: this.highlight(item.title, text), descriptionHighlighted: this.highlight(item.description ?? "", text) })),
     };
   }
 }

@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -15,9 +17,7 @@ import { UploadDocumentFileResponseDto } from "./dto/upload-document-file-respon
 import {
   DOCUMENT_PUBLIC_PATH,
   DOCUMENT_UPLOAD_FOLDER,
-  DOCUMENT_UPLOAD_RULES,
   findUploadRule,
-  resolveDocumentCategory,
 } from "./documents.constants";
 import { PAGINATION_LIMITS } from "../common/pagination.constants";
 
@@ -41,6 +41,7 @@ type DocumentRow = {
   downloadsCount: number;
   viewsCount: number;
   createdAt: Date;
+  updatedAt: Date;
   userId: number;
   communityId: number | null;
   community: { id: number; name: string; slug: string } | null;
@@ -69,6 +70,7 @@ const documentSelect = {
   downloadsCount: true,
   viewsCount: true,
   createdAt: true,
+  updatedAt: true,
   userId: true,
   communityId: true,
   community: { select: { id: true, name: true, slug: true } },
@@ -82,6 +84,9 @@ const documentSelect = {
 @Injectable()
 export class DocumentsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private readonly documentRateLimit = new Map<number, number[]>();
+  private readonly uploadCache = new Map<string, { data: { fileUrl: string; storageKey: string; fileType: string; mimeType: string; sizeBytes: number; originalName: string }; expiresAt: number }>();
 
   async index(query: GetDocumentsQueryDto, viewerUserId?: number, viewerRole?: string) {
     const limit = query.limit ?? PAGINATION_LIMITS.questions.default;
@@ -190,7 +195,7 @@ export class DocumentsService {
     await fs.mkdir(targetDir, { recursive: true });
     await fs.writeFile(`${targetDir}/${filename}`, file.buffer);
 
-    return {
+    const result = {
       fileUrl: `${DOCUMENT_PUBLIC_PATH}/${filename}`,
       storageKey,
       fileType: rule.category,
@@ -198,9 +203,16 @@ export class DocumentsService {
       sizeBytes: file.size,
       originalName,
     };
+
+    this.uploadCache.set(storageKey, { data: result, expiresAt: Date.now() + 30 * 60 * 1000 });
+    this.cleanupUploadCache();
+
+    return result;
   }
 
   async create(dto: CreateDocumentDto, userId: number) {
+    this.checkRateLimit(this.documentRateLimit, userId, 5, 60_000, "Estás publicando apuntes demasiado rápido. Espera un minuto.");
+
     const title = dto.title.trim();
     if (!title) throw new BadRequestException("Agrega un título.");
 
@@ -222,6 +234,15 @@ export class DocumentsService {
     if (!uploaded?.fileUrl || !uploaded?.storageKey) {
       throw new BadRequestException("Selecciona un archivo.");
     }
+
+    const cached = this.uploadCache.get(uploaded.storageKey);
+    if (!cached || cached.expiresAt < Date.now()) {
+      throw new BadRequestException("El archivo subido ha expirado. Vuelve a subirlo.");
+    }
+    if (cached.data.sizeBytes !== uploaded.sizeBytes) {
+      throw new BadRequestException("La metadata del archivo no coincide. Vuelve a subirlo.");
+    }
+    const verified = cached.data;
 
     const tagsInput = (dto.tags ?? []).map((tag) => tag.trim()).filter(Boolean).slice(0, 8);
     const tagRecords = tagsInput.length
@@ -247,12 +268,12 @@ export class DocumentsService {
           course: dto.course?.trim() || "",
           cycle: dto.cycle?.trim() || null,
           materialType: dto.materialType?.trim() || null,
-          fileUrl: uploaded.fileUrl,
-          storageKey: uploaded.storageKey,
-          fileType: uploaded.fileType,
-          sizeBytes: uploaded.sizeBytes,
-          mimeType: uploaded.mimeType ?? null,
-          originalName: uploaded.originalName ?? null,
+          fileUrl: verified.fileUrl,
+          storageKey: verified.storageKey,
+          fileType: verified.fileType,
+          sizeBytes: verified.sizeBytes,
+          mimeType: verified.mimeType ?? null,
+          originalName: verified.originalName ?? null,
           visibility,
           communityId: communityId ?? null,
           userId,
@@ -280,13 +301,14 @@ export class DocumentsService {
   }
 
   async update(id: number, dto: UpdateDocumentDto, userId: number, role: string) {
-    const existing = await this.prisma.document.findUnique({ where: { id }, select: { id: true, userId: true, status: true, communityId: true } });
+    const existing = await this.prisma.document.findUnique({ where: { id }, select: { id: true, userId: true, status: true, communityId: true, visibility: true, title: true } });
     if (!existing || existing.status !== "PUBLISHED") throw new NotFoundException("Apunte no encontrado.");
     const isAuthor = existing.userId === userId;
     const isAdmin = role === "ADMIN";
     if (!isAuthor && !isAdmin) throw new ForbiddenException("No tienes permisos para editar este apunte.");
 
     let communityId: number | null | undefined;
+    const newVisibility = dto.visibility !== undefined ? (dto.visibility.toUpperCase() as DocumentVisibility) : existing.visibility;
     if (dto.visibility !== undefined) {
       if (dto.visibility === DocumentVisibilityDto.COMMUNITY) {
         if (!dto.communityId && !existing.communityId) {
@@ -321,19 +343,45 @@ export class DocumentsService {
       );
     }
 
-    const updated = await this.prisma.document.update({
-      where: { id },
-      data: {
-        ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
-        ...(dto.description !== undefined ? { description: dto.description.trim() || null } : {}),
-        ...(dto.course !== undefined ? { course: dto.course.trim() } : {}),
-        ...(dto.cycle !== undefined ? { cycle: dto.cycle.trim() || null } : {}),
-        ...(dto.materialType !== undefined ? { materialType: dto.materialType.trim() || null } : {}),
-        ...(dto.visibility !== undefined ? { visibility: dto.visibility.toUpperCase() as DocumentVisibility } : {}),
-        ...(communityId !== undefined ? { communityId } : {}),
-        ...(tagRecords ? { tags: { deleteMany: {}, create: tagRecords.map((tag) => ({ tagId: tag.id })) } } : {}),
-      },
-      select: documentSelect,
+    const finalCommunityId = communityId !== undefined ? communityId : existing.communityId;
+    const title = dto.title !== undefined ? dto.title.trim() : existing.title;
+    const visibilityChangedFromPrivate = dto.visibility !== undefined && existing.visibility === "PRIVATE" && newVisibility !== "PRIVATE";
+    const visibilityChangedToCommunity = dto.visibility !== undefined && existing.visibility === "PUBLIC" && newVisibility === "COMMUNITY";
+    const communityAdded = dto.communityId !== undefined && !existing.communityId && newVisibility !== "PRIVATE";
+    const shouldCreatePost = finalCommunityId != null && newVisibility !== "PRIVATE" && (visibilityChangedFromPrivate || visibilityChangedToCommunity || communityAdded);
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const doc = await tx.document.update({
+        where: { id },
+        data: {
+          ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
+          ...(dto.description !== undefined ? { description: dto.description.trim() || null } : {}),
+          ...(dto.course !== undefined ? { course: dto.course.trim() } : {}),
+          ...(dto.cycle !== undefined ? { cycle: dto.cycle.trim() || null } : {}),
+          ...(dto.materialType !== undefined ? { materialType: dto.materialType.trim() || null } : {}),
+          ...(dto.visibility !== undefined ? { visibility: dto.visibility.toUpperCase() as DocumentVisibility } : {}),
+          ...(communityId !== undefined ? { communityId } : {}),
+          ...(tagRecords ? { tags: { deleteMany: {}, create: tagRecords.map((tag) => ({ tagId: tag.id })) } } : {}),
+        },
+        select: documentSelect,
+      });
+
+      if (shouldCreatePost && finalCommunityId != null) {
+        const existingPost = await tx.post.findFirst({ where: { documentId: id, communityId: finalCommunityId }, select: { id: true } });
+        if (!existingPost) {
+          await tx.post.create({
+            data: {
+              userId,
+              communityId: finalCommunityId,
+              documentId: id,
+              title: "",
+              content: `Compartió un apunte: ${title}`,
+            },
+          });
+        }
+      }
+
+      return doc;
     });
 
     return this.mapDocument(updated, userId, role);
@@ -371,7 +419,10 @@ export class DocumentsService {
   }
 
   async save(id: number, userId: number) {
-    await this.ensurePublished(id);
+    const row = await this.prisma.document.findUnique({ where: { id }, select: documentSelect });
+    if (!row || row.status !== "PUBLISHED") throw new NotFoundException("Apunte no encontrado.");
+    const memberCommunityIds = await this.getViewerCommunityIds(userId);
+    if (!this.canViewerSee(row, userId, undefined, memberCommunityIds)) throw new NotFoundException("Apunte no encontrado.");
     await this.prisma.savedDocument.upsert({
       where: { documentId_userId: { documentId: id, userId } },
       create: { documentId: id, userId },
@@ -381,23 +432,27 @@ export class DocumentsService {
   }
 
   async unsave(id: number, userId: number) {
-    await this.ensurePublished(id);
+    const row = await this.prisma.document.findUnique({ where: { id }, select: { id: true, status: true } });
+    if (!row || row.status !== "PUBLISHED") throw new NotFoundException("Apunte no encontrado.");
     await this.prisma.savedDocument.deleteMany({ where: { documentId: id, userId } });
     return { saved: false };
   }
 
   async rate(id: number, dto: RateDocumentDto, userId: number) {
-    await this.ensurePublished(id);
+    const row = await this.prisma.document.findUnique({ where: { id }, select: documentSelect });
+    if (!row || row.status !== "PUBLISHED") throw new NotFoundException("Apunte no encontrado.");
+    const memberCommunityIds = await this.getViewerCommunityIds(userId);
+    if (!this.canViewerSee(row, userId, undefined, memberCommunityIds)) throw new NotFoundException("Apunte no encontrado.");
     await this.prisma.documentRating.upsert({
       where: { documentId_userId: { documentId: id, userId } },
       create: { documentId: id, userId, value: dto.value },
       update: { value: dto.value },
     });
-    const row = await this.prisma.document.findUnique({ where: { id }, select: documentSelect });
-    if (!row) throw new NotFoundException("Apunte no encontrado.");
+    const updatedRow = await this.prisma.document.findUnique({ where: { id }, select: documentSelect });
+    if (!updatedRow) throw new NotFoundException("Apunte no encontrado.");
     return {
-      average: this.ratingAverage(row),
-      count: row._count.ratings,
+      average: this.ratingAverage(updatedRow),
+      count: updatedRow._count.ratings,
       viewerRating: dto.value,
     };
   }
@@ -459,6 +514,24 @@ export class DocumentsService {
     if (!doc || doc.status !== "PUBLISHED") throw new NotFoundException("Apunte no encontrado.");
   }
 
+  private checkRateLimit(bucket: Map<number, number[]>, userId: number, maxEvents: number, windowMs: number, message: string): void {
+    const now = Date.now();
+    const windowStart = now - windowMs;
+    const timestamps = (bucket.get(userId) ?? []).filter((ts) => ts >= windowStart);
+    if (timestamps.length >= maxEvents) {
+      throw new HttpException(message, HttpStatus.TOO_MANY_REQUESTS);
+    }
+    timestamps.push(now);
+    bucket.set(userId, timestamps);
+  }
+
+  private cleanupUploadCache(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.uploadCache) {
+      if (entry.expiresAt < now) this.uploadCache.delete(key);
+    }
+  }
+
   private ratingAverage(row: DocumentRow): number {
     if (!row.ratings.length) return 0;
     const sum = row.ratings.reduce((acc, rating) => acc + rating.value, 0);
@@ -492,6 +565,7 @@ export class DocumentsService {
       downloadUrl: `/api/apuntes/${row.id}/download`,
       visibility: row.visibility.toLowerCase(),
       createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
       author: {
         id: row.user.id,
         name: [row.user.profile?.firstName, row.user.profile?.lastName].filter(Boolean).join(" ") || row.user.email,

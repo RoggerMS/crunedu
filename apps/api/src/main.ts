@@ -7,11 +7,15 @@ import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { ObservabilityInterceptor } from "./modules/observability/observability.interceptor";
 import { ObservabilityService } from "./modules/observability/observability.service";
+import * as express from "express";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
   const port = Number(config.get("PORT") ?? 4000);
+
+  app.use(express.json({ limit: "30mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "30mb" }));
 
   app.setGlobalPrefix("api");
   app.enableCors({

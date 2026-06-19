@@ -82,11 +82,11 @@ export function CreateNoteModal({ open, onClose, onPublished, onToast, communiti
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-2 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-2 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label="Subir apunte">
       <div className="max-h-[95vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-slate-900">Subir apunte</h3>
-          <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50">Cancelar</button>
+          <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50" aria-label="Cerrar">Cancelar</button>
         </div>
 
         <div className="mt-3 space-y-3">

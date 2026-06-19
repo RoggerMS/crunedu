@@ -24,6 +24,7 @@ export type NoteItem = {
   visibility: NoteVisibility;
   tags: string[];
   createdAt: string;
+  updatedAt?: string;
   rating: { average: number; count: number; viewerRating: number | null };
   stats: { downloads: number; saves: number; views: number };
   viewerState: { saved: boolean; isMine: boolean; canEdit: boolean; canDelete: boolean; canReport: boolean };

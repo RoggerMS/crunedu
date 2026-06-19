@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Filter, X } from "lucide-react";
 import { CreateNoteModal } from "@/components/notes/CreateNoteModal";
 import { NoteCard } from "@/components/notes/NoteCard";
 import { NoteFiltersRail } from "@/components/notes/NoteFiltersRail";
@@ -29,6 +30,7 @@ export default function NotesPage() {
   const [fileType, setFileType] = useState("Todos");
   const [view, setView] = useState<"all" | "mine" | "saved">("all");
   const [openModal, setOpenModal] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [contributors, setContributors] = useState<NoteContributor[]>([]);
 
   useEffect(() => {
@@ -75,9 +77,20 @@ export default function NotesPage() {
     void removeNote(note);
   }
 
+  const filtersRail = (
+    <NoteFiltersRail
+      course={course}
+      onCourse={setCourse}
+      materialType={materialType}
+      onMaterialType={setMaterialType}
+      fileType={fileType}
+      onFileType={setFileType}
+    />
+  );
+
   return (
     <section className="mx-auto max-w-[1540px] space-y-4 px-4 py-4 sm:px-6 lg:px-8">
-      {toast ? <div className={`fixed bottom-4 right-4 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}
+      {toast ? <div role="alert" className={`fixed bottom-4 right-4 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}
 
       <CreateNoteModal
         open={openModal}
@@ -89,16 +102,29 @@ export default function NotesPage() {
       />
 
       <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)_320px]">
+        {/* Desktop left rail */}
         <aside className="hidden space-y-4 xl:block">
-          <NoteFiltersRail
-            course={course}
-            onCourse={setCourse}
-            materialType={materialType}
-            onMaterialType={setMaterialType}
-            fileType={fileType}
-            onFileType={setFileType}
-          />
+          {filtersRail}
         </aside>
+
+        {/* Mobile filter drawer */}
+        {mobileFiltersOpen ? (
+          <div className="fixed inset-0 z-40 xl:hidden" role="dialog" aria-modal="true" aria-label="Filtros de apuntes">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setMobileFiltersOpen(false)} />
+            <div className="absolute left-0 top-0 h-full w-80 max-w-[85vw] overflow-y-auto bg-white p-4 shadow-xl">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-900">Filtros</h2>
+                <button type="button" onClick={() => setMobileFiltersOpen(false)} className="rounded-lg border border-slate-200 p-1 text-slate-600 hover:bg-slate-50" aria-label="Cerrar filtros">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              {filtersRail}
+              <button type="button" onClick={() => setMobileFiltersOpen(false)} className="mt-4 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                Ver {notes.length} apuntes
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <div className="min-w-0 space-y-4">
           <NotesHeader
@@ -111,10 +137,29 @@ export default function NotesPage() {
             search={search}
             onSearchChange={setSearch}
           />
+
+          <div className="flex items-center justify-between gap-2">
+            {/* Mobile filter toggle */}
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 xl:hidden"
+              aria-label="Abrir filtros"
+            >
+              <Filter className="h-4 w-4" />
+              Filtros
+              {(course !== "Todos" || materialType !== "Todos" || fileType !== "Todos") ? <span className="rounded-full bg-indigo-600 px-1.5 text-[10px] text-white">{[course !== "Todos", materialType !== "Todos", fileType !== "Todos"].filter(Boolean).length}</span> : null}
+            </button>
+          </div>
+
           <NotesFilters sort={sort} onSort={setSort} />
 
           {loading ? (
-            <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-32 animate-pulse rounded-2xl bg-slate-100" />)}</div>
+            <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)_320px]">
+              <div className="hidden h-80 animate-pulse rounded-2xl bg-slate-100 xl:block" />
+              <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-32 animate-pulse rounded-2xl bg-slate-100" />)}</div>
+              <div className="hidden h-80 animate-pulse rounded-2xl bg-slate-100 xl:block" />
+            </div>
           ) : error ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
               <p className="text-sm text-rose-700">{error}</p>

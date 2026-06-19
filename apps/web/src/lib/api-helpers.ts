@@ -305,6 +305,7 @@ export type NoteApiItem = {
   downloadUrl: string;
   visibility: NoteVisibility;
   createdAt: string;
+  updatedAt?: string;
   author: { id: number; name: string };
   community: { id: number; name: string; slug: string } | null;
   tags: string[];

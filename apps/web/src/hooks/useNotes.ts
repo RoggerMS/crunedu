@@ -39,6 +39,7 @@ function mapNote(api: NoteApiItem): NoteItem {
     visibility: api.visibility as NoteVisibility,
     tags: api.tags,
     createdAt: api.createdAt,
+    updatedAt: api.updatedAt,
     rating: { average: api.rating.average, count: api.rating.count, viewerRating: api.rating.viewerRating },
     stats: { downloads: api.stats.downloads, saves: api.stats.saves, views: api.stats.views },
     viewerState: api.viewerState,

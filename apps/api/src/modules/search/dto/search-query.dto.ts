@@ -1,7 +1,7 @@
 import { Transform, Type } from "class-transformer";
 import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
 
-const SEARCH_TYPES = ["all", "posts", "questions", "communities", "products"] as const;
+const SEARCH_TYPES = ["all", "posts", "questions", "communities", "products", "documents"] as const;
 export type SearchType = (typeof SEARCH_TYPES)[number];
 
 export class SearchQueryDto {

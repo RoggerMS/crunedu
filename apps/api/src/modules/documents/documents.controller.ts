@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Patch,
@@ -59,7 +60,11 @@ export class DocumentsController {
   async getFile(@Param("filename") filename: string, @Res({ passthrough: true }) response: Response): Promise<StreamableFile> {
     const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "");
     const filePath = `${process.cwd()}/tmp/uploads/documents/${safeName}`;
-    await access(filePath);
+    try {
+      await access(filePath);
+    } catch {
+      throw new NotFoundException("Archivo no encontrado.");
+    }
     response.setHeader("Content-Type", this.contentTypeFor(safeName));
     response.setHeader("Content-Disposition", `inline; filename="${safeName}"`);
     return new StreamableFile(createReadStream(filePath));
@@ -75,7 +80,11 @@ export class DocumentsController {
   @UseGuards(OptionalJwtAuthGuard)
   async download(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response) {
     const { filePath, originalName, mimeType } = await this.service.getDownload(id, request.user?.sub, request.user?.role);
-    await access(filePath);
+    try {
+      await access(filePath);
+    } catch {
+      throw new NotFoundException("Archivo no encontrado en el servidor.");
+    }
     const downloadName = (originalName || `apunte-${id}`).replace(/[^\p{L}\p{N}._-]/gu, "_");
     response.setHeader("Content-Type", mimeType || "application/octet-stream");
     response.setHeader("Content-Disposition", `attachment; filename="${downloadName}"`);

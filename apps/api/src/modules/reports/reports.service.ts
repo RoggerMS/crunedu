@@ -61,6 +61,7 @@ export class ReportsService {
         comment: { select: { id: true, content: true, status: true, postId: true, post: { select: { communityId: true } } } },
         question: { select: { id: true, title: true, status: true, communityId: true } },
         answer: { select: { id: true, content: true, status: true, questionId: true, question: { select: { communityId: true } } } },
+        document: { select: { id: true, title: true, status: true, communityId: true } },
         moderator: { select: { id: true, email: true } },
       },
     });

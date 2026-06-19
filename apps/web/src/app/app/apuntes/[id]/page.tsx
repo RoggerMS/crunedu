@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { NoteDetail } from "@/components/notes/NoteDetail";
+import { EditNoteModal } from "@/components/notes/EditNoteModal";
 import { useAccessToken } from "@/hooks/useAccessToken";
+import { useCommunities } from "@/hooks/useCommunities";
 import {
   createReport,
   deleteNote,
@@ -14,7 +16,6 @@ import {
   rateNote,
   saveNote,
   unsaveNote,
-  updateNote,
   type NoteApiItem,
 } from "@/lib/api-helpers";
 import { buildNoteDownloadUrl } from "@/lib/api-helpers";
@@ -51,12 +52,14 @@ export default function NoteDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { accessToken, isAuthenticated } = useAccessToken();
+  const { communities } = useCommunities();
   const [note, setNote] = useState<NoteItem | null>(null);
   const [related, setRelated] = useState<NoteItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
   const [ratingBusy, setRatingBusy] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   const notify = (message: string, type: "success" | "error" | "info" = "info") => { setToast({ message, type }); window.setTimeout(() => setToast(null), 3000); };
 
@@ -155,20 +158,16 @@ export default function NoteDetailPage() {
     }
   }
 
-  async function handleEdit() {
+  function handleEdit() {
     if (!note || !accessToken) return;
-    const nextTitle = window.prompt("Editar título:", note.title) ?? note.title;
-    const nextDescription = window.prompt("Editar descripción:", note.description ?? "") ?? note.description ?? "";
-    try {
-      const updated = await updateNote(Number(note.id), { title: nextTitle.trim(), description: nextDescription.trim() }, accessToken);
-      setNote(mapDetail(updated));
-      notify("Apunte actualizado.", "success");
-    } catch (err) {
-      notify(mapApiError(err, "No se pudo actualizar el apunte."), "error");
-    }
+    setEditModalOpen(true);
   }
 
-  if (loading) return <section className="mx-auto max-w-3xl space-y-4 px-4 py-6 sm:px-6"><div className="h-64 animate-pulse rounded-2xl bg-slate-100" /></section>;
+  function handleNoteUpdated(updated: NoteItem) {
+    setNote(updated);
+  }
+
+  if (loading) return <section className="mx-auto max-w-[1200px] space-y-4 px-4 py-6 sm:px-6 lg:px-8"><div className="h-64 animate-pulse rounded-2xl bg-slate-100" /></section>;
   if (error || !note) return (
     <section className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-6">
@@ -179,8 +178,8 @@ export default function NoteDetailPage() {
   );
 
   return (
-    <section className="mx-auto max-w-3xl space-y-4 px-4 py-4 sm:px-6">
-      {toast ? <div className={`fixed bottom-4 right-4 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}
+    <section className="mx-auto max-w-[1200px] space-y-4 px-4 py-4 sm:px-6 lg:px-8">
+      {toast ? <div role="alert" className={`fixed bottom-4 right-4 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}
       <NoteDetail
         note={note}
         related={related}
@@ -190,8 +189,17 @@ export default function NoteDetailPage() {
         onDownload={handleDownload}
         onReport={() => void handleReport()}
         onDelete={note.viewerState.canDelete ? () => void handleDelete() : undefined}
-        onEdit={note.viewerState.canEdit ? () => void handleEdit() : undefined}
+        onEdit={note.viewerState.canEdit ? () => handleEdit() : undefined}
         ratingBusy={ratingBusy}
+      />
+      <EditNoteModal
+        open={editModalOpen}
+        note={note}
+        communities={communities}
+        accessToken={accessToken}
+        onClose={() => setEditModalOpen(false)}
+        onUpdated={handleNoteUpdated}
+        onToast={notify}
       />
     </section>
   );
