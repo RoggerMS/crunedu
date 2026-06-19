@@ -138,7 +138,7 @@ export default function TiendaDetailPage() {
     : "Consultar";
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-4 px-6 py-4">
+    <div className="mx-auto min-w-0 max-w-[1500px] space-y-4 px-6 py-4">
       {/* Breadcrumb */}
       <div>
         <Link href="/app/tienda" className="text-sm font-medium text-indigo-700">← Volver a Tienda</Link>

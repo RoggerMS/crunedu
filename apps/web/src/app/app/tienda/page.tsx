@@ -148,8 +148,8 @@ export default function TiendaPage() {
   const viewerRole = store.isAdmin ? "ADMIN" : null;
 
   return (
-    <div className="mx-auto grid max-w-[1600px] gap-4 px-6 py-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-      <main className="space-y-4">
+    <div className="mx-auto grid min-w-0 max-w-[1600px] gap-4 px-6 py-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <main className="min-w-0 space-y-4">
         <StoreHeader
           onSearch={store.filterBySearch}
           q={store.q}
@@ -232,7 +232,9 @@ export default function TiendaPage() {
         )}
       </main>
 
-      <StoreSidebar onSearch={store.filterBySearch} />
+      <div className="min-w-0 overflow-hidden">
+        <StoreSidebar onSearch={store.filterBySearch} />
+      </div>
 
       {/* Report modal */}
       {reportId && (

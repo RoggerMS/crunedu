@@ -64,11 +64,11 @@ export function StoreListingCard({
     : null;
 
   return (
-    <article className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
+    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
       <Link href={`/app/tienda/${item.id}`} className="block" aria-label={`Ver ${item.title}`}>
         <div className="relative">
           {hasRealImage ? (
-            <div className="h-[132px] bg-slate-100">
+            <div className="h-[140px] overflow-hidden bg-slate-100">
               <img
                 src={coverImage!.imageUrl}
                 alt={coverImage!.altText ?? item.title}
@@ -77,27 +77,27 @@ export function StoreListingCard({
               />
             </div>
           ) : (
-            <div className="h-[132px]">
+            <div className="h-[140px] overflow-hidden">
               <StoreListingFallbackMedia categorySlug={item.category?.slug} iconKey={item.category?.icon} compact />
             </div>
           )}
 
-          <div className="absolute left-2 top-2 flex flex-wrap gap-1 text-[10px]">
+          <div className="absolute left-2 top-2 flex max-w-[calc(100%-3rem)] flex-wrap gap-1 text-[10px]">
             {statusBadge && (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 font-medium">{statusBadge}</span>
+              <span className="truncate rounded-full bg-amber-100 px-2 py-0.5 font-medium">{statusBadge}</span>
             )}
             {item.condition && item.condition !== "not_applicable" && (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 capitalize">{item.condition === "new" ? "Nuevo" : item.condition === "like_new" ? "Como nuevo" : item.condition === "good" ? "Buen estado" : "Usado"}</span>
+              <span className="truncate rounded-full bg-slate-100 px-2 py-0.5 capitalize">{item.condition === "new" ? "Nuevo" : item.condition === "like_new" ? "Como nuevo" : item.condition === "good" ? "Buen estado" : "Usado"}</span>
             )}
             {item.deliveryType === "campus" && (
-              <span className="rounded-full bg-emerald-100 px-2 py-0.5">En campus</span>
+              <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5">En campus</span>
             )}
           </div>
 
           <button
             type="button"
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSave(item.id); }}
-            className={`absolute right-2 top-2 rounded-full p-1.5 transition ${
+            className={`absolute right-2 top-2 z-10 rounded-full p-1.5 transition ${
               item.viewerState?.saved ? "bg-rose-100 text-rose-600" : "bg-white/80 text-slate-400 hover:text-rose-500"
             }`}
             aria-label={item.viewerState?.saved ? "Quitar de guardados" : "Guardar"}
@@ -105,52 +105,61 @@ export function StoreListingCard({
             <Heart className={`h-4 w-4 ${item.viewerState?.saved ? "fill-rose-600" : ""}`} />
           </button>
         </div>
-
-        <div className="p-3">
-          <h3 className="line-clamp-2 text-sm font-bold text-slate-900">{item.title}</h3>
-          <p className="mt-1 text-lg font-black text-indigo-700">{priceDisplay}</p>
-          {item.isNegotiable && priceDisplay !== "Gratis" && priceDisplay !== "Intercambio" && (
-            <span className="text-[11px] text-slate-500">Precio negociable</span>
-          )}
-          <p className="mt-0.5 line-clamp-1 text-xs text-slate-600">
-            <MapPin className="mr-0.5 inline-block h-3 w-3" />
-            {item.campus ?? item.location ?? item.safePoint?.name ?? "Campus"}
-          </p>
-
-          <div className="mt-2 flex items-center justify-between text-xs text-slate-600">
-            <span className="line-clamp-1 flex items-center gap-1">
-              {item.seller.name}
-              {item.seller.verified && <BadgeCheck className="h-3 w-3 text-indigo-500" />}
-            </span>
-            <span className="text-[11px] text-slate-500">{relativeTime(item.createdAt)}</span>
-          </div>
-        </div>
       </Link>
 
-      {/* Three-dot menu */}
-      <div ref={menuRef} className="absolute bottom-2 right-2">
-        <button
-          type="button"
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="rounded-md border bg-white p-1 text-slate-500 hover:bg-slate-50"
-          aria-label="Más opciones"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
-        {menuOpen && (
-          <div className="absolute bottom-full right-0 mb-1 w-36 rounded-lg border bg-white py-1 shadow-lg text-xs z-20">
-            <button type="button" onClick={() => { onShare(item.id); setMenuOpen(false); }} className="w-full px-3 py-1.5 text-left hover:bg-slate-50">Compartir</button>
-            {viewerRole !== null && (
-              <button type="button" onClick={() => { onReport(item.id); setMenuOpen(false); }} className="w-full px-3 py-1.5 text-left text-rose-600 hover:bg-rose-50">Reportar</button>
-            )}
-            {!isMine && (
-              <button type="button" onClick={() => { onHide(item.id); setMenuOpen(false); }} className="w-full px-3 py-1.5 text-left hover:bg-slate-50">Ocultar</button>
-            )}
-            {isMine && (
-              <Link href={`/app/tienda/${item.id}`} className="block w-full px-3 py-1.5 text-left hover:bg-slate-50">Editar</Link>
+      <div className="flex min-w-0 flex-1 flex-col p-3">
+        <Link href={`/app/tienda/${item.id}`} className="block min-w-0">
+          <h3 className="line-clamp-2 break-words text-sm font-bold text-slate-900">{item.title}</h3>
+        </Link>
+        <p className="mt-1 truncate text-base font-black text-indigo-700">{priceDisplay}</p>
+        {item.isNegotiable && priceDisplay !== "Gratis" && priceDisplay !== "Intercambio" && (
+          <span className="truncate text-[11px] text-slate-500">Precio negociable</span>
+        )}
+        <p className="mt-0.5 flex min-w-0 items-center gap-0.5 truncate text-xs text-slate-600">
+          <MapPin className="h-3 w-3 shrink-0" />
+          <span className="truncate">{item.campus ?? item.location ?? item.safePoint?.name ?? "Campus"}</span>
+        </p>
+
+        <div className="mt-2 flex min-w-0 items-center justify-between gap-2 text-xs text-slate-600">
+          <span className="flex min-w-0 items-center gap-1 truncate">
+            <span className="truncate">{item.seller.name}</span>
+            {item.seller.verified && <BadgeCheck className="h-3 w-3 shrink-0 text-indigo-500" />}
+          </span>
+          <span className="shrink-0 text-[11px] text-slate-500">{relativeTime(item.createdAt)}</span>
+        </div>
+
+        <div className="mt-2 flex items-center justify-between gap-1">
+          <Link
+            href={`/app/tienda/${item.id}`}
+            className="rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+          >
+            Ver
+          </Link>
+          <div ref={menuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="rounded-md border bg-white p-1 text-slate-500 hover:bg-slate-50"
+              aria-label="Más opciones"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+            {menuOpen && (
+              <div className="absolute bottom-full right-0 z-30 mb-1 w-36 rounded-lg border bg-white py-1 shadow-lg text-xs">
+                <button type="button" onClick={() => { onShare(item.id); setMenuOpen(false); }} className="w-full px-3 py-1.5 text-left hover:bg-slate-50">Compartir</button>
+                {viewerRole !== null && (
+                  <button type="button" onClick={() => { onReport(item.id); setMenuOpen(false); }} className="w-full px-3 py-1.5 text-left text-rose-600 hover:bg-rose-50">Reportar</button>
+                )}
+                {!isMine && (
+                  <button type="button" onClick={() => { onHide(item.id); setMenuOpen(false); }} className="w-full px-3 py-1.5 text-left hover:bg-slate-50">Ocultar</button>
+                )}
+                {isMine && (
+                  <Link href={`/app/tienda/${item.id}`} className="block w-full px-3 py-1.5 text-left hover:bg-slate-50">Editar</Link>
+                )}
+              </div>
             )}
           </div>
-        )}
+        </div>
       </div>
     </article>
   );

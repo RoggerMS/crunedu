@@ -16,28 +16,26 @@ export function StoreSidebar({ onSearch, onSafePoint }: { onSearch: (q: string) 
 
   return (
     <aside className="space-y-3">
-      {/* Safe points */}
       {safePoints.length > 0 && (
-        <div className="rounded-2xl border bg-white p-3">
-          <h3 className="text-sm font-semibold flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5 text-indigo-600" />
+        <div className="overflow-hidden rounded-2xl border bg-white p-3">
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
             Puntos seguros
           </h3>
           <ul className="mt-2 space-y-1 text-xs text-slate-600">
             {safePoints.map((sp) => (
-              <li key={sp.id} className="flex items-start gap-1.5 rounded-lg bg-slate-50 px-2 py-1.5">
-                <span className="font-medium text-slate-800">{sp.name}</span>
-                {sp.schedule && <span className="text-slate-400">· {sp.schedule}</span>}
+              <li key={sp.id} className="min-w-0 overflow-hidden rounded-lg bg-slate-50 px-2 py-1.5">
+                <span className="block truncate font-medium text-slate-800">{sp.name}</span>
+                {sp.schedule && <span className="block truncate text-[11px] text-slate-400">{sp.schedule}</span>}
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      {/* Trending searches */}
-      <div className="rounded-2xl border bg-white p-3">
-        <h3 className="text-sm font-semibold flex items-center gap-1.5">
-          <Search className="h-3.5 w-3.5 text-indigo-600" />
+      <div className="overflow-hidden rounded-2xl border bg-white p-3">
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+          <Search className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
           Más buscado
         </h3>
         <div className="mt-2 space-y-1 text-xs">
@@ -46,19 +44,18 @@ export function StoreSidebar({ onSearch, onSafePoint }: { onSearch: (q: string) 
               key={term}
               type="button"
               onClick={() => onSearch(term)}
-              className="flex w-full items-center justify-between rounded-lg bg-slate-50 px-2.5 py-1.5 text-left hover:bg-indigo-50 transition"
+              className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 text-left hover:bg-indigo-50 transition"
             >
-              <span className="line-clamp-1">{i + 1}. {term}</span>
-              <span className="text-[11px] text-slate-400">Ver</span>
+              <span className="min-w-0 truncate">{i + 1}. {term}</span>
+              <span className="shrink-0 text-[11px] text-slate-400">Ver</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Safety tips */}
-      <div className="rounded-2xl border border-sky-100 bg-sky-50 p-3 text-xs text-sky-900">
-        <p className="font-semibold flex items-center gap-1.5">
-          <ShieldAlert className="h-3.5 w-3.5" />
+      <div className="overflow-hidden rounded-2xl border border-sky-100 bg-sky-50 p-3 text-xs text-sky-900">
+        <p className="flex items-center gap-1.5 font-semibold">
+          <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
           Consejos de compra segura
         </p>
         <ul className="mt-1.5 list-disc space-y-0.5 pl-4">

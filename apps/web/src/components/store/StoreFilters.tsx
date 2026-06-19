@@ -30,15 +30,15 @@ export function StoreFilters({
   }, []);
 
   return (
-    <div className="flex flex-wrap gap-2 rounded-2xl border bg-white p-3">
-      <select value={categorySlug} onChange={(e) => setCategorySlug(e.target.value)} className="rounded-lg border px-2.5 py-2 text-sm" aria-label="Categoría">
+    <div className="flex min-w-0 flex-wrap gap-2 rounded-2xl border bg-white p-3">
+      <select value={categorySlug} onChange={(e) => setCategorySlug(e.target.value)} className="min-w-0 max-w-full rounded-lg border px-2.5 py-2 text-sm" aria-label="Categoría">
         <option value="">Todas las categorías</option>
         {categories.map((cat) => (
           <option key={cat.slug} value={cat.slug}>{cat.name}</option>
         ))}
       </select>
 
-      <select value={type} onChange={(e) => setType(e.target.value)} className="rounded-lg border px-2.5 py-2 text-sm" aria-label="Tipo">
+      <select value={type} onChange={(e) => setType(e.target.value)} className="min-w-0 max-w-full rounded-lg border px-2.5 py-2 text-sm" aria-label="Tipo">
         <option value="">Todos los tipos</option>
         <option value="SALE">Venta</option>
         <option value="SERVICE">Servicio</option>
@@ -48,7 +48,7 @@ export function StoreFilters({
         <option value="REQUEST">Solicitud</option>
       </select>
 
-      <select value={deliveryType} onChange={(e) => setDeliveryType(e.target.value)} className="rounded-lg border px-2.5 py-2 text-sm" aria-label="Entrega">
+      <select value={deliveryType} onChange={(e) => setDeliveryType(e.target.value)} className="min-w-0 max-w-full rounded-lg border px-2.5 py-2 text-sm" aria-label="Entrega">
         <option value="">Todas las entregas</option>
         <option value="CAMPUS">En campus</option>
         <option value="SAFE_POINT">Punto seguro</option>
@@ -58,7 +58,7 @@ export function StoreFilters({
         <option value="DIGITAL">Digital</option>
       </select>
 
-      <select value={sort} onChange={(e) => setSort(e.target.value)} className="rounded-lg border px-2.5 py-2 text-sm" aria-label="Orden">
+      <select value={sort} onChange={(e) => setSort(e.target.value)} className="min-w-0 max-w-full rounded-lg border px-2.5 py-2 text-sm" aria-label="Orden">
         <option value="recent">Más recientes</option>
         <option value="low_price">Menor precio</option>
         <option value="high_price">Mayor precio</option>
