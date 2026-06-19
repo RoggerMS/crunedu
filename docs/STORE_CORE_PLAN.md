@@ -1,83 +1,191 @@
 # Store Core Plan (CrunEdu)
 
 ## Objective
-Build the CrunEdu store as a **high-value MVP core** for student adoption and platform sustainability, while keeping implementation modular and leaving architecture ready for future marketplace expansion.
 
-## Product principles
-- **Now (MVP):** only CrunEdu publishes products.
-- **Later (Marketplace):** allow external sellers to publish products using a controlled onboarding flow.
-- Keep code simple, testable, and incremental.
-- Visible UI copy in Spanish.
-- No payments automation, no shipping integrations, no commissions in MVP.
+Convertir la Tienda de CrunEdu en una experiencia universitaria funcional conectada al backend real, sin reemplazar la sección existente por una plantilla genérica.
 
-## Phase 1 — Store MVP (CrunEdu-managed only)
-### Functional scope
-1. Public product feed with categories and search.
-2. Product detail page with gallery, description, basic stock status.
-3. Offer and promotion badges (manual, admin-defined).
-4. "Me interesa" contact flow (WhatsApp/form/email routing).
-5. Admin panel (internal) to create/edit/publish/archive products.
-6. Basic analytics counters (views, clicks on interest button).
+La implementación actual usa los modelos `Product*` ya existentes y los extiende de forma aditiva para soportar catálogo real, publicaciones estudiantiles, imágenes, guardados, consultas, reportes, panel personal y administración básica.
 
-### Backend scope
-- `GET /api/store/products`
-- `GET /api/store/products/:id`
-- `GET /api/store/categories`
-- `POST /api/store/products` (JWT + admin role)
-- `PATCH /api/store/products/:id` (JWT + admin role)
-- `PATCH /api/store/products/:id/status` (JWT + admin role)
+## Estado actual — 2026-06-19
 
-### Frontend scope
-- `/app/tienda` (catalog)
-- `/app/tienda/[slug]` (product detail)
-- `/app/admin/tienda` (basic management)
+**Status:** In progress, con Fase 1 funcional implementada y pendiente de aplicar la migración localmente.
 
-## Phase 2 — Marketplace-ready foundation (still closed)
-### Goal
-Prepare internal architecture for future external sellers **without enabling open publishing yet**.
+### Qué existía antes
 
-### Technical tasks
-1. Add seller domain models with an initial `sellerType` enum (`CRUNEDU`, `EXTERNAL_FUTURE`).
-2. Keep product ownership linked to a seller entity (CrunEdu account by default).
-3. Add feature flags for future endpoints (`ENABLE_EXTERNAL_SELLERS`).
-4. Keep external publish endpoints disabled by default.
+- Namespace backend `/api/marketplace`.
+- Categorías y productos básicos gestionados por CrunEdu.
+- Detalle de producto con contador de vistas.
+- Consultas con `contactName` y `contactPhone` manuales.
+- Admin básico para productos, consultas y métricas.
+- Frontend de Tienda con hooks y componentes propios, pero con acciones parcialmente simuladas.
 
-## Phase 3 — Future external sellers (post-MVP)
-- Seller onboarding request flow.
-- Manual approval by CrunEdu admins.
-- Seller dashboard.
-- Moderation queue for product submissions.
-- Policy checks and basic sanctions.
+### Fase 1 completada
 
-## Data model proposal (MVP-safe)
-- `StoreCategory`
-- `StoreProduct`
-- `StoreProductImage`
-- `StorePromotion`
-- `StoreInterestLead`
-- `StoreProductMetric`
+- Catálogo real con búsqueda, filtros y orden desde backend.
+- Categorías universitarias con slugs e icon keys.
+- Publicación pública protegida por JWT.
+- Edición, borrado lógico, publicar, pausar y marcar vendido para propietario/admin.
+- Upload local de imágenes en `tmp/uploads/products` y servido por API.
+- Tarjetas con imagen real o placeholder vectorial Lucide.
+- Detalle con galería real y lightbox.
+- Guardados reales con `ProductFavorite`.
+- Reportes reales usando `Report.productId`.
+- Contacto básico con `ProductInquiry` sin pedir nombre/celular obligatorios.
+- Panel personal mínimo: publicaciones, guardados, consultas y estadísticas.
+- Admin protegido por rol con productos, consultas, reportes y métricas.
+- Seed actualizado con 10 categorías, 4 puntos seguros y 12 publicaciones universitarias.
 
-> Note: schema changes should happen only when Phase 1 implementation starts, with non-destructive migrations.
+## Endpoints implementados
 
-## MVP acceptance criteria
-- Students can browse many products and filter quickly.
-- Every product has complete useful information.
-- Admin can keep catalog updated daily.
-- Promotions are visible and easy to manage.
-- Architecture is explicitly prepared for marketplace evolution.
+### Catálogo público / viewer-aware
 
-## Implementation order (recommended)
-1. Database entities + seed catalog base.
-2. Public read API endpoints.
-3. Frontend catalog and detail pages.
-4. Admin CRUD for products and promotions.
-5. Interest-lead capture and metrics.
-6. Feature-flag groundwork for external sellers.
+- `GET /api/marketplace/categories`
+- `GET /api/marketplace/safe-points`
+- `GET /api/marketplace/products`
+- `GET /api/marketplace/products/:id`
 
-## Risks and controls
-- **Risk:** Scope explosion from "full marketplace" expectations.
-  - **Control:** Phase gates and explicit post-MVP backlog.
-- **Risk:** UX complexity.
-  - **Control:** Start with simple listing/detail/admin pattern.
-- **Risk:** Breaking current modules.
-  - **Control:** Isolated `store` module and incremental validation.
+`GET /api/marketplace/products` soporta:
+
+- `q`
+- `categoryId`
+- `categorySlug`
+- `type`
+- `condition`
+- `deliveryType`
+- `priceMin`
+- `priceMax`
+- `campus`
+- `safePointId`
+- `sellerId`
+- `saved`
+- `mine`
+- `sort`
+- `cursor`
+- `limit`
+
+### Productos protegidos por JWT
+
+- `POST /api/marketplace/products`
+- `PATCH /api/marketplace/products/:id`
+- `DELETE /api/marketplace/products/:id`
+- `POST /api/marketplace/products/:id/publish`
+- `POST /api/marketplace/products/:id/pause`
+- `POST /api/marketplace/products/:id/mark-sold`
+
+### Imágenes
+
+- `POST /api/marketplace/products/images`
+- `POST /api/marketplace/products/:id/images`
+- `PATCH /api/marketplace/products/:id/images/order`
+- `DELETE /api/marketplace/products/:id/images/:imageId`
+- `POST /api/marketplace/products/:id/images/:imageId/cover`
+- `GET /api/marketplace/products/images/:filename`
+
+### Interacción
+
+- `POST /api/marketplace/products/:id/favorite`
+- `GET /api/marketplace/me/favorites`
+- `POST /api/marketplace/products/:id/inquiries`
+- `GET /api/marketplace/me/inquiries`
+- `POST /api/marketplace/products/:id/reports`
+
+### Panel personal
+
+- `GET /api/marketplace/me/listings`
+- `GET /api/marketplace/me/statistics`
+
+### Admin
+
+- `GET /api/marketplace/admin/products`
+- `POST /api/marketplace/admin/products`
+- `PATCH /api/marketplace/admin/products/:id/status`
+- `GET /api/marketplace/admin/inquiries`
+- `POST /api/marketplace/admin/inquiries/:id/status`
+- `GET /api/marketplace/admin/reports`
+- `GET /api/marketplace/admin/metrics`
+
+## Modelos y migración
+
+Migración pendiente de aplicar localmente:
+
+- `packages/database/prisma/migrations/20260619190000_store_functional_v1/migration.sql`
+
+Cambios principales:
+
+- Enums nuevos: `ProductType`, `ProductPriceType`, `ProductCondition`, `ProductDeliveryType`.
+- `Product` extendido con tipo, tipo de precio, negociación, condición, entrega, campus, distrito, punto seguro, curso, marca, modelo, cantidad, contador de favoritos, `publishedAt` y `deletedAt`.
+- `ProductImage` extendido con MIME, tamaño, alt text e indicador de portada.
+- `ProductCategory` extendido con `icon`, `order` e `isActive`.
+- `ProductInquiry` permite `contactName` y `contactPhone` nulos, agrega `quickMessageType` y default `chat`.
+- Nuevo `ProductSafePoint`.
+- `Report.productId` se reutiliza para reportes de producto.
+
+## Storage de imágenes
+
+- La implementación actual usa filesystem local como fallback de desarrollo: `tmp/uploads/products`.
+- No se guardan binarios en PostgreSQL.
+- Se validan MIME types permitidos (`JPEG`, `PNG`, `WEBP`) y tamaño máximo de 5 MB.
+- MinIO queda pendiente como adapter configurable si se conectan variables y cliente de storage en una fase posterior.
+
+## Frontend implementado
+
+- `/app/tienda`: catálogo con búsqueda, filtros URL-synced, grid y panel personal.
+- `/app/tienda/[id]`: detalle con galería, acciones reales, contacto, guardado y reporte.
+- `/app/tienda/nuevo`: publicación funcional con upload, preview, guardar borrador y publicar.
+- `/app/admin/tienda`: panel admin con gating por rol.
+
+## Validación ejecutada en Codex
+
+- `DATABASE_URL='postgresql://user:pass@localhost:5432/crunedu?schema=public' npm run db:validate`
+- `DATABASE_URL='postgresql://user:pass@localhost:5432/crunedu?schema=public' npm run db:generate`
+- `npm run build -w @crunedu/shared`
+- `npm run build -w @crunedu/api`
+- `npm run build -w @crunedu/web`
+
+`npm run db:validate` sin `DATABASE_URL` falla en Codex porque la variable no está definida; con URL dummy de validación el schema es válido.
+
+## Verificación local recomendada
+
+```powershell
+cd C:\GITHUB\crunedu
+npm run db:migrate
+npm run db:seed
+docker compose up -d --build api
+docker compose up -d --build web
+Invoke-RestMethod http://localhost:4000/api/health
+Invoke-RestMethod http://localhost:4000/api/marketplace/categories
+Invoke-RestMethod http://localhost:4000/api/marketplace/products
+Invoke-RestMethod http://localhost:4000/api/marketplace/products?q=calculadora
+Invoke-RestMethod http://localhost:4000/api/marketplace/safe-points
+```
+
+## Pendientes por fase
+
+### Fase 2 — Conversaciones y reservas
+
+- Conversación interna por producto, comprador y vendedor.
+- Bandeja de conversaciones.
+- Mensajes rápidos persistidos.
+- Solicitud, aceptación, rechazo y cancelación de reservas.
+- Estado reservado sin conflictos.
+
+### Fase 3 — Transacciones, reseñas y reputación
+
+- Transacción/completado comprador-vendedor.
+- Reseñas posteriores a operación.
+- Reputación del vendedor.
+- Perfil comercial.
+
+### Fase 4 — Admin avanzado
+
+- CRUD admin de categorías.
+- CRUD admin de puntos seguros.
+- Moderation logs específicos de tienda.
+- Métricas avanzadas y dashboard operacional.
+
+## Riesgos / notas
+
+- Ejecutar la migración local es obligatorio antes de probar runtime.
+- `ProductStatus` conserva los estados existentes (`DRAFT`, `ACTIVE`, `HIDDEN`, `SOLD_OUT`, `DELETED`) para evitar una migración enum más riesgosa.
+- No se implementaron pagos, shipping, comisiones ni chat completo.
+- No se muestran botones falsos para funcionalidades no implementadas.
