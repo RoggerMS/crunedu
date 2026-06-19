@@ -50,9 +50,9 @@ ALTER TABLE "products" ADD COLUMN "deleted_at" TIMESTAMP(3);
 ALTER TABLE "products" ADD CONSTRAINT "products_safe_point_id_fkey" FOREIGN KEY ("safe_point_id") REFERENCES "product_safe_points"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 CREATE INDEX "products_type_idx" ON "products"("type");
-CREATE INDEX "products_deliveryType_idx" ON "products"("delivery_type");
-CREATE INDEX "products_safePointId_idx" ON "products"("safe_point_id");
-CREATE INDEX "products_status_createdAt_desc_id_desc_idx" ON "products"("status", "createdAt"(Desc), "id"(Desc));
+CREATE INDEX "products_delivery_type_idx" ON "products"("delivery_type");
+CREATE INDEX "products_safe_point_id_idx" ON "products"("safe_point_id");
+CREATE INDEX "products_status_created_at_id_idx" ON "products"("status", "created_at" DESC, "id" DESC);
 
 -- product_images: new columns
 ALTER TABLE "product_images" ADD COLUMN "mime_type" TEXT;
