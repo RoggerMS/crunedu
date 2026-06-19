@@ -26,6 +26,7 @@ export type StoreProduct = {
   price: string;
   isFeatured: boolean;
   category: { name: string } | null;
+  createdAt?: string;
 };
 
 export type StoreCatalogParams = {
