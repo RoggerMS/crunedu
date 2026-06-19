@@ -148,6 +148,14 @@ export function getQuestionById(questionId: number) {
   return apiRequest<Question>(`/questions/${questionId}`);
 }
 
+export function updateQuestion(questionId: number, payload: { title?: string; content?: string; communityId?: number }, token: string) {
+  return apiRequest<Question>(`/questions/${questionId}`, { method: "PATCH", headers: authJsonHeaders(token), body: JSON.stringify(payload) });
+}
+
+export function deleteQuestion(questionId: number, token: string) {
+  return apiRequest<{ message: string }>(`/questions/${questionId}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+}
+
 function buildStoreCatalogParams(params: StoreCatalogParams = {}) {
   const searchParams = new URLSearchParams();
 

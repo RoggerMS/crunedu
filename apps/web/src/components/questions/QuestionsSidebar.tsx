@@ -5,8 +5,8 @@ export function QuestionsSidebar({ questions, onFeatured, onCourse, onUnanswered
   return <div className="space-y-3"><FeaturedQuestionsCard questions={questions} onFeatured={onFeatured} /><CoursesWithQuestionsCard questions={questions} onCourse={onCourse} /><UnansweredQuestionsCard count={unansweredCount} onUnanswered={onUnanswered} /></div>;
 }
 
-export function GoodQuestionTipsCard({ onInfo }: { onInfo: (m: string) => void }) {
-  return <div className="rounded-2xl border bg-white p-4"><h3 className="font-bold">Cómo hacer una buena pregunta</h3><ul className="mt-2 list-decimal pl-4 text-sm text-slate-600"><li>Sé claro y específico.</li><li>Incluye contexto y el enunciado completo.</li><li>Muestra qué intentaste y dónde te quedaste.</li><li>Agrega imágenes nítidas si el ejercicio lo necesita.</li></ul><button onClick={() => onInfo("Guía completa pendiente para una próxima fase.")} className="mt-2 text-sm font-semibold text-indigo-600">Ver guía completa</button></div>;
+export function GoodQuestionTipsCard({ onInfo: _onInfo }: { onInfo: (m: string) => void }) {
+  return <div className="rounded-2xl border bg-white p-4"><h3 className="font-bold">Cómo hacer una buena pregunta</h3><ul className="mt-2 list-decimal pl-4 text-sm text-slate-600"><li>Sé claro y específico.</li><li>Incluye contexto y el enunciado completo.</li><li>Muestra qué intentaste y dónde te quedaste.</li><li>Agrega imágenes nítidas si el ejercicio lo necesita.</li></ul></div>;
 }
 
 function FeaturedQuestionsCard({ questions, onFeatured }: { questions: QuestionItem[]; onFeatured: (id: string) => void }) {

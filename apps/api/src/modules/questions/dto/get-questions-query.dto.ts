@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsInt, IsOptional, Max, Min } from "class-validator";
+import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
 import { PAGINATION_LIMITS } from "../../common/pagination.constants";
 
 export class GetQuestionsQueryDto {
@@ -15,4 +15,19 @@ export class GetQuestionsQueryDto {
   @Min(1)
   @Max(PAGINATION_LIMITS.questions.max)
   limit?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  communityId?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  q?: string;
+
+  @IsOptional()
+  @IsIn(["open", "answered", "resolved"])
+  status?: "open" | "answered" | "resolved";
 }

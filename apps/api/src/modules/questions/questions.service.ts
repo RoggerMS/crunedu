@@ -1,13 +1,17 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateAnswerDto } from "./dto/create-answer.dto";
 import { CreateQuestionDto } from "./dto/create-question.dto";
 import { GetQuestionsQueryDto } from "./dto/get-questions-query.dto";
+import { UpdateQuestionDto } from "./dto/update-question.dto";
 import { PAGINATION_LIMITS } from "../common/pagination.constants";
 
 @Injectable()
 export class QuestionsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private readonly questionRateLimit = new Map<number, number[]>();
+  private readonly answerRateLimit = new Map<number, number[]>();
 
   private readonly answerSelect = {
     id: true,
@@ -67,7 +71,7 @@ export class QuestionsService {
     };
   }
 
-  private mapQuestion(question: any) {
+  private mapQuestion(question: any, viewerUserId?: number) {
     return {
       id: question.id,
       title: question.title,
@@ -84,14 +88,27 @@ export class QuestionsService {
       images: question.images,
       answersCount: question._count.answers,
       answers: question.answers.map((answer: any) => this.mapAnswer(answer)),
+      isMine: viewerUserId != null && question.user.id === viewerUserId,
     };
   }
 
-  async index(query: GetQuestionsQueryDto) {
+  async index(query: GetQuestionsQueryDto, viewerUserId?: number) {
     const limit = query.limit ?? PAGINATION_LIMITS.questions.default;
     const safeLimit = Math.min(limit, PAGINATION_LIMITS.questions.max);
+
+    const where: any = { status: "PUBLISHED" };
+    if (query.communityId) where.communityId = query.communityId;
+    if (query.q) {
+      where.OR = [
+        { title: { contains: query.q, mode: "insensitive" } },
+        { content: { contains: query.q, mode: "insensitive" } },
+      ];
+    }
+    if (query.status === "open") where.isResolved = false;
+    else if (query.status === "resolved") where.isResolved = true;
+
     const questions = await this.prisma.question.findMany({
-      where: { status: "PUBLISHED" },
+      where,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
       take: safeLimit + 1,
@@ -100,13 +117,13 @@ export class QuestionsService {
 
     const nextCursor = questions.length > safeLimit ? questions[safeLimit].id : null;
     return {
-      items: questions.slice(0, safeLimit).map((question: (typeof questions)[number]) => this.mapQuestion(question)),
+      items: questions.slice(0, safeLimit).map((question: (typeof questions)[number]) => this.mapQuestion(question, viewerUserId)),
       nextCursor,
     };
   }
 
 
-  async findOne(id: number) {
+  async findOne(id: number, viewerUserId?: number) {
     const question = await this.prisma.question.findFirst({
       where: { id, status: "PUBLISHED" },
       select: this.questionSelect,
@@ -114,10 +131,12 @@ export class QuestionsService {
 
     if (!question) throw new NotFoundException("Pregunta no encontrada.");
 
-    return this.mapQuestion(question);
+    return this.mapQuestion(question, viewerUserId);
   }
 
   async create(dto: CreateQuestionDto, userId: number) {
+    this.checkRateLimit(this.questionRateLimit, userId, 5, 60_000, "Estás publicando preguntas demasiado rápido. Espera un minuto.");
+
     if (dto.communityId !== undefined) {
       const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true } });
       if (!community) throw new BadRequestException("La comunidad seleccionada no existe.");
@@ -209,6 +228,8 @@ export class QuestionsService {
   }
 
   async createAnswer(questionId: number, dto: CreateAnswerDto, userId: number) {
+    this.checkRateLimit(this.answerRateLimit, userId, 10, 60_000, "Estás respondiendo demasiado rápido. Espera un minuto.");
+
     const question = await this.prisma.question.findFirst({ where: { id: questionId, status: "PUBLISHED" }, select: { id: true } });
     if (!question) throw new NotFoundException("Pregunta no encontrada.");
 
@@ -233,6 +254,51 @@ export class QuestionsService {
     });
 
     return this.mapAnswer(answer);
+  }
+
+  async update(id: number, dto: UpdateQuestionDto, userId: number, role: string) {
+    const question = await this.prisma.question.findFirst({ where: { id, status: "PUBLISHED" }, select: { id: true, userId: true } });
+    if (!question) throw new NotFoundException("Pregunta no encontrada.");
+    const isAuthor = question.userId === userId;
+    const isAdmin = role === "ADMIN";
+    if (!isAuthor && !isAdmin) throw new ForbiddenException("No tienes permisos para editar esta pregunta.");
+
+    if (dto.communityId !== undefined) {
+      const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true } });
+      if (!community) throw new BadRequestException("La comunidad seleccionada no existe.");
+    }
+
+    const updated = await this.prisma.question.update({
+      where: { id },
+      data: {
+        ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
+        ...(dto.content !== undefined ? { content: dto.content.trim() } : {}),
+        ...(dto.communityId !== undefined ? { communityId: dto.communityId } : {}),
+      },
+      select: this.questionSelect,
+    });
+
+    return this.mapQuestion(updated, userId);
+  }
+
+  async remove(id: number, userId: number, role: string) {
+    const question = await this.prisma.question.findFirst({ where: { id, status: "PUBLISHED" }, select: { id: true, userId: true } });
+    if (!question) throw new NotFoundException("Pregunta no encontrada.");
+    const isAuthor = question.userId === userId;
+    const isAdmin = role === "ADMIN";
+    if (!isAuthor && !isAdmin) throw new ForbiddenException("No tienes permisos para eliminar esta pregunta.");
+
+    await this.prisma.question.update({ where: { id }, data: { status: "DELETED" } });
+    return { message: "Pregunta eliminada correctamente." };
+  }
+
+  private checkRateLimit(bucket: Map<number, number[]>, userId: number, maxEvents: number, windowMs: number, message: string): void {
+    const now = Date.now();
+    const windowStart = now - windowMs;
+    const timestamps = (bucket.get(userId) ?? []).filter((ts) => ts >= windowStart);
+    if (timestamps.length >= maxEvents) throw new HttpException(message, HttpStatus.TOO_MANY_REQUESTS);
+    timestamps.push(now);
+    bucket.set(userId, timestamps);
   }
 }
 

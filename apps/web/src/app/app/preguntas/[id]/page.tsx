@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { createAnswer, createReport, getQuestionById, markAnswerUseful, mapApiError, uploadAnswerImage, voteAnswer, type UploadedAnswerImage } from "@/lib/api-helpers";
+import { createAnswer, createReport, deleteQuestion, getQuestionById, markAnswerUseful, mapApiError, uploadAnswerImage, voteAnswer, type UploadedAnswerImage } from "@/lib/api-helpers";
 import { buildApiUrl } from "@/lib/http-client";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { buildLoginHref } from "@/lib/auth-routes";
@@ -11,7 +11,7 @@ import { AcademicContentRenderer } from "@/components/questions/AcademicContentR
 
 type ApiImage = { id: number; imageUrl: string; mimeType: string; sizeBytes: number; position: number };
 type ApiAnswer = { id: number; content: string; createdAt: string; isUseful?: boolean; images?: ApiImage[]; votesScore?: number; upvotes?: number; downvotes?: number; viewerVote?: -1 | 0 | 1; author: { firstName: string | null; lastName: string | null; email: string } };
-type ApiQuestion = { id: number; title: string; content: string; createdAt: string; isResolved: boolean; author: { firstName: string | null; lastName: string | null; email: string }; community?: { id: number; name: string } | null; images?: ApiImage[]; answersCount: number; answers: ApiAnswer[] };
+type ApiQuestion = { id: number; title: string; content: string; createdAt: string; isResolved: boolean; isMine?: boolean; author: { firstName: string | null; lastName: string | null; email: string }; community?: { id: number; name: string } | null; images?: ApiImage[]; answersCount: number; answers: ApiAnswer[] };
 
 function authorName(author: ApiQuestion["author"]) {
   return [author.firstName, author.lastName].filter(Boolean).join(" ") || author.email || "Estudiante CrunEdu";
@@ -136,6 +136,21 @@ export default function QuestionDetailPage() {
     notify("Enlace copiado.");
   }
 
+  async function handleDelete() {
+    if (!question || !accessToken) return;
+    if (!question.isMine) return;
+    const confirmed = window.confirm("¿Seguro que deseas eliminar tu pregunta? Esta acción no se puede deshacer.");
+    if (!confirmed) return;
+    try {
+      await deleteQuestion(question.id, accessToken);
+      setOpenMenu(null);
+      notify("Pregunta eliminada.");
+      router.push("/app/preguntas");
+    } catch (err) {
+      setError(mapApiError(err, "No se pudo eliminar la pregunta."));
+    }
+  }
+
   if (loading) return <section className="mx-auto max-w-[1540px] px-4 py-6"><p>Cargando pregunta...</p></section>;
   if (!question) return <section className="mx-auto max-w-[1540px] px-4 py-6"><p>{error ?? "No encontramos esta pregunta."}</p><Link href="/app/preguntas" className="mt-2 inline-block text-indigo-600">Volver a Preguntas</Link></section>;
 
@@ -144,7 +159,7 @@ export default function QuestionDetailPage() {
   return <section className="mx-auto grid max-w-[1540px] gap-4 px-4 py-6 sm:px-6 lg:px-8 xl:grid-cols-[1fr_320px]">
     <main className="space-y-4">
       <article className="rounded-2xl border bg-white p-5">
-        <div className="flex items-start justify-between gap-3"><Link className="text-sm font-semibold text-indigo-700" href="/app/preguntas">← Volver a Preguntas</Link><div className="relative"><button onClick={() => setOpenMenu(openMenu === "question" ? null : "question")} className="rounded-full border px-3 py-1 text-sm font-bold" aria-label="Opciones de pregunta">...</button>{openMenu === "question" ? <div className="absolute right-0 z-10 mt-2 w-48 rounded-xl border bg-white p-2 text-sm shadow"><button onClick={() => void copyLink()} className="w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50">Copiar enlace</button><button onClick={() => void report("QUESTION", question.id)} className="w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50">Reportar pregunta</button></div> : null}</div></div>
+        <div className="flex items-start justify-between gap-3"><Link className="text-sm font-semibold text-indigo-700" href="/app/preguntas">← Volver a Preguntas</Link><div className="relative"><button onClick={() => setOpenMenu(openMenu === "question" ? null : "question")} className="rounded-full border px-3 py-1 text-sm font-bold" aria-label="Opciones de pregunta">...</button>{openMenu === "question" ? <div className="absolute right-0 z-10 mt-2 w-48 rounded-xl border bg-white p-2 text-sm shadow"><button onClick={() => void copyLink()} className="w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50">Copiar enlace</button>{question.isMine ? <button onClick={() => void handleDelete()} className="w-full rounded-lg px-3 py-2 text-left text-rose-700 hover:bg-rose-50">Eliminar pregunta</button> : null}<button onClick={() => void report("QUESTION", question.id)} className="w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50">Reportar pregunta</button></div> : null}</div></div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500"><span>{authorName(question.author)}</span><span>•</span><span>{new Date(question.createdAt).toLocaleDateString("es-PE")}</span><span>•</span><span>{question.community?.name ?? "General"}</span></div>
         <h1 className="mt-2 text-2xl font-black text-slate-950">{question.title}</h1>
         <AcademicContentRenderer content={question.content} images={question.images} imageAlt="Imagen adjunta de la pregunta" resolveImageUrl={(url) => imageSrc(url)} />
