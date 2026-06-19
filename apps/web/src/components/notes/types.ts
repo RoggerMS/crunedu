@@ -1,32 +1,64 @@
-export type NoteFileType = "pdf" | "word" | "ppt" | "image" | "zip";
-export type NoteStatus = "verificado" | "nuevo" | "popular" | "para_parcial" | "actualizado" | "pendiente_revision";
-export type NoteVisibility = "publico" | "comunidad" | "privado";
+export type NoteFileType = "pdf" | "word" | "image" | "zip" | "ppt" | "excel" | "other";
 
-export type NoteFile = { id: string; name: string; size: number; type: string; fileType: NoteFileType; pages?: number; slides?: number; exercises?: number; url?: string };
-export type NoteImage = { id: string; url: string; alt?: string };
-export type NoteComment = { id: string; authorName: string; content: string; createdAt: string };
+export type NoteVisibility = "public" | "community" | "private";
+
+export type NoteFile = {
+  name: string;
+  url: string;
+  downloadUrl: string;
+  size: number;
+  mimeType: string;
+  fileType: NoteFileType;
+};
 
 export type NoteItem = {
   id: string;
   title: string;
-  description: string;
-  course: string;
-  materialType: string;
-  authorName: string;
-  authorAvatarUrl?: string;
-  createdAt: string;
-  status: NoteStatus;
+  description: string | null;
+  course: string | null;
+  cycle: string | null;
+  materialType: string | null;
+  file: NoteFile;
+  author: { id: number; name: string };
+  community: { id: number; name: string; slug?: string } | null;
+  visibility: NoteVisibility;
   tags: string[];
-  file?: NoteFile;
-  images?: NoteImage[];
-  rating: { average: number; count: number; viewerRating?: number };
-  stats: { downloads: number; saves: number; comments: number; views: number };
-  viewerState: { saved: boolean; isMine?: boolean };
-  commentsPreview?: NoteComment[];
+  createdAt: string;
+  rating: { average: number; count: number; viewerRating: number | null };
+  stats: { downloads: number; saves: number; views: number };
+  viewerState: { saved: boolean; isMine: boolean; canEdit: boolean; canDelete: boolean; canReport: boolean };
 };
 
 export type NoteDraftInput = {
-  title: string; description: string; course: string; materialType: string; tags: string[]; visibility: NoteVisibility; communityId?: string;
-  file?: Pick<NoteFile, "name" | "size" | "type" | "fileType">;
-  images?: Array<Pick<NoteImage, "url" | "alt">>;
+  title: string;
+  description: string;
+  course?: string;
+  cycle?: string;
+  materialType?: string;
+  tags: string[];
+  visibility: NoteVisibility;
+  communityId?: number;
 };
+
+export const NOTE_COURSES = [
+  "Matemática",
+  "Estadística",
+  "Física",
+  "Programación",
+  "Comunicación",
+  "Historia",
+  "Inglés",
+  "Educación",
+  "Otros",
+];
+
+export const NOTE_MATERIAL_TYPES = ["Resumen", "Ejercicios", "Fórmulas", "Guías", "Separatas", "Otros"];
+
+export const NOTE_FILE_TYPES: { value: string; label: string }[] = [
+  { value: "pdf", label: "PDF" },
+  { value: "word", label: "Word" },
+  { value: "image", label: "Imagen" },
+  { value: "zip", label: "ZIP" },
+  { value: "ppt", label: "PPT" },
+  { value: "excel", label: "Excel" },
+];

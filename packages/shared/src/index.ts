@@ -79,6 +79,14 @@ export interface FeedPostImage {
   position: number;
 }
 
+export interface FeedPostDocument {
+  id: number;
+  title: string;
+  fileType: string;
+  sizeBytes: number;
+  course: string;
+}
+
 export interface FeedPost {
   id: number;
   title: string;
@@ -86,6 +94,7 @@ export interface FeedPost {
   createdAt: string;
   author: FeedAuthor;
   community: FeedCommunity | null;
+  document: FeedPostDocument | null;
   commentsCount: number;
   images: FeedPostImage[];
   isMine?: boolean;

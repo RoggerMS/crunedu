@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE_URL, apiRequest, HttpClientError } from "@/lib/http-client";
-import { uploadPostImage } from "@/lib/api-helpers";
+import { getNotes, uploadPostImage } from "@/lib/api-helpers";
 import { PageState, PrimaryButton } from "@/components/ui";
 import { CommunityHero } from "@/components/communities/detail/CommunityHero";
 import { CommunityTabs } from "@/components/communities/detail/CommunityTabs";
@@ -57,6 +57,7 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
   const { user } = useAuth();
   const [community, setCommunity] = useState<CommunityDetailModel | null>(null);
   const [posts, setPosts] = useState<CommunityPostModel[]>([]);
+  const [communityFiles, setCommunityFiles] = useState<CommunityFileItem[]>([]);
   const [activeTab, setActiveTab] = useState("publicaciones");
   const [isMember, setIsMember] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
@@ -157,10 +158,20 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
     setLoading(true);
     setError(null);
     try {
-      const [communityResponse, postsResponse] = await Promise.all([
+      const [communityResponse, postsResponse, notesResponse] = await Promise.all([
         apiRequest<any>(`/communities/${communityId}`),
         apiRequest<{ items?: any[] }>(`/communities/${communityId}/posts?limit=10`),
+        getNotes({ communityId }),
       ]);
+
+      const mappedFiles: CommunityFileItem[] = (notesResponse.items ?? []).map((note) => ({
+        id: `note-${note.id}`,
+        name: note.title,
+        source: "note",
+        createdAt: note.createdAt ? new Date(note.createdAt).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" }) : undefined,
+        href: `/app/apuntes/${note.id}`,
+      }));
+      setCommunityFiles(mappedFiles);
 
       const mappedPosts = (postsResponse.items ?? []).map((post) => ({
         id: post.id,
@@ -341,8 +352,6 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
     createdAt: post.createdAt,
   }))), [posts, community?.name]);
 
-  const fileItems = useMemo<CommunityFileItem[]>(() => [], []);
-
   const handleDeletePost = async (postId: number) => {
     if (!isAuthenticated || !accessToken) return requireLogin();
     try {
@@ -400,7 +409,7 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
           ) : activeTab === "multimedia" ? (
             <CommunityMultimediaView items={mediaItems} onOpenPost={handleCommentPost} />
           ) : activeTab === "archivos" ? (
-            <CommunityFilesView items={fileItems} />
+            <CommunityFilesView items={communityFiles} communityId={communityId} />
           ) : (
             <>
               {isMember || isCreator ? (
@@ -466,26 +475,35 @@ function CommunityMultimediaView({ items, onOpenPost }: { items: CommunityMediaI
   );
 }
 
-function CommunityFilesView({ items }: { items: CommunityFileItem[] }) {
+function CommunityFilesView({ items, communityId }: { items: CommunityFileItem[]; communityId?: number }) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5">
-      <div className="mb-4">
-        <h2 className="text-lg font-bold text-slate-950">Archivos</h2>
-        <p className="text-sm text-slate-500">Aquí se ordenarán documentos vinculados con Apuntes y Preguntas.</p>
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-slate-950">Archivos</h2>
+          <p className="text-sm text-slate-500">Apuntes compartidos en esta comunidad.</p>
+        </div>
+        {communityId ? (
+          <Link href={`/app/apuntes/nuevo?communityId=${communityId}`} className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Compartir apunte</Link>
+        ) : null}
       </div>
       {items.length ? (
         <ul className="divide-y divide-slate-100">
           {items.map((item) => (
             <li key={item.id} className="py-3">
-              <p className="text-sm font-semibold text-slate-900">{item.name}</p>
-              <p className="text-xs text-slate-500">{item.source} · {item.createdAt ?? "Fecha no disponible"}</p>
+              {item.href ? (
+                <Link href={item.href} className="text-sm font-semibold text-indigo-700 hover:underline">{item.name}</Link>
+              ) : (
+                <p className="text-sm font-semibold text-slate-900">{item.name}</p>
+              )}
+              <p className="text-xs text-slate-500">{item.source === "note" ? "Apunte" : item.source} · {item.createdAt ?? "Fecha no disponible"}</p>
             </li>
           ))}
         </ul>
       ) : (
         <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
           <h3 className="font-bold text-slate-900">Aún no hay archivos</h3>
-          <p className="mt-1 text-sm text-slate-600">Cuando Preguntas o Apuntes compartan documentos reales con esta comunidad, aparecerán en esta sección.</p>
+          <p className="mt-1 text-sm text-slate-600">Cuando compartas un apunte en esta comunidad, aparecerá aquí.</p>
         </div>
       )}
     </section>

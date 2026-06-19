@@ -27,6 +27,11 @@ export class ReportsService {
       return this.prisma.report.create({ data: { reporterId, reason, description: dto.description?.trim() || null, questionId: dto.targetId } });
     }
 
+    if (dto.targetType === ReportTargetType.DOCUMENT) {
+      await this.ensureDocument(dto.targetId);
+      return this.prisma.report.create({ data: { reporterId, reason, description: dto.description?.trim() || null, documentId: dto.targetId } });
+    }
+
     await this.ensureAnswer(dto.targetId);
     return this.prisma.report.create({ data: { reporterId, reason, description: dto.description?.trim() || null, answerId: dto.targetId } });
   }
@@ -36,7 +41,7 @@ export class ReportsService {
       where: {
         ...(filters.communityId
           ? {
-              OR: [{ post: { communityId: filters.communityId } }, { comment: { post: { communityId: filters.communityId } } }, { question: { communityId: filters.communityId } }, { answer: { question: { communityId: filters.communityId } } }],
+              OR: [{ post: { communityId: filters.communityId } }, { comment: { post: { communityId: filters.communityId } } }, { question: { communityId: filters.communityId } }, { answer: { question: { communityId: filters.communityId } } }, { document: { communityId: filters.communityId } }],
             }
           : {}),
         ...(filters.status ? { status: this.mapStatusToPrisma(filters.status) } : {}),
@@ -200,11 +205,11 @@ export class ReportsService {
   private async findReport(reportId: number) {
     const report = await this.prisma.report.findUnique({ where: { id: reportId } });
     if (!report) throw new NotFoundException("Reporte no encontrado.");
-    if (!report.postId && !report.commentId && !report.questionId && !report.answerId) throw new BadRequestException("Este reporte no tiene objetivo moderable.");
+    if (!report.postId && !report.commentId && !report.questionId && !report.answerId && !report.documentId) throw new BadRequestException("Este reporte no tiene objetivo moderable.");
     return report;
   }
 
-  private async resolveTargetOwner(report: { postId: number | null; commentId: number | null; questionId: number | null; answerId: number | null }) {
+  private async resolveTargetOwner(report: { postId: number | null; commentId: number | null; questionId: number | null; answerId: number | null; documentId: number | null }) {
     if (report.postId) {
       const post = await this.prisma.post.findUnique({ where: { id: report.postId }, select: { userId: true } });
       if (!post) throw new NotFoundException("Publicación no encontrada.");
@@ -223,15 +228,22 @@ export class ReportsService {
       return question.userId;
     }
 
+    if (report.documentId) {
+      const document = await this.prisma.document.findUnique({ where: { id: report.documentId }, select: { userId: true } });
+      if (!document) throw new NotFoundException("Apunte no encontrado.");
+      return document.userId;
+    }
+
     const answer = await this.prisma.answer.findUnique({ where: { id: report.answerId! }, select: { userId: true } });
     if (!answer) throw new NotFoundException("Respuesta no encontrada.");
     return answer.userId;
   }
 
-  private async updateTargetStatus(tx: Prisma.TransactionClient, report: { postId: number | null; commentId: number | null; questionId: number | null; answerId: number | null }, status: ContentStatus) {
+  private async updateTargetStatus(tx: Prisma.TransactionClient, report: { postId: number | null; commentId: number | null; questionId: number | null; answerId: number | null; documentId: number | null }, status: ContentStatus) {
     if (report.postId) return tx.post.update({ where: { id: report.postId }, data: { status } });
     if (report.commentId) return tx.comment.update({ where: { id: report.commentId }, data: { status } });
     if (report.questionId) return tx.question.update({ where: { id: report.questionId }, data: { status } });
+    if (report.documentId) return tx.document.update({ where: { id: report.documentId }, data: { status } });
     if (report.answerId) return tx.answer.update({ where: { id: report.answerId }, data: { status } });
   }
 
@@ -253,5 +265,10 @@ export class ReportsService {
   private async ensureAnswer(id: number) {
     const answer = await this.prisma.answer.findUnique({ where: { id }, select: { id: true } });
     if (!answer) throw new NotFoundException("Respuesta no encontrada.");
+  }
+
+  private async ensureDocument(id: number) {
+    const document = await this.prisma.document.findUnique({ where: { id }, select: { id: true, status: true } });
+    if (!document || document.status !== "PUBLISHED") throw new NotFoundException("Apunte no encontrado.");
   }
 }

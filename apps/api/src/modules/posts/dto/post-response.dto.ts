@@ -16,6 +16,13 @@ export class PostResponseDto {
     name: string;
     slug: string;
   } | null;
+  document: {
+    id: number;
+    title: string;
+    fileType: string;
+    sizeBytes: number;
+    course: string;
+  } | null;
   commentsCount: number;
   images: PostImageResponseDto[];
   isMine?: boolean;

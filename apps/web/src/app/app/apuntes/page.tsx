@@ -1,46 +1,150 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CreateNoteModal } from "@/components/notes/CreateNoteModal";
 import { NoteCard } from "@/components/notes/NoteCard";
-import { NOTE_COURSES } from "@/components/notes/note-data";
+import { NoteFiltersRail } from "@/components/notes/NoteFiltersRail";
 import { NotesFilters } from "@/components/notes/NotesFilters";
 import { NotesHeader } from "@/components/notes/NotesHeader";
 import { NotesSidebar } from "@/components/notes/NotesSidebar";
 import { useNotes } from "@/hooks/useNotes";
+import { useCommunities } from "@/hooks/useCommunities";
+import { useAccessToken } from "@/hooks/useAccessToken";
+import { createReport, getNoteContributors, mapApiError, type NoteContributor, type NoteListQuery } from "@/lib/api-helpers";
 
 export default function NotesPage() {
   const router = useRouter();
-  const q = (useSearchParams().get("q") ?? "").toLowerCase();
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("q")?.trim() ?? "";
+  const initialCommunityId = searchParams.get("communityId") ? Number(searchParams.get("communityId")) : undefined;
+  const { communities } = useCommunities();
+  const { accessToken, isAuthenticated } = useAccessToken();
+
+  const [search, setSearch] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
+  const [sort, setSort] = useState("recent");
+  const [course, setCourse] = useState("Todos");
+  const [materialType, setMaterialType] = useState("Todos");
+  const [fileType, setFileType] = useState("Todos");
+  const [view, setView] = useState<"all" | "mine" | "saved">("all");
   const [openModal, setOpenModal] = useState(false);
-  const [sortFilter, setSortFilter] = useState("Para ti");
-  const [typeFilter, setTypeFilter] = useState("Todos");
-  const [courseFilter, setCourseFilter] = useState("Todos");
-  const [page, setPage] = useState(1);
-  const { notes, stats, addNote, saveNote, shareNote, downloadNote, rateNote, saveDraft, pulseToast, toast } = useNotes();
+  const [contributors, setContributors] = useState<NoteContributor[]>([]);
 
-  const filtered = useMemo(() => {
-    let list = notes.filter((n) => (!q || [n.title, n.description, n.course, n.authorName, ...(n.tags ?? []), n.file?.name ?? "", n.file?.fileType ?? ""].join(" ").toLowerCase().includes(q)) && (courseFilter === "Todos" || n.course === courseFilter));
-    if (sortFilter === "Mis apuntes") list = list.filter((n) => n.viewerState.isMine);
-    if (sortFilter === "Guardados") list = list.filter((n) => n.viewerState.saved);
-    if (sortFilter === "Más descargados") list = list.toSorted((a, b) => b.stats.downloads - a.stats.downloads);
-    if (sortFilter === "Más guardados") list = list.toSorted((a, b) => b.stats.saves - a.stats.saves);
-    if (sortFilter === "Mejor valorados") list = list.toSorted((a, b) => b.rating.average - a.rating.average);
-    if (sortFilter === "Recientes") list = list.toSorted((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    if (sortFilter === "Sin revisar") list = list.filter((n) => n.status === "pendiente_revision");
-    if (typeFilter !== "Todos") list = list.filter((n) => [n.file?.fileType?.toLowerCase(), n.materialType.toLowerCase()].join(" ").includes(typeFilter.toLowerCase()));
-    return list;
-  }, [notes, q, courseFilter, sortFilter, typeFilter]);
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => window.clearTimeout(handle);
+  }, [search]);
 
-  const pageItems = filtered.slice((page - 1) * 8, page * 8);
+  useEffect(() => {
+    let active = true;
+    getNoteContributors()
+      .then((data) => { if (active) setContributors(data); })
+      .catch(() => { if (active) setContributors([]); });
+    return () => { active = false; };
+  }, []);
 
-  return <section className="mx-auto max-w-[1540px] px-4 sm:px-6 lg:px-8"><div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Bóveda Académica en fase Beta: Explora nuestros apuntes verificados. La subida de documentos propios estará habilitada próximamente.</div><div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_340px]"><main className="space-y-4"><NotesHeader onOpenModal={() => setOpenModal(true)} onMine={() => setSortFilter("Mis apuntes")} onSaved={() => setSortFilter("Guardados")} stats={stats} /><NotesFilters rows={[{ key: "sort", active: sortFilter, options: ["Para ti", "Recientes", "Más guardados", "Más descargados", "Mejor valorados", "Mis apuntes", "Guardados", "Sin revisar"] }, { key: "type", active: typeFilter, options: ["Todos", "PDF", "Word", "PPT", "Imagen", "Resumen", "Ejercicios", "Fórmulas", "Guías", "Separatas"] }, { key: "course", active: courseFilter, options: ["Todos", ...NOTE_COURSES] }]} onChange={(key, value) => { if (key === "sort") setSortFilter(value); if (key === "type") setTypeFilter(value); if (key === "course") setCourseFilter(value); setPage(1); }} />
-      {toast ? <p className="rounded-xl bg-slate-900 px-3 py-2 text-sm text-white">{toast}</p> : null}
-      <div className="space-y-2">{pageItems.length === 0 ? <div className="rounded-2xl border bg-white p-6 text-sm">No encontramos apuntes con esos filtros.</div> : pageItems.map((note) => <NoteCard key={note.id} note={note} onMenu={() => pulseToast("Opciones avanzadas disponibles próximamente.")} onSave={() => { saveNote(note.id); pulseToast(note.viewerState.saved ? "Apunte quitado de guardados." : "Apunte guardado."); }} onShare={() => void shareNote(note.id)} onDownload={() => downloadNote(note.id)} onRate={(value) => { rateNote(note.id, value); pulseToast("Gracias por valorar este apunte."); }} />)}</div>
-      <div className="rounded-2xl border bg-white p-3 text-sm"><p>Mostrando 1 a {pageItems.length} de 1,284 apuntes</p><div className="mt-2 flex gap-2"><button className="rounded-lg border px-2 py-1" onClick={() => setPage((p) => Math.max(1, p - 1))}>Anterior</button><button className="rounded-lg border px-2 py-1">1</button><button className="rounded-lg border px-2 py-1">2</button><button className="rounded-lg border px-2 py-1">3</button><span className="px-2 py-1">...</span><button className="rounded-lg border px-2 py-1" onClick={() => setPage((p) => p + 1)}>Siguiente</button></div></div>
-    </main>
-    <NotesSidebar notes={notes} onCourseClick={(c) => setCourseFilter(c)} onGuide={() => pulseToast("Guía disponible próximamente.")} onNoteClick={(id) => router.push(`/app/apuntes/${id}`)} /></div>
-    <CreateNoteModal open={openModal} onClose={() => setOpenModal(false)} onSaveDraft={saveDraft} onPublish={(payload) => { if (!payload.title.trim()) return pulseToast("Título obligatorio."); if (!payload.course) return pulseToast("Curso obligatorio."); if (!payload.file && !payload.description.trim()) return pulseToast("Agrega archivo o descripción suficiente."); addNote({ id: crypto.randomUUID(), title: payload.title, description: payload.description, course: payload.course, materialType: payload.materialType, authorName: "Tú", createdAt: new Date().toISOString(), status: "nuevo", tags: payload.tags, file: payload.file ? { ...payload.file, id: crypto.randomUUID() } : undefined, images: payload.images?.map((image) => ({ ...image, id: crypto.randomUUID() })) ?? [], rating: { average: 0, count: 0 }, stats: { downloads: 0, saves: 0, comments: 0, views: 0 }, viewerState: { saved: false, isMine: true } }); setOpenModal(false); pulseToast("Apunte publicado correctamente."); }} />
-  </section>;
+  const query: NoteListQuery = useMemo(() => ({
+    q: debouncedSearch || undefined,
+    sort: sort as NoteListQuery["sort"],
+    course: course !== "Todos" ? course : undefined,
+    materialType: materialType !== "Todos" ? materialType : undefined,
+    fileType: fileType !== "Todos" ? fileType : undefined,
+    communityId: initialCommunityId,
+    mine: view === "mine" ? true : undefined,
+    saved: view === "saved" ? true : undefined,
+  }), [debouncedSearch, sort, course, materialType, fileType, initialCommunityId, view]);
+
+  const { notes, loading, error, toast, notify, retry, toggleSave, rateNote, removeNote, shareNote, downloadNote } = useNotes(query);
+
+  async function handleReport(noteId: string) {
+    if (!isAuthenticated || !accessToken) return notify("Inicia sesión para reportar un apunte.", "info");
+    try {
+      await createReport({ targetType: "DOCUMENT", targetId: Number(noteId), reason: "Reporte de apunte" }, accessToken);
+      notify("Reporte enviado.", "success");
+    } catch (err) {
+      notify(mapApiError(err, "No se pudo enviar el reporte."), "error");
+    }
+  }
+
+  function handleDelete(noteId: string) {
+    const note = notes.find((item) => item.id === noteId);
+    if (!note) return;
+    const confirmed = window.confirm("¿Seguro que deseas eliminar este apunte? Esta acción no se puede deshacer.");
+    if (!confirmed) return;
+    void removeNote(note);
+  }
+
+  return (
+    <section className="mx-auto max-w-[1540px] space-y-4 px-4 py-4 sm:px-6 lg:px-8">
+      {toast ? <div className={`fixed bottom-4 right-4 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}
+
+      <CreateNoteModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        onPublished={() => void retry()}
+        onToast={notify}
+        communities={communities}
+        initialCommunityId={initialCommunityId}
+      />
+
+      <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)_320px]">
+        <aside className="hidden space-y-4 xl:block">
+          <NoteFiltersRail
+            course={course}
+            onCourse={setCourse}
+            materialType={materialType}
+            onMaterialType={setMaterialType}
+            fileType={fileType}
+            onFileType={setFileType}
+          />
+        </aside>
+
+        <div className="min-w-0 space-y-4">
+          <NotesHeader
+            onOpenModal={() => {
+              if (!isAuthenticated) { notify("Inicia sesión para publicar apuntes.", "info"); router.push("/login?returnUrl=/app/apuntes"); return; }
+              setOpenModal(true);
+            }}
+            onMine={() => { if (!isAuthenticated) { notify("Inicia sesión para ver tus apuntes.", "info"); return; } setView((prev) => (prev === "mine" ? "all" : "mine")); }}
+            onSaved={() => { if (!isAuthenticated) { notify("Inicia sesión para ver tus guardados.", "info"); return; } setView((prev) => (prev === "saved" ? "all" : "saved")); }}
+            search={search}
+            onSearchChange={setSearch}
+          />
+          <NotesFilters sort={sort} onSort={setSort} />
+
+          {loading ? (
+            <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-32 animate-pulse rounded-2xl bg-slate-100" />)}</div>
+          ) : error ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
+              <p className="text-sm text-rose-700">{error}</p>
+              <button onClick={() => void retry()} className="mt-3 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Reintentar</button>
+            </div>
+          ) : notes.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+              <h3 className="font-bold text-slate-900">No hay apuntes con estos filtros</h3>
+              <p className="mt-1 text-sm text-slate-600">Sé la primera persona en compartir material útil para este filtro.</p>
+              <button onClick={() => setOpenModal(true)} className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Subir apunte</button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {notes.map((note) => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  onSave={() => void toggleSave(note)}
+                  onShare={() => void shareNote(note)}
+                  onDownload={() => downloadNote(note)}
+                  onReport={() => void handleReport(note.id)}
+                  onDelete={note.viewerState.canDelete ? () => handleDelete(note.id) : undefined}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <NotesSidebar notes={notes} onNoteClick={(id) => router.push(`/app/apuntes/${id}`)} contributors={contributors} />
+      </div>
+    </section>
+  );
 }

@@ -1,92 +1,36 @@
 "use client";
 
-import Link from "next/link";
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ModuleHeader } from "@/components/module-header";
-import { buildLoginHref } from "@/lib/auth-routes";
-import { apiRequest, mapApiError } from "@/lib/http-client";
-import { useAccessToken } from "@/hooks/useAccessToken";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CreateNoteModal } from "@/components/notes/CreateNoteModal";
+import { useCommunities } from "@/hooks/useCommunities";
 
 export default function NewNotePage() {
   const router = useRouter();
-  const { accessToken, isAuthenticated } = useAccessToken();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [course, setCourse] = useState("");
-  const [cycle, setCycle] = useState("");
-  const [fileUrl, setFileUrl] = useState("");
-  const [selectedFileName, setSelectedFileName] = useState("");
-  const [acceptTerms, setAcceptTerms] = useState(false);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const loginHref = buildLoginHref("/app/apuntes/nuevo");
+  const searchParams = useSearchParams();
+  const initialCommunityId = searchParams.get("communityId") ? Number(searchParams.get("communityId")) : undefined;
+  const { communities } = useCommunities();
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    try {
-      setSending(true);
-      setError(null);
-      await apiRequest("/apuntes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ title, description: description.trim() || undefined, course, cycle: cycle || undefined, fileUrl }),
-      });
-      router.push("/app/apuntes");
-      router.refresh();
-    } catch (submitError) {
-      setError(mapApiError(submitError, "No se pudo publicar el apunte."));
-    } finally {
-      setSending(false);
+  useEffect(() => {
+    if (toast) {
+      const handle = window.setTimeout(() => setToast(null), 3000);
+      return () => window.clearTimeout(handle);
     }
-  }
+  }, [toast]);
 
   return (
-    <section className="space-y-6">
-      <ModuleHeader title="Nuevo apunte" description="Completa el formulario para publicar material académico." />
-
-      <form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
-        <input required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Título del apunte" />
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-24 w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Descripción del apunte (opcional)" />
-        <div className="grid gap-3 md:grid-cols-2">
-          <input required value={course} onChange={(e) => setCourse(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Curso (ej. Cálculo I)" />
-          <input value={cycle} onChange={(e) => setCycle(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Ciclo (ej. 2026-I)" />
-        </div>
-
-        <div className="rounded-2xl border border-slate-300 p-4">
-          <label className="mb-2 block text-sm font-semibold text-slate-700">Seleccionar archivo (PDF, Word, Excel, PPT)</label>
-          <input
-            type="file"
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-            onChange={(event) => setSelectedFileName(event.target.files?.[0]?.name ?? "")}
-            className="block w-full text-sm text-slate-700"
-          />
-          <p className="mt-2 text-xs text-slate-500">{selectedFileName || "Aún no seleccionaste un archivo."}</p>
-          <p className="mt-2 text-xs text-slate-500">Por ahora, pega también una URL del archivo para publicar mientras habilitamos la carga directa.</p>
-        </div>
-
-        <input required value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} className="w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="URL pública del archivo" />
-
-        <label className="flex items-start gap-2 rounded-xl border border-slate-200 p-3 text-sm text-slate-700">
-          <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="mt-1" />
-          <span>
-            Acepto los <Link href="/legal/terminos" className="font-semibold text-indigo-700 underline">términos y condiciones</Link> al publicar este apunte.
-          </span>
-        </label>
-
-        <button disabled={!isAuthenticated || !acceptTerms || sending} type="submit" className="rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60">
-          {sending ? "Publicando..." : "Publicar apunte"}
-        </button>
-        {!isAuthenticated ? (
-          <p className="text-sm text-amber-700">
-            Inicia sesión para publicar apuntes.
-            <Link href={loginHref} className="ml-2 font-semibold text-indigo-700 underline">
-              Iniciar sesión
-            </Link>
-          </p>
-        ) : null}
-        {error ? <p className="text-sm text-rose-700">{error}</p> : null}
-      </form>
+    <section className="mx-auto max-w-2xl space-y-4 px-4 py-6 sm:px-6">
+      {toast ? <div className={`fixed bottom-4 right-4 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}
+      <CreateNoteModal
+        open
+        onClose={() => router.push("/app/apuntes")}
+        onPublished={() => router.push("/app/apuntes")}
+        onToast={(message, type) => setToast({ message, type })}
+        communities={communities}
+        initialCommunityId={initialCommunityId}
+      />
+      <p className="text-center text-sm text-slate-500">Sube un apunte real con archivo. El curso es opcional dentro de «Más opciones».</p>
     </section>
   );
 }

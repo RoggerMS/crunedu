@@ -42,11 +42,12 @@ function mapApiImageToAttachment(image: ApiFeedPost["images"][number]): FeedAtta
 
 export function mapApiPostToFeedPost(apiPost: ApiFeedPost): FeedPost {
   const community = apiPost.community;
+  const document = (apiPost as { document?: { id: number; title: string; fileType: string; sizeBytes: number; course: string } | null }).document ?? null;
 
   return {
     id: String(apiPost.id),
     title: apiPost.title,
-    type: "text",
+    type: document ? "shared_note" : "text",
     author: {
       id: String(apiPost.author.id),
       name: formatAuthorName(apiPost.author),
@@ -57,6 +58,17 @@ export function mapApiPostToFeedPost(apiPost: ApiFeedPost): FeedPost {
       : { type: "general", label: "Feed general" },
     visibility: community ? "community" : "public",
     attachments: (apiPost.images ?? []).map(mapApiImageToAttachment),
+    sharedEntity: document
+      ? {
+          id: String(document.id),
+          type: "note",
+          title: document.title,
+          href: `/app/apuntes/${document.id}`,
+          meta: document.course || "Apunte",
+          fileType: document.fileType,
+          sizeBytes: document.sizeBytes,
+        }
+      : undefined,
     createdAt: toIsoString(apiPost.createdAt),
     stats: {
       likes: 0,

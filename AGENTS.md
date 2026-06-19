@@ -459,6 +459,7 @@ Keep this section updated when new execution plans are created in `docs/*.md`.
 
 | `docs/TRAMITES_GUIDES_PLAN.md` | Guía estática de trámites universitarios (trámites, pasos, documentos) | Completed | Alta: 2026-06-18. Implementado en `/app/tramites` y `/app/tramites/[id]` con datos estáticos referenciales de La Cantuta. |
 | `docs/DEBATES_REDIRECT_REPLACEMENT.md` | Reemplazo de redirects en `/app/debates*` por landing informativas | Completed | Alta: 2026-06-18. Las páginas ahora explican el flujo hacia Conversar. |
+| `docs/APUNTES_MODULE_PLAN.md` | Apuntes funcional: backend real + frontend real (upload, descarga, guardar, valorar, reportar, visibilidad, comunidad + feed) | In progress | Alta: 2026-06-19. Backend + frontend implementados y build/lint/validate OK. Pendiente: crear/aplicar migración Prisma localmente y verificación runtime con Docker. |
 
 Status values:
 

@@ -29,6 +29,8 @@ export type SharedEntity = {
   href: string;
   meta?: string;
   imageUrl?: string;
+  fileType?: string;
+  sizeBytes?: number;
 };
 
 export type FeedPost = {

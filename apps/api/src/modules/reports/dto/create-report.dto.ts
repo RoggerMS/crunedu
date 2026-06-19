@@ -5,6 +5,7 @@ export enum ReportTargetType {
   COMMENT = "COMMENT",
   QUESTION = "QUESTION",
   ANSWER = "ANSWER",
+  DOCUMENT = "DOCUMENT",
 }
 
 export class CreateReportDto {

@@ -63,6 +63,12 @@ enum UniversityContentVisibility {
   SUGERIDO
 }
 
+enum DocumentVisibility {
+  PUBLIC
+  COMMUNITY
+  PRIVATE
+}
+
 enum SuggestionStatus {
   PENDING
   REVIEWED
@@ -136,6 +142,8 @@ model User {
   answers                 Answer[]
   answerVotes             AnswerVote[]
   documents               Document[]
+  savedDocuments          SavedDocument[]
+  documentRatings         DocumentRating[]
   comments                Comment[]
   reactions               Reaction[]
   savedPosts              SavedPost[]
@@ -293,6 +301,7 @@ model Post {
   id          Int           @id @default(autoincrement())
   userId      Int           @map("user_id")
   communityId Int?          @map("community_id")
+  documentId  Int?          @map("document_id")
   title       String        @default("")
   content     String
   status      ContentStatus @default(PUBLISHED)
@@ -301,6 +310,7 @@ model Post {
 
   user      User        @relation(fields: [userId], references: [id])
   community Community?  @relation(fields: [communityId], references: [id])
+  document  Document?   @relation(fields: [documentId], references: [id])
   comments  Comment[]
   reactions Reaction[]
   savedBy   SavedPost[]
@@ -314,6 +324,7 @@ model Post {
   @@index([createdAt])
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([communityId, status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([documentId])
   @@map("posts")
 }
 
@@ -411,6 +422,12 @@ model Document {
   fileType    String        @map("file_type")
   sizeBytes   Int           @map("size_bytes")
   status      ContentStatus @default(PUBLISHED)
+  visibility  DocumentVisibility @default(PUBLIC)
+  materialType String?      @map("material_type")
+  originalName String?      @map("original_name")
+  mimeType    String?       @map("mime_type")
+  downloadsCount Int        @default(0) @map("downloads_count")
+  viewsCount  Int           @default(0) @map("views_count")
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
@@ -418,6 +435,9 @@ model Document {
   community Community?    @relation(fields: [communityId], references: [id])
   reports   Report[]
   tags      DocumentTag[]
+  posts     Post[]
+  savedBy   SavedDocument[]
+  ratings   DocumentRating[]
 
   @@index([userId])
   @@index([communityId])
@@ -425,6 +445,8 @@ model Document {
   @@index([createdAt])
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([communityId, status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([visibility])
+  @@index([course])
   @@map("documents")
 }
 
@@ -508,6 +530,36 @@ model DocumentTag {
   @@id([documentId, tagId])
   @@index([tagId])
   @@map("document_tags")
+}
+
+model SavedDocument {
+  documentId Int      @map("document_id")
+  userId     Int      @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, userId])
+  @@index([userId])
+  @@map("saved_documents")
+}
+
+model DocumentRating {
+  id         Int      @id @default(autoincrement())
+  documentId Int      @map("document_id")
+  userId     Int      @map("user_id")
+  value      Int
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, userId])
+  @@index([documentId])
+  @@index([userId])
+  @@map("document_ratings")
 }
 
 // --- 6. INTERACCIONES ---

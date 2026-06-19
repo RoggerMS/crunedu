@@ -1,5 +1,5 @@
 import type { Community, CreateFeedPostPayload, FeedPost } from "@crunedu/shared";
-import { apiRequest, mapApiError } from "@/lib/http-client";
+import { API_BASE_URL, apiRequest, buildApiUrl, mapApiError } from "@/lib/http-client";
 
 export { apiRequest, mapApiError };
 
@@ -136,7 +136,7 @@ export function voteAnswer(questionId: number, answerId: number, value: -1 | 0 |
   return apiRequest(`/questions/${questionId}/answers/${answerId}/vote`, { method: "POST", headers: authJsonHeaders(token), body: JSON.stringify({ value }) });
 }
 
-export function createReport(payload: { targetType: "QUESTION" | "ANSWER" | "POST" | "COMMENT"; targetId: number; reason: string }, token: string) {
+export function createReport(payload: { targetType: "QUESTION" | "ANSWER" | "POST" | "COMMENT" | "DOCUMENT"; targetId: number; reason: string; description?: string }, token: string) {
   return apiRequest("/reports", { method: "POST", headers: authJsonHeaders(token), body: JSON.stringify(payload) });
 }
 
@@ -286,4 +286,142 @@ export function submitUniversitySuggestion(payload: SuggestionPayload) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+export type NoteVisibility = "public" | "community" | "private";
+
+export type NoteApiItem = {
+  id: number;
+  title: string;
+  description: string | null;
+  course: string | null;
+  cycle: string | null;
+  materialType: string | null;
+  fileType: string;
+  mimeType: string | null;
+  originalName: string | null;
+  sizeBytes: number;
+  fileUrl: string;
+  downloadUrl: string;
+  visibility: NoteVisibility;
+  createdAt: string;
+  author: { id: number; name: string };
+  community: { id: number; name: string; slug: string } | null;
+  tags: string[];
+  stats: { downloads: number; saves: number; views: number };
+  rating: { average: number; count: number; viewerRating: number | null };
+  viewerState: { saved: boolean; isMine: boolean; canEdit: boolean; canDelete: boolean; canReport: boolean };
+};
+
+export type NoteListResponse = { items: NoteApiItem[]; nextCursor: number | null };
+
+export type NoteListQuery = {
+  q?: string;
+  course?: string;
+  materialType?: string;
+  fileType?: string;
+  communityId?: number;
+  visibility?: NoteVisibility;
+  saved?: boolean;
+  mine?: boolean;
+  sort?: "recent" | "most_saved" | "most_downloaded" | "best_rated";
+  cursor?: number;
+  limit?: number;
+};
+
+export type UploadedNoteFile = {
+  fileUrl: string;
+  storageKey: string;
+  fileType: string;
+  mimeType: string;
+  sizeBytes: number;
+  originalName: string;
+};
+
+export type CreateNotePayload = {
+  title: string;
+  description?: string;
+  course?: string;
+  cycle?: string;
+  materialType?: string;
+  visibility: NoteVisibility;
+  communityId?: number;
+  tags?: string[];
+  uploadedFile: UploadedNoteFile;
+};
+
+export type NoteContributor = { userId: number; name: string; publicNotes: number };
+
+function buildNoteQuery(params: NoteListQuery = {}): string {
+  const searchParams = new URLSearchParams();
+  if (params.q) searchParams.set("q", params.q);
+  if (params.course) searchParams.set("course", params.course);
+  if (params.materialType) searchParams.set("materialType", params.materialType);
+  if (params.fileType) searchParams.set("fileType", params.fileType);
+  if (params.communityId) searchParams.set("communityId", String(params.communityId));
+  if (params.visibility) searchParams.set("visibility", params.visibility);
+  if (params.saved) searchParams.set("saved", "true");
+  if (params.mine) searchParams.set("mine", "true");
+  if (params.sort) searchParams.set("sort", params.sort);
+  if (params.cursor) searchParams.set("cursor", String(params.cursor));
+  if (params.limit) searchParams.set("limit", String(params.limit));
+  return searchParams.toString();
+}
+
+export function getNotes(params?: NoteListQuery) {
+  const query = buildNoteQuery(params);
+  return apiRequest<NoteListResponse>(query ? `/apuntes?${query}` : "/apuntes");
+}
+
+export function getNoteById(id: number | string) {
+  return apiRequest<NoteApiItem>(`/apuntes/${id}`);
+}
+
+export function getNoteContributors() {
+  return apiRequest<NoteContributor[]>("/apuntes/contributors");
+}
+
+export function uploadNoteFile(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiRequest<UploadedNoteFile>("/apuntes/files", { method: "POST", body: formData });
+}
+
+export function createNote(payload: CreateNotePayload, token: string) {
+  return apiRequest<NoteApiItem>("/apuntes", { method: "POST", headers: authJsonHeaders(token), body: JSON.stringify(payload) });
+}
+
+export function updateNote(id: number, payload: Partial<CreateNotePayload>, token: string) {
+  return apiRequest<NoteApiItem>(`/apuntes/${id}`, { method: "PATCH", headers: authJsonHeaders(token), body: JSON.stringify(payload) });
+}
+
+export function deleteNote(id: number, token: string) {
+  return apiRequest<{ message: string }>(`/apuntes/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+}
+
+export function saveNote(id: number, token: string) {
+  return apiRequest<{ saved: boolean }>(`/apuntes/${id}/save`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+}
+
+export function unsaveNote(id: number, token: string) {
+  return apiRequest<{ saved: boolean }>(`/apuntes/${id}/save`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+}
+
+export function rateNote(id: number, value: number, token: string) {
+  return apiRequest<{ average: number; count: number; viewerRating: number }>(`/apuntes/${id}/rating`, {
+    method: "POST",
+    headers: authJsonHeaders(token),
+    body: JSON.stringify({ value }),
+  });
+}
+
+export function buildNoteDownloadUrl(id: number | string): string {
+  return buildApiUrl(`/apuntes/${id}/download`);
+}
+
+export function buildNoteFileUrl(fileUrl: string): string {
+  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
+  if (fileUrl.startsWith("/api/")) return `${new URL(API_BASE_URL).origin}${fileUrl}`;
+  if (fileUrl.startsWith("/")) return `${API_BASE_URL}${fileUrl}`;
+  return `${API_BASE_URL}/${fileUrl}`;
 }

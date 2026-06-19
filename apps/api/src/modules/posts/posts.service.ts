@@ -25,6 +25,7 @@ type PostWithRelations = {
   createdAt: Date;
   user: { id: number; email: string; profile: { firstName: string | null; lastName: string | null } | null };
   community: { id: number; name: string; slug: string } | null;
+  document: { id: number; title: string; fileType: string; sizeBytes: number; course: string } | null;
   comments: Array<{ createdAt: Date }>;
   _count: { comments: number } | null;
   images: Array<{ id:number; imageUrl:string; mimeType:string; sizeBytes:number; position:number }>;
@@ -63,6 +64,15 @@ export class PostsService {
         slug: true,
       },
     },
+    document: {
+      select: {
+        id: true,
+        title: true,
+        fileType: true,
+        sizeBytes: true,
+        course: true,
+      },
+    },
     comments: {
       where: {
         status: "PUBLISHED",
@@ -82,7 +92,7 @@ export class PostsService {
   private readonly commentSelect = { id: true, content: true, createdAt: true, user: { select: { id: true, email: true, profile: { select: { firstName: true, lastName: true } } } } } as const;
 
   private mapPostResponse(post: PostWithRelations, userId?: number): PostResponseDto {
-    return { id: post.id, title: post.title, content: post.content, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, commentsCount: post._count?.comments ?? 0, images: post.images, isMine: Boolean(userId && post.user.id === userId) };
+    return { id: post.id, title: post.title, content: post.content, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, document: post.document, commentsCount: post._count?.comments ?? 0, images: post.images, isMine: Boolean(userId && post.user.id === userId) };
   }
 
   private mapCommentResponse(comment: any): PostCommentResponseDto {
