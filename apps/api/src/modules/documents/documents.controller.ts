@@ -19,7 +19,7 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { createReadStream } from "node:fs";
-import { access } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import { Request, Response } from "express";
 import { DocumentsService } from "./documents.service";
 import { GetDocumentsQueryDto } from "./dto/get-documents-query.dto";
@@ -57,16 +57,33 @@ export class DocumentsController {
   }
 
   @Get("files/:filename")
-  async getFile(@Param("filename") filename: string, @Res({ passthrough: true }) response: Response): Promise<StreamableFile> {
+  async getFile(@Param("filename") filename: string, @Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response): Promise<StreamableFile> {
     const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "");
     const filePath = `${process.cwd()}/tmp/uploads/documents/${safeName}`;
+    let fileStat;
     try {
-      await access(filePath);
+      fileStat = await stat(filePath);
     } catch {
       throw new NotFoundException("Archivo no encontrado.");
     }
     response.setHeader("Content-Type", this.contentTypeFor(safeName));
     response.setHeader("Content-Disposition", `inline; filename="${safeName}"`);
+    response.setHeader("Content-Length", fileStat.size);
+    response.setHeader("Accept-Ranges", "bytes");
+
+    const range = request.headers.range;
+    if (range) {
+      const match = /bytes=(\d+)-(\d*)/.exec(range);
+      if (match) {
+        const start = parseInt(match[1], 10);
+        const end = match[2] ? parseInt(match[2], 10) : fileStat.size - 1;
+        response.setHeader("Content-Range", `bytes ${start}-${end}/${fileStat.size}`);
+        response.setHeader("Content-Length", end - start + 1);
+        response.status(206);
+        return new StreamableFile(createReadStream(filePath, { start, end }));
+      }
+    }
+
     return new StreamableFile(createReadStream(filePath));
   }
 
@@ -80,14 +97,31 @@ export class DocumentsController {
   @UseGuards(OptionalJwtAuthGuard)
   async download(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response) {
     const { filePath, originalName, mimeType } = await this.service.getDownload(id, request.user?.sub, request.user?.role);
+    let fileStat;
     try {
-      await access(filePath);
+      fileStat = await stat(filePath);
     } catch {
       throw new NotFoundException("Archivo no encontrado en el servidor.");
     }
     const downloadName = (originalName || `apunte-${id}`).replace(/[^\p{L}\p{N}._-]/gu, "_");
     response.setHeader("Content-Type", mimeType || "application/octet-stream");
     response.setHeader("Content-Disposition", `attachment; filename="${downloadName}"`);
+    response.setHeader("Content-Length", fileStat.size);
+    response.setHeader("Accept-Ranges", "bytes");
+
+    const range = request.headers.range;
+    if (range) {
+      const match = /bytes=(\d+)-(\d*)/.exec(range);
+      if (match) {
+        const start = parseInt(match[1], 10);
+        const end = match[2] ? parseInt(match[2], 10) : fileStat.size - 1;
+        response.setHeader("Content-Range", `bytes ${start}-${end}/${fileStat.size}`);
+        response.setHeader("Content-Length", end - start + 1);
+        response.status(206);
+        return new StreamableFile(createReadStream(filePath, { start, end }));
+      }
+    }
+
     return new StreamableFile(createReadStream(filePath));
   }
 

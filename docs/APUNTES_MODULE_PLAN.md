@@ -85,6 +85,26 @@ está presente; `FeedPost` (shared) tiene campo `document`.
 - `npm run build -w @crunedu/api` ✓
 - `npm run build -w @crunedu/web` ✓ (solo warnings preexistentes: `<img>`, exhaustive-deps)
 
+## Previsualizaciones (2026-06-19)
+
+### Frontend
+
+- `NotePreview.tsx` (nuevo): componente unificado de preview que enruta según tipo de archivo:
+  - **PDF**: `<object>` con `#toolbar=0&navpanes=0&view=FitH` en cards (160px, primera página visible), `<iframe>` en detalle (600px, visor completo con navegación).
+  - **Imagen**: `<img>` con `object-cover` en cards (160px), `object-contain` en detalle (max 600px) + lightbox al hacer clic.
+  - **Otros** (Word, ZIP, PPT, Excel): tarjeta decorativa con gradiente por tipo + icono + nombre + tamaño.
+- **Lazy loading**: Intersection Observer en todos los previews — solo se renderiza el `<object>`/`<iframe>`/`<img>` cuando el elemento es visible (rootMargin 300px). Placeholder animado mientras carga.
+- **Manejo de errores**: `onError` en `<img>` muestra fallback si la imagen no carga; `<object>` tiene fallback nativo para PDFs no soportados.
+- `NoteCard`: área de preview de 160px en la parte superior de la tarjeta, con icono de tipo superpuesto.
+- `NoteDetail`: sección "Vista previa del archivo" con visor embebido grande + botón "Abrir en pestaña" para PDFs e imágenes + lightbox para imágenes.
+- `NotesSidebar`: "Apuntes destacados" ahora muestra icono de tipo + rating + descargas por cada apunte.
+- `DocumentAttachmentCard` (feed): mini-banner con gradiente por tipo de archivo + icono + info del archivo.
+
+### Backend
+
+- `documents.controller.ts`: soporte de **range requests** en `getFile` y `download` — headers `Accept-Ranges: bytes`, `Content-Length`, `Content-Range` + `206 Partial Content` cuando el cliente envía `Range: bytes=start-end`. Esto mejora la visualización de PDFs en el navegador (carga progresiva).
+- `stat` reemplaza `access` para obtener el tamaño del archivo además de verificar existencia.
+
 ## Pendientes / Riesgos
 
 - Migración Prisma debe crearse/aplicarse localmente (`npm run db:migrate -- --name apuntes_module`).

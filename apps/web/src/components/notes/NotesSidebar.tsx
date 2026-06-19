@@ -1,7 +1,9 @@
 "use client";
 
+import { Star } from "lucide-react";
 import type { NoteItem } from "./types";
 import type { NoteContributor } from "@/lib/api-helpers";
+import { DocumentFileIcon } from "./DocumentFileIcon";
 
 type NotesSidebarProps = {
   notes: NoteItem[];
@@ -27,11 +29,20 @@ export function NotesSidebar({ notes, onNoteClick, contributors }: NotesSidebarP
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
         <h3 className="font-bold text-slate-900">Apuntes destacados</h3>
         {featured.length ? (
-          featured.map((n) => (
-            <button key={n.id} className="mt-2 block text-left text-sm font-medium text-indigo-700 hover:underline" onClick={() => onNoteClick(n.id)}>
-              {n.title} — {n.rating.average.toFixed(1)} ★
-            </button>
-          ))
+          <div className="mt-3 space-y-2">
+            {featured.map((n) => (
+              <button key={n.id} className="flex w-full items-center gap-2 rounded-lg border border-slate-100 p-2 text-left transition hover:border-indigo-200 hover:bg-slate-50" onClick={() => onNoteClick(n.id)}>
+                <DocumentFileIcon fileType={n.file.fileType} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-slate-800">{n.title}</p>
+                  <p className="flex items-center gap-1 text-[11px] text-slate-500">
+                    <Star className="h-3 w-3 text-amber-500" />
+                    {n.rating.average.toFixed(1)} · {n.stats.downloads} descargas
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
         ) : (
           <p className="mt-2 text-sm text-slate-500">Aún no hay apuntes destacados.</p>
         )}
