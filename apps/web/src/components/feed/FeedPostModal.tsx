@@ -38,7 +38,21 @@ export function FeedPostModal({ open, post, comments, onClose, onComment, onLike
       {post.content ? <p className="mt-2 text-sm text-slate-700">{post.content}</p> : null}
       {post.sharedEntity ? <div className="mt-2"><SharedEntityCard entity={post.sharedEntity} /></div> : null}
       {media.length ? <div className="mt-3"><FeedMediaGallery images={media} onSelect={setViewerIndex} /></div> : null}
-      <PostActions post={post} onLike={onLikePost} onComment={() => {}} onSave={onSavePost} onShare={onSharePost} onReport={onReportPost} onHide={onHidePost} onDelete={onDeletePost} />
+      <PostActions
+        likes={post.stats.likes}
+        comments={post.stats.comments}
+        saves={post.stats.saves}
+        liked={post.viewerState.liked}
+        saved={post.viewerState.saved}
+        isMine={post.viewerState.isMine}
+        onLike={() => onLikePost(post.id)}
+        onComment={() => {}}
+        onSave={() => onSavePost(post.id)}
+        onShare={() => onSharePost(post.id)}
+        onReport={() => onReportPost(post.id)}
+        onHide={() => onHidePost(post.id)}
+        onDelete={() => onDeletePost(post.id)}
+      />
       <div className="my-3 border-t" />
       <div className="mb-3 flex items-center justify-between"><p className="text-xs font-semibold text-slate-600">Comentarios</p><select value={filter} onChange={(event) => setFilter(event.target.value as SortFilter)} className="rounded-md border px-2 py-1 text-xs"><option value="relevant">Más relevantes</option><option value="recent">Más recientes</option><option value="all">Todos</option></select></div>
       <CommentList comments={sorted} onLike={(commentId) => onLikeComment(post.id, commentId)} onReply={(comment) => { setReplyTo(comment); setValue(`@${comment.author.name} `); }} />

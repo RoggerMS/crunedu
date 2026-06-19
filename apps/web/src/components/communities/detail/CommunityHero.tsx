@@ -1,4 +1,5 @@
-import { Share2, UserPlus } from "lucide-react";
+import { Link2, PencilLine, Share2, UserPlus, Users } from "lucide-react";
+import { ActionMenu, type ActionMenuItem } from "@/components/ActionMenu";
 import type { CommunityDetailModel } from "./types";
 
 type Props = {
@@ -9,11 +10,21 @@ type Props = {
   joining: boolean;
   onJoin: () => void;
   onShare: () => void;
+  onCopyLink: () => void;
+  onManageMembers?: () => void;
+  onEdit?: () => void;
 };
 
-export function CommunityHero({ community, isCreator, isMember, isPrivate, joining, onJoin, onShare }: Props) {
+export function CommunityHero({ community, isCreator, isMember, isPrivate, joining, onJoin, onShare, onCopyLink, onManageMembers, onEdit }: Props) {
   const isJoined = isMember || isCreator;
   const membersLabel = `${community.membersCount} ${community.membersCount === 1 ? "miembro" : "miembros"}`;
+
+  const menuItems: ActionMenuItem[] = [
+    { key: "copy", label: "Copiar enlace", icon: Link2, onSelect: onCopyLink },
+    { key: "share", label: "Compartir", icon: Share2, onSelect: onShare },
+    ...(onManageMembers ? [{ key: "members", label: "Gestionar miembros", icon: Users, onSelect: onManageMembers }] : []),
+    ...(isCreator && onEdit ? [{ key: "edit", label: "Editar comunidad", icon: PencilLine, onSelect: onEdit }] : []),
+  ];
 
   return (
     <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -36,17 +47,14 @@ export function CommunityHero({ community, isCreator, isMember, isPrivate, joini
             <p className="mt-1 text-sm text-slate-500">{community.visibilityLabel} · {membersLabel}</p>
             <p className="mt-2 max-w-3xl text-slate-700">{community.description}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {isJoined ? null : (
               <button onClick={onJoin} disabled={joining} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
                 <UserPlus className="h-4 w-4" />
                 {joining ? "Procesando..." : isPrivate ? "Solicitar acceso" : "Unirse"}
               </button>
             )}
-            <button onClick={onShare} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700">
-              <Share2 className="h-4 w-4" />
-              Compartir
-            </button>
+            <ActionMenu items={menuItems} ariaLabel="Opciones de la comunidad" />
           </div>
         </div>
       </div>

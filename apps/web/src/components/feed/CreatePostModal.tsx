@@ -120,12 +120,47 @@ export function CreatePostModal(props: CreatePostModalProps) {
 
   if (!props.open) return null;
 
+  const primaryTypes = [
+    { id: "publicacion", icon: MessageSquarePlus, label: "Publicación" },
+    { id: "apunte", icon: NotebookPen, label: "Apunte" },
+    { id: "pregunta", icon: MessageCircle, label: "Pregunta" },
+  ] as const;
+
+  const secondaryTypes = [
+    { id: "momento", icon: Sparkles, label: "Momento" },
+    { id: "debate", icon: AlignLeft, label: "Debate" },
+    { id: "tramite", icon: FileUp, label: "Trámite" },
+  ] as const;
+
+  const renderTypeButton = ({ id, icon: Icon, label }: { id: string; icon: typeof MessageSquarePlus; label: string }) => (
+    <button
+      key={id}
+      type="button"
+      onClick={() => {
+        if (id === "publicacion") {
+          setType(id as PostType);
+          return;
+        }
+        if (id === "pregunta") {
+          props.onClose();
+          router.push("/app/preguntas/nuevo?returnUrl=/app");
+          return;
+        }
+        props.onToast(blockedMessages[id as Exclude<PostType, "publicacion">], "info");
+      }}
+      className={`rounded-xl border px-2 py-2 text-left ${type === id ? "border-indigo-500 bg-indigo-50" : "border-slate-200"} ${id !== "publicacion" ? "opacity-70" : ""}`}
+    >
+      <Icon size={14} />
+      <p className="text-xs font-semibold">{label}</p>
+    </button>
+  );
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/45 p-3 backdrop-blur-sm" onClick={props.onClose}>
+    <div className="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-sm sm:p-3" onClick={props.onClose}>
       <div
         role="dialog"
         aria-modal
-        className="mx-auto mt-3 max-h-[93vh] w-full max-w-[720px] overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl"
+        className="flex h-full w-full flex-col overflow-y-auto bg-white p-4 sm:mx-auto sm:mt-3 sm:h-auto sm:max-h-[93vh] sm:w-full sm:max-w-[720px] sm:overflow-y-auto sm:rounded-3xl sm:p-5 sm:shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between">
@@ -133,43 +168,18 @@ export function CreatePostModal(props: CreatePostModalProps) {
             <h2 className="text-xl font-black">{isCommunityMode ? "Publicar en la comunidad" : "Crear publicación"}</h2>
             <p className="text-sm text-slate-500">{isCommunityMode ? (props.lockedCommunityName ? `Tu publicación se compartirá en ${props.lockedCommunityName}.` : "Tu publicación se compartirá en esta comunidad.") : "Comparte en el feed general o en una comunidad."}</p>
           </div>
-          <button className="rounded-lg p-1 hover:bg-slate-100" onClick={props.onClose} type="button">
+          <button className="rounded-lg p-1 hover:bg-slate-100" onClick={props.onClose} type="button" aria-label="Cerrar">
             <X size={18} />
           </button>
         </div>
 
         {isCommunityMode ? null : (
-        <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3">
-          {(
-            [
-              { id: "publicacion", icon: MessageSquarePlus, label: "Publicación" },
-              { id: "apunte", icon: NotebookPen, label: "Apunte" },
-              { id: "pregunta", icon: MessageCircle, label: "Pregunta" },
-              { id: "momento", icon: Sparkles, label: "Momento" },
-              { id: "debate", icon: AlignLeft, label: "Debate" },
-              { id: "tramite", icon: FileUp, label: "Trámite" },
-            ] as const
-          ).map(({ id, icon: Icon, label }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => {
-                if (id === "publicacion") {
-                  setType(id);
-                  return;
-                }
-                if (id === "pregunta") {
-                  props.onClose();
-                  router.push("/app/preguntas/nuevo?returnUrl=/app");
-                  return;
-                }
-                props.onToast(blockedMessages[id], "info");
-              }}
-              className={`rounded-xl border px-2 py-2 text-left ${type === id ? "border-indigo-500 bg-indigo-50" : "border-slate-200"} ${id !== "publicacion" ? "opacity-70" : ""}`}
-            >
-              <Icon size={14} />
-              <p className="text-xs font-semibold">{label}</p>
-            </button>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {primaryTypes.map((item) => renderTypeButton(item))}
+          {secondaryTypes.map((item) => (
+            <div key={item.id} className="hidden sm:block">
+              {renderTypeButton(item)}
+            </div>
           ))}
         </div>
         )}

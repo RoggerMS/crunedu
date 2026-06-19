@@ -22,6 +22,26 @@ import type { FeedAttachment } from "@/features/feed/feed.types";
 
 type CommunityMemberModel = { id: number; name: string; avatarUrl?: string | null; isCreator?: boolean };
 
+const HIDDEN_POSTS_KEY = "crunedu_hidden_posts";
+const REPORT_REASONS = ["Spam", "Contenido ofensivo", "Información falsa", "Acoso", "Otro"];
+
+function readHiddenPostIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(HIDDEN_POSTS_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function persistHiddenPostId(postId: number): void {
+  if (typeof window === "undefined") return;
+  const hidden = readHiddenPostIds();
+  hidden.add(String(postId));
+  window.localStorage.setItem(HIDDEN_POSTS_KEY, JSON.stringify([...hidden]));
+}
+
 export default function CommunityDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const communityId = Number(params.id);
@@ -139,9 +159,19 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
         title: post.title,
         content: post.content,
         createdAt: post.createdAt ? new Date(post.createdAt).toLocaleString("es-PE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "Hace poco",
+        authorId: post.author?.id,
         authorName: [post.author?.firstName, post.author?.lastName].filter(Boolean).join(" ").trim() || "Estudiante CrunEdu",
         authorAvatarUrl: post.author?.avatarUrl ?? null,
+        likes: 0,
+        commentsCount: post.commentsCount ?? 0,
+        saves: 0,
+        liked: false,
+        saved: false,
+        isMine: Boolean(user && post.author?.id === user.id),
       })) as CommunityPostModel[];
+
+      const hiddenIds = readHiddenPostIds();
+      const visiblePosts = hiddenIds.size > 0 ? mappedPosts.filter((post) => !hiddenIds.has(String(post.id))) : mappedPosts;
 
       const { members, creatorName, creatorAvatarUrl } = buildMemberList(communityResponse);
 
@@ -161,7 +191,7 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
         creatorAvatarUrl,
         isPrivate: communityResponse.isPrivate ?? false,
       });
-      setPosts(mappedPosts);
+      setPosts(visiblePosts);
 
       if (isAuthenticated && accessToken) {
         try {
@@ -206,6 +236,86 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
     if (!Number.isNaN(communityId)) void load();
   }, [communityId, accessToken]);
 
+  const handleLikePost = (postId: number) => {
+    setPosts((prev) => prev.map((post) => {
+      if (post.id !== postId) return post;
+      const liked = !post.liked;
+      return { ...post, liked, likes: Math.max(0, post.likes + (liked ? 1 : -1)) };
+    }));
+    const target = posts.find((post) => post.id === postId);
+    showToast(target?.liked ? "Me gusta quitado." : "Me gusta registrado.", "info");
+  };
+
+  const handleSavePost = (postId: number) => {
+    setPosts((prev) => prev.map((post) => {
+      if (post.id !== postId) return post;
+      const saved = !post.saved;
+      return { ...post, saved, saves: Math.max(0, post.saves + (saved ? 1 : -1)) };
+    }));
+    const target = posts.find((post) => post.id === postId);
+    showToast(target?.saved ? "Guardado quitado." : "Publicación guardada.", "info");
+  };
+
+  const handleCommentPost = (postId: number) => {
+    router.push(`/app?post=${postId}`);
+  };
+
+  const handleSharePost = async (postId: number) => {
+    try {
+      const shareUrl = `${window.location.origin}/app?post=${postId}`;
+      await navigator.clipboard.writeText(shareUrl);
+      showToast("Enlace copiado.", "success");
+    } catch {
+      showToast("No se pudo copiar el enlace.", "error");
+    }
+  };
+
+  const handleReportPost = async (postId: number) => {
+    if (!isAuthenticated || !accessToken) return requireLogin();
+    const menu = REPORT_REASONS.map((reason, index) => `${index + 1}. ${reason}`).join("\n");
+    const selected = window.prompt(`Selecciona motivo de reporte:\n${menu}`, "1");
+    if (!selected) return;
+    const index = Number(selected) - 1;
+    const reason = REPORT_REASONS[index] ?? REPORT_REASONS[4];
+    try {
+      await apiRequest("/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ targetType: "POST", targetId: postId, reason }),
+      });
+      showToast("Reporte enviado.", "success");
+    } catch (reportError) {
+      if (reportError instanceof HttpClientError && reportError.status === 401) {
+        setAccessToken("");
+        showToast("Tu sesión expiró. Inicia sesión nuevamente.", "error");
+      } else {
+        showToast("No se pudo enviar el reporte. Inténtalo nuevamente.", "error");
+      }
+    }
+  };
+
+  const handleHidePost = (postId: number) => {
+    persistHiddenPostId(postId);
+    setPosts((prev) => prev.filter((post) => post.id !== postId));
+    showToast("Publicación oculta.", "info");
+  };
+
+  const handleDeletePost = async (postId: number) => {
+    if (!isAuthenticated || !accessToken) return requireLogin();
+    try {
+      await apiRequest(`/posts/${postId}`, { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } });
+      setPosts((prev) => prev.filter((post) => post.id !== postId));
+      showToast("Publicación eliminada.", "success");
+    } catch (deleteError) {
+      if (deleteError instanceof HttpClientError && deleteError.status === 401) {
+        setAccessToken("");
+        showToast("Tu sesión expiró. Inicia sesión nuevamente.", "error");
+      } else {
+        showToast("No se pudo eliminar la publicación.", "error");
+      }
+    }
+  };
+
   if (loading) return <PageState type="loading" title="Cargando comunidad…" description="Estamos preparando el espacio de tu comunidad." />;
   if (error || !community) return <PageState type="error" title="No encontramos esta comunidad." description="Es posible que no exista o ya no esté disponible." action={<PrimaryButton type="button"><Link href="/app/comunidades">Volver a comunidades</Link></PrimaryButton>} />;
 
@@ -234,6 +344,8 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
         joining={joining}
         onJoin={onJoin}
         onShare={() => void copyLink("Enlace copiado.")}
+        onCopyLink={() => void copyLink("Enlace copiado.")}
+        onManageMembers={() => setActiveTab("miembros")}
       />
       <CommunityTabs activeTab={activeTab} onChange={setActiveTab} showSettings={isCreator} />
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -254,7 +366,17 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
               ) : (
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Únete a esta comunidad para publicar y participar.</div>
               )}
-              <CommunityPostsPanel posts={posts} onCreatePost={() => setPostModalOpen(true)} />
+              <CommunityPostsPanel
+                posts={posts}
+                onCreatePost={() => setPostModalOpen(true)}
+                onLike={handleLikePost}
+                onComment={handleCommentPost}
+                onSave={handleSavePost}
+                onShare={handleSharePost}
+                onReport={handleReportPost}
+                onHide={handleHidePost}
+                onDelete={handleDeletePost}
+              />
             </>
           )}
         </section>

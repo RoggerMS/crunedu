@@ -15,7 +15,21 @@ export function PostCard({ post, onLike, onSave, onShare, onReport, onHide, onDe
     {post.content ? <button className="mt-2 text-left text-sm text-slate-700" onClick={() => onOpenPost(post.id)}>{post.content}</button> : null}
     {media.length ? <div className="mt-2"><FeedMediaGallery images={media} onSelect={setViewerIndex} /></div> : null}
     {post.sharedEntity ? <div className="mt-2"><SharedEntityCard entity={post.sharedEntity} /></div> : null}
-    <PostActions post={post} onLike={onLike} onComment={onOpenPost} onSave={onSave} onShare={onShare} onReport={onReport} onHide={onHide} onDelete={onDelete} />
+    <PostActions
+      likes={post.stats.likes}
+      comments={post.stats.comments}
+      saves={post.stats.saves}
+      liked={post.viewerState.liked}
+      saved={post.viewerState.saved}
+      isMine={post.viewerState.isMine}
+      onLike={() => onLike(post.id)}
+      onComment={() => onOpenPost(post.id)}
+      onSave={() => onSave(post.id)}
+      onShare={() => onShare(post.id)}
+      onReport={() => onReport(post.id)}
+      onHide={() => onHide(post.id)}
+      onDelete={() => onDelete(post.id)}
+    />
     <FeedMediaViewer open={viewerIndex !== null} media={media} index={viewerIndex ?? 0} onClose={() => setViewerIndex(null)} onPrev={() => setViewerIndex((prev) => prev === null ? 0 : (prev - 1 + media.length) % media.length)} onNext={() => setViewerIndex((prev) => prev === null ? 0 : (prev + 1) % media.length)} />
   </article>;
 }

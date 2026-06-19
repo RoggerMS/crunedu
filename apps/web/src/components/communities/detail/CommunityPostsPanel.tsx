@@ -1,6 +1,19 @@
+import { PostActions } from "@/components/feed/PostActions";
 import type { CommunityPostModel } from "./types";
 
-export function CommunityPostsPanel({ posts, onCreatePost }: { posts: CommunityPostModel[]; onCreatePost: () => void }) {
+type Props = {
+  posts: CommunityPostModel[];
+  onCreatePost: () => void;
+  onLike: (postId: number) => void;
+  onComment: (postId: number) => void;
+  onSave: (postId: number) => void;
+  onShare: (postId: number) => void;
+  onReport: (postId: number) => void;
+  onHide: (postId: number) => void;
+  onDelete?: (postId: number) => void;
+};
+
+export function CommunityPostsPanel({ posts, onCreatePost, onLike, onComment, onSave, onShare, onReport, onHide, onDelete }: Props) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5">
       <div className="mb-4 flex items-center justify-between">
@@ -28,6 +41,21 @@ export function CommunityPostsPanel({ posts, onCreatePost }: { posts: CommunityP
                 </header>
                 {post.title ? <h3 className="mt-3 font-semibold text-slate-900">{post.title}</h3> : null}
                 <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{post.content}</p>
+                <PostActions
+                  likes={post.likes}
+                  comments={post.commentsCount}
+                  saves={post.saves}
+                  liked={post.liked}
+                  saved={post.saved}
+                  isMine={post.isMine}
+                  onLike={() => onLike(post.id)}
+                  onComment={() => onComment(post.id)}
+                  onSave={() => onSave(post.id)}
+                  onShare={() => onShare(post.id)}
+                  onReport={() => onReport(post.id)}
+                  onHide={() => onHide(post.id)}
+                  {...(onDelete && post.isMine ? { onDelete: () => onDelete(post.id) } : {})}
+                />
               </article>
             );
           })}

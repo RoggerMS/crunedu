@@ -20,8 +20,15 @@ export type CommunityPostModel = {
   title?: string;
   content: string;
   createdAt?: string;
+  authorId?: number;
   authorName?: string;
   authorAvatarUrl?: string | null;
+  likes: number;
+  commentsCount: number;
+  saves: number;
+  liked: boolean;
+  saved: boolean;
+  isMine: boolean;
 };
 
 export type ToastFn = (message: string, type?: "success" | "error" | "info") => void;
