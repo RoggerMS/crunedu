@@ -20,6 +20,8 @@ type CreatePostModalProps = {
   initialType: PostType;
   communities: CommunityLite[];
   isAuthenticated: boolean;
+  mode?: "feed" | "community";
+  lockedCommunityName?: string;
   onClose: () => void;
   onRequireLogin: () => void;
   onSaveDraft: (data: CreatePostSubmitPayload) => void;
@@ -29,6 +31,7 @@ type CreatePostModalProps = {
 
 export function CreatePostModal(props: CreatePostModalProps) {
   const router = useRouter();
+  const isCommunityMode = props.mode === "community";
   const [type, setType] = useState<PostType>(props.initialType);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -38,6 +41,13 @@ export function CreatePostModal(props: CreatePostModalProps) {
   const [attachedImages, setAttachedImages] = useState<Array<{ id: string; mediaId: string; previewUrl?: string }>>([]);
 
   useEffect(() => setType(props.initialType), [props.initialType, props.open]);
+
+  useEffect(() => {
+    if (isCommunityMode && props.communities[0]) {
+      setCommunityId(String(props.communities[0].id));
+      setVisibility("comunidad");
+    }
+  }, [isCommunityMode, props.communities]);
 
   const hasContent = Boolean(content.trim().length > 0 || attachedImages.length > 0);
   const canSubmit = props.isAuthenticated && type === "publicacion" && hasContent;
@@ -120,14 +130,15 @@ export function CreatePostModal(props: CreatePostModalProps) {
       >
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-black">Crear publicación</h2>
-            <p className="text-sm text-slate-500">Comparte en el feed general o en una comunidad.</p>
+            <h2 className="text-xl font-black">{isCommunityMode ? "Publicar en la comunidad" : "Crear publicación"}</h2>
+            <p className="text-sm text-slate-500">{isCommunityMode ? (props.lockedCommunityName ? `Tu publicación se compartirá en ${props.lockedCommunityName}.` : "Tu publicación se compartirá en esta comunidad.") : "Comparte en el feed general o en una comunidad."}</p>
           </div>
           <button className="rounded-lg p-1 hover:bg-slate-100" onClick={props.onClose} type="button">
             <X size={18} />
           </button>
         </div>
 
+        {isCommunityMode ? null : (
         <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3">
           {(
             [
@@ -161,6 +172,7 @@ export function CreatePostModal(props: CreatePostModalProps) {
             </button>
           ))}
         </div>
+        )}
 
         <div className="mt-4 space-y-3">
           <textarea
@@ -189,19 +201,26 @@ export function CreatePostModal(props: CreatePostModalProps) {
 
           <FeedAttachmentPreview files={[]} images={attachedImages} onRemoveImage={removeAttachedImage} />
 
-          <select
-            value={communityId}
-            onChange={(e) => setCommunityId(e.target.value)}
-            className="w-full rounded-xl border px-3 py-2 text-sm"
-          >
-            <option value="">Feed general</option>
-            {props.communities.map((community) => (
-              <option key={community.id} value={String(community.id)}>
-                {community.name}
-              </option>
-            ))}
-          </select>
+          {isCommunityMode ? (
+            <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              {props.lockedCommunityName ?? "Esta comunidad"}
+            </div>
+          ) : (
+            <select
+              value={communityId}
+              onChange={(e) => setCommunityId(e.target.value)}
+              className="w-full rounded-xl border px-3 py-2 text-sm"
+            >
+              <option value="">Feed general</option>
+              {props.communities.map((community) => (
+                <option key={community.id} value={String(community.id)}>
+                  {community.name}
+                </option>
+              ))}
+            </select>
+          )}
 
+          {isCommunityMode ? null : (
           <select
             value={visibility}
             onChange={(e) => setVisibility(e.target.value as "todos" | "comunidad")}
@@ -210,6 +229,7 @@ export function CreatePostModal(props: CreatePostModalProps) {
             <option value="todos">Visible para todos</option>
             <option value="comunidad">Solo en comunidad</option>
           </select>
+          )}
         </div>
 
         <div className="mt-4 flex justify-end gap-2">

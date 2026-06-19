@@ -9,10 +9,10 @@ export type CommunityDetailModel = {
   postsCount: number;
   createdAt?: string;
   visibilityLabel: string;
-  category?: string;
   creatorName?: string;
+  creatorAvatarUrl?: string | null;
   isPrivate?: boolean;
-  members?: Array<{ id: number; name: string; avatarUrl?: string | null; status?: string }>;
+  members?: Array<{ id: number; name: string; avatarUrl?: string | null; isCreator?: boolean }>;
 };
 
 export type CommunityPostModel = {
@@ -22,7 +22,6 @@ export type CommunityPostModel = {
   createdAt?: string;
   authorName?: string;
   authorAvatarUrl?: string | null;
-  authorRole?: string;
 };
 
 export type ToastFn = (message: string, type?: "success" | "error" | "info") => void;

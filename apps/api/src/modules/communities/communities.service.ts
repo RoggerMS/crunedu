@@ -32,7 +32,7 @@ export class CommunitiesService {
 
     const response = communities.map((community: any) => ({
       ...community,
-      membersCount: community._count.members,
+      membersCount: Math.max(community._count.members, 1),
       postsCount: community._count.posts,
     }));
 
@@ -53,11 +53,66 @@ export class CommunitiesService {
         coverUrl: true,
         status: true,
         createdAt: true,
+        creator: {
+          select: {
+            id: true,
+            profile: { select: { firstName: true, lastName: true, avatarUrl: true } },
+          },
+        },
+        members: {
+          take: 50,
+          orderBy: { joinedAt: "desc" },
+          select: {
+            id: true,
+            role: true,
+            user: {
+              select: {
+                id: true,
+                profile: { select: { firstName: true, lastName: true, avatarUrl: true } },
+              },
+            },
+          },
+        },
         _count: { select: { members: true, posts: true } },
       },
     });
     if (!community) throw new NotFoundException("Comunidad no encontrada.");
-    return { ...community, membersCount: community._count.members, postsCount: community._count.posts };
+
+    const creatorUserId = community.creator?.id ?? null;
+    const creatorProfile = community.creator?.profile;
+    const creator = {
+      id: creatorUserId,
+      firstName: creatorProfile?.firstName ?? null,
+      lastName: creatorProfile?.lastName ?? null,
+      avatarUrl: creatorProfile?.avatarUrl ?? null,
+    };
+
+    const members = community.members.map((member: any) => ({
+      id: member.id,
+      userId: member.user?.id ?? null,
+      firstName: member.user?.profile?.firstName ?? null,
+      lastName: member.user?.profile?.lastName ?? null,
+      avatarUrl: member.user?.profile?.avatarUrl ?? null,
+      role: member.role,
+      isCreator: creatorUserId != null && member.user?.id === creatorUserId,
+    }));
+
+    return {
+      id: community.id,
+      name: community.name,
+      slug: community.slug,
+      description: community.description,
+      rules: community.rules,
+      avatarUrl: community.avatarUrl,
+      coverUrl: community.coverUrl,
+      status: community.status,
+      createdAt: community.createdAt,
+      isPrivate: false,
+      membersCount: Math.max(community._count.members, 1),
+      postsCount: community._count.posts,
+      creator,
+      members,
+    };
   }
 
 

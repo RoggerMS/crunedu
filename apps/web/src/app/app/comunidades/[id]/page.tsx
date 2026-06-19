@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAccessToken } from "@/hooks/useAccessToken";
+import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { apiRequest, HttpClientError } from "@/lib/http-client";
@@ -12,7 +13,6 @@ import { CommunityTabs } from "@/components/communities/detail/CommunityTabs";
 import { CommunityComposer } from "@/components/communities/detail/CommunityComposer";
 import { CommunityPostsPanel } from "@/components/communities/detail/CommunityPostsPanel";
 import { CommunityMembersCard } from "@/components/communities/detail/CommunityMembersCard";
-import { CommunityInviteCard } from "@/components/communities/detail/CommunityInviteCard";
 import { CommunityRulesCard } from "@/components/communities/detail/CommunityRulesCard";
 import { CommunityInfoPanel } from "@/components/communities/detail/CommunityInfoPanel";
 import { CreatePostModal } from "@/components/feed/CreatePostModal";
@@ -20,13 +20,16 @@ import type { CommunityDetailModel, CommunityPostModel } from "@/components/comm
 import type { CreatePostSubmitPayload, LocalAttachmentFile } from "@/components/feed/types";
 import type { FeedAttachment } from "@/features/feed/feed.types";
 
+type CommunityMemberModel = { id: number; name: string; avatarUrl?: string | null; isCreator?: boolean };
+
 export default function CommunityDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const communityId = Number(params.id);
   const { accessToken, isAuthenticated, setAccessToken } = useAccessToken();
+  const { user } = useAuth();
   const [community, setCommunity] = useState<CommunityDetailModel | null>(null);
   const [posts, setPosts] = useState<CommunityPostModel[]>([]);
-  const [activeTab, setActiveTab] = useState("inicio");
+  const [activeTab, setActiveTab] = useState("publicaciones");
   const [isMember, setIsMember] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -50,6 +53,8 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
     showToast("Inicia sesión para participar en la comunidad.", "info");
     router.push(`/login?returnUrl=/app/comunidades/${communityId}`);
   };
+
+  const authorInitial = (user?.firstName || user?.lastName || "U").trim().charAt(0).toUpperCase() || "U";
 
   async function createCommunityPost(data: CreatePostSubmitPayload) {
     if (!isAuthenticated || !accessToken) return requireLogin();
@@ -95,7 +100,30 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
     await load();
   }
 
+  function buildMemberList(communityResponse: any): { members: CommunityMemberModel[]; creatorName: string; creatorAvatarUrl: string | null } {
+    const creator = communityResponse.creator ?? null;
+    const creatorName = [creator?.firstName, creator?.lastName].filter(Boolean).join(" ").trim() || "Creador";
+    const creatorAvatarUrl = creator?.avatarUrl ?? null;
 
+    const apiMembers: CommunityMemberModel[] = Array.isArray(communityResponse.members)
+      ? communityResponse.members.map((member: any, index: number) => ({
+          id: member.id ?? index + 1,
+          name: [member.firstName, member.lastName].filter(Boolean).join(" ").trim() || "Miembro",
+          avatarUrl: member.avatarUrl ?? null,
+          isCreator: Boolean(member.isCreator),
+        }))
+      : [];
+
+    const creatorAlreadyListed = apiMembers.some((member) => member.isCreator);
+    if (!creatorAlreadyListed && creator) {
+      return {
+        members: [{ id: creator.id ? -creator.id : -1, name: creatorName, avatarUrl: creatorAvatarUrl, isCreator: true }, ...apiMembers],
+        creatorName,
+        creatorAvatarUrl,
+      };
+    }
+    return { members: apiMembers, creatorName, creatorAvatarUrl };
+  }
 
   async function load() {
     setLoading(true);
@@ -111,37 +139,26 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
         title: post.title,
         content: post.content,
         createdAt: post.createdAt ? new Date(post.createdAt).toLocaleString("es-PE", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "Hace poco",
-        authorName: [post.author?.firstName, post.author?.lastName].filter(Boolean).join(" ") || "Estudiante CrunEdu",
-        authorAvatarUrl: post.author?.avatarUrl,
-        authorRole: post.authorRole ?? "Miembro activo",
+        authorName: [post.author?.firstName, post.author?.lastName].filter(Boolean).join(" ").trim() || "Estudiante CrunEdu",
+        authorAvatarUrl: post.author?.avatarUrl ?? null,
       })) as CommunityPostModel[];
 
-      const members = Array.isArray(communityResponse.members)
-        ? communityResponse.members.map((member: any, index: number) => ({
-            id: member.id ?? index + 1,
-            name: [member.firstName, member.lastName].filter(Boolean).join(" ") || member.name || "Miembro",
-            avatarUrl: member.avatarUrl,
-            status: member.status ?? (index < 2 ? "En línea" : `Hace ${index} hora${index === 1 ? "" : "s"}`),
-          }))
-        : [];
+      const { members, creatorName, creatorAvatarUrl } = buildMemberList(communityResponse);
 
       setCommunity({
         id: communityResponse.id,
         name: communityResponse.name,
-        description: communityResponse.description ?? "Espacio para compartir recursos, dudas y publicaciones académicas.",
-        rules: (communityResponse.rules?.split("\n").filter(Boolean) ?? [
-          "Sé respetuoso con todos los miembros.",
-          "No se permite spam ni publicidad.",
-          "Usa contenido relacionado con el curso.",
-          "Ayuda y colabora con la comunidad.",
-        ]).slice(0, 4),
+        description: communityResponse.description?.trim() || "Esta comunidad aún no tiene una descripción.",
+        rules: communityResponse.rules ? communityResponse.rules.split("\n").map((r: string) => r.trim()).filter(Boolean) : [],
         avatarUrl: communityResponse.avatarUrl,
         coverUrl: communityResponse.coverUrl,
         membersCount: communityResponse.membersCount ?? Math.max(members.length, 1),
         members,
         postsCount: communityResponse.postsCount ?? mappedPosts.length,
         visibilityLabel: communityResponse.isPrivate ? "Grupo privado" : "Grupo público",
-        creatorName: communityResponse.creator?.firstName ?? "Creador",
+        createdAt: communityResponse.createdAt ? new Date(communityResponse.createdAt).toLocaleDateString("es-PE", { year: "numeric", month: "long", day: "numeric" }) : "No disponible",
+        creatorName,
+        creatorAvatarUrl,
         isPrivate: communityResponse.isPrivate ?? false,
       });
       setPosts(mappedPosts);
@@ -192,11 +209,95 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
   if (loading) return <PageState type="loading" title="Cargando comunidad…" description="Estamos preparando el espacio de tu comunidad." />;
   if (error || !community) return <PageState type="error" title="No encontramos esta comunidad." description="Es posible que no exista o ya no esté disponible." action={<PrimaryButton type="button"><Link href="/app/comunidades">Volver a comunidades</Link></PrimaryButton>} />;
 
-  const openQuestionFlow = () => {
-    const params = new URLSearchParams({ communityId: String(communityId) });
-    if (community?.name) params.set("communityName", community.name);
-    router.push(`/app/preguntas/nuevo?${params.toString()}`);
-  };
+  return (
+    <main className="mx-auto w-full max-w-[1500px] space-y-4 px-2 py-2 md:px-4 md:py-4">
+      <CreatePostModal
+        open={postModalOpen}
+        initialType="publicacion"
+        mode="community"
+        lockedCommunityName={community.name}
+        communities={community ? [{ id: community.id, name: community.name }] : []}
+        isAuthenticated={isAuthenticated}
+        onClose={() => setPostModalOpen(false)}
+        onRequireLogin={requireLogin}
+        onToast={showToast}
+        onSaveDraft={() => undefined}
+        onSubmit={createCommunityPost}
+      />
+      {toast ? <div className={`fixed bottom-5 right-5 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}
+      <Link href="/app/comunidades" className="inline-flex text-sm font-semibold text-indigo-700">← Comunidades</Link>
+      <CommunityHero
+        community={community}
+        isCreator={isCreator}
+        isMember={isMember}
+        isPrivate={community.isPrivate}
+        joining={joining}
+        onJoin={onJoin}
+        onShare={() => void copyLink("Enlace copiado.")}
+      />
+      <CommunityTabs activeTab={activeTab} onChange={setActiveTab} showSettings={isCreator} />
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="min-w-0 space-y-4">
+          {activeTab === "informacion" ? (
+            <CommunityInfoPanel community={community} />
+          ) : activeTab === "miembros" ? (
+            <CommunityMembersView members={community.members ?? []} count={community.membersCount} />
+          ) : (
+            <>
+              {isMember || isCreator ? (
+                <CommunityComposer
+                  onOpenPost={() => setPostModalOpen(true)}
+                  authorInitial={authorInitial}
+                  authorAvatarUrl={user?.avatarUrl ?? null}
+                  authorName={user ? `${user.firstName} ${user.lastName}`.trim() : undefined}
+                />
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Únete a esta comunidad para publicar y participar.</div>
+              )}
+              <CommunityPostsPanel posts={posts} onCreatePost={() => setPostModalOpen(true)} />
+            </>
+          )}
+        </section>
+        <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+          <CommunityMembersCard count={community.membersCount} members={community.members} />
+          <CommunityRulesCard rules={community.rules} />
+        </aside>
+      </div>
+    </main>
+  );
+}
 
-  return <main className="mx-auto w-full max-w-[1500px] space-y-4 px-2 py-2 md:px-4 md:py-4"><CreatePostModal open={postModalOpen} initialType="publicacion" communities={community ? [{ id: community.id, name: community.name }] : []} isAuthenticated={isAuthenticated} onClose={() => setPostModalOpen(false)} onRequireLogin={requireLogin} onToast={showToast} onSaveDraft={() => showToast("Los borradores de comunidad se guardarán desde el feed principal.", "info")} onSubmit={createCommunityPost} />{toast ? <div className={`fixed bottom-5 right-5 z-50 rounded-xl px-4 py-2 text-sm font-semibold text-white ${toast.type === "error" ? "bg-rose-600" : toast.type === "info" ? "bg-slate-700" : "bg-indigo-600"}`}>{toast.message}</div> : null}<Link href="/app/comunidades" className="inline-flex text-sm font-semibold text-indigo-700">← Comunidades</Link><CommunityHero community={community} isCreator={isCreator} isMember={isMember} isPrivate={community.isPrivate} joining={joining} onJoin={onJoin} onInvite={() => showToast("Invitaciones próximamente.", "info")} onEdit={() => showToast("Configuración de comunidad próximamente.", "info")} onShare={() => void copyLink("Enlace copiado.")} onMenu={() => showToast(isCreator ? "Opciones de administración próximamente." : "Opciones de comunidad próximamente.", "info")} /><CommunityTabs activeTab={activeTab} onChange={setActiveTab} showSettings={isCreator} /><div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]"><section className="min-w-0 space-y-4">{isMember || isCreator ? <CommunityComposer onOpenPost={() => setPostModalOpen(true)} onOpenQuestion={openQuestionFlow} showToast={showToast} /> : <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Únete a esta comunidad para publicar y participar.</div>}{activeTab !== "informacion" ? <CommunityPostsPanel posts={posts} onCreatePost={() => setPostModalOpen(true)} /> : <CommunityInfoPanel community={community} />}</section><aside className="space-y-4 xl:sticky xl:top-24 xl:self-start"><CommunityMembersCard count={community.membersCount} creatorName={community.creatorName ?? "Creador"} members={community.members} /><CommunityInviteCard url={inviteUrl} onCopy={() => void copyLink("Enlace copiado.")} onInvite={() => showToast("Invitaciones próximamente.", "info")} /><CommunityRulesCard rules={community.rules} /></aside></div></main>;
+function CommunityMembersView({ members, count }: { members: CommunityMemberModel[]; count: number }) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-bold">Miembros</h2>
+        <span className="text-sm text-slate-500">{count} {count === 1 ? "miembro" : "miembros"}</span>
+      </div>
+      {members.length ? (
+        <ul className="divide-y divide-slate-100">
+          {members.map((member) => {
+            const initial = member.name.trim().charAt(0).toUpperCase() || "U";
+            return (
+              <li key={member.id} className="flex items-center gap-3 py-3">
+                <div className="h-10 w-10 overflow-hidden rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">
+                  {member.avatarUrl ? (
+                    <img src={member.avatarUrl} alt={member.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">{initial}</div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-900">{member.name}</p>
+                  {member.isCreator ? <span className="text-xs font-semibold text-indigo-600">Creador</span> : null}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="text-sm text-slate-500">La lista de miembros estará disponible cuando la comunidad tenga actividad real.</p>
+      )}
+    </section>
+  );
 }

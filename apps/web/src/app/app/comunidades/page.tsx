@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Lock, MoreHorizontal, Users } from "lucide-react";
+import { FileText, Lock, Users } from "lucide-react";
 import type { Community as ApiCommunity } from "@crunedu/shared";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useCommunities } from "@/hooks/useCommunities";
@@ -21,17 +21,13 @@ type CommunityCardModel = {
   description: string;
   cover: string;
   icon: string;
-  tags: string[];
   membersCount: number;
   weeklyPosts: number;
   isMember: boolean;
   privacy: Privacy;
   status: CommunityStatus;
   createdAt: string;
-  sampleMembers: string[];
 };
-
-const TAG_POOL = ["UNE", "Apoyo académico", "Trámites", "General", "Cursos"];
 
 export default function CommunitiesPage() {
   const router = useRouter();
@@ -132,14 +128,12 @@ function mapCommunityToCardModel(apiCommunity: ApiCommunity, joinedOverlay: Reco
     description: apiCommunity.description ?? "Comunidad académica de CrunEdu.",
     cover: apiCommunity.coverUrl ? "from-indigo-200 via-violet-100 to-white" : "from-sky-200 via-indigo-100 to-white",
     icon: (apiCommunity.name.trim().charAt(0) || "C").toUpperCase(),
-    tags: TAG_POOL.slice(0, 3),
     membersCount: apiCommunity.membersCount ?? 0,
     weeklyPosts: Math.min(apiCommunity.postsCount ?? 0, 99),
     isMember,
     privacy: isPrivate ? "privada" : "publica",
     status: getStatus(apiCommunity),
     createdAt: apiCommunity.createdAt,
-    sampleMembers: ["CR", "UN", "ED"],
   };
 }
 
@@ -181,5 +175,5 @@ function persistBooleanMap(key: string, value: Record<string, boolean>) {
 
 function CommunityCard({ community, requestSent, onJoin, onEnter }: { community: CommunityCardModel; requestSent: boolean; onJoin: (community: CommunityCardModel) => void; onEnter: () => void; }) {
   const action = community.isMember ? "Entrar" : community.privacy === "privada" ? (requestSent ? "Solicitud enviada" : "Solicitar acceso") : "Unirse";
-  return <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><button onClick={onEnter} className={`h-16 w-full bg-gradient-to-r ${community.cover}`} /><div className="space-y-3 p-4"><div className="flex items-start justify-between gap-3"><button className="flex items-start gap-3 text-left" onClick={onEnter}><div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-100 text-sm font-bold text-indigo-700">{community.icon}</div><div><h3 className="text-sm font-semibold text-slate-900">{community.name}</h3><p className="line-clamp-2 text-xs text-slate-600">{community.description}</p></div></button><button className="rounded-lg p-1 text-slate-500"><MoreHorizontal size={16} /></button></div><div className="flex items-center gap-3 text-[11px] text-slate-500"><span className="inline-flex items-center gap-1"><Users size={12} /> {community.membersCount}</span><span className="inline-flex items-center gap-1"><FileText size={12} /> {community.weeklyPosts} esta semana</span></div><button className="w-full rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-70" disabled={action === "Solicitud enviada"} onClick={() => (action === "Entrar" ? onEnter() : onJoin(community))}>{action}</button>{community.privacy === "privada" ? <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-700"><Lock size={10} /> Privada</span> : null}</div></article>;
+  return <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><button onClick={onEnter} className={`h-16 w-full bg-gradient-to-r ${community.cover}`} /><div className="space-y-3 p-4"><div className="flex items-start justify-between gap-3"><button className="flex items-start gap-3 text-left" onClick={onEnter}><div className="grid h-10 w-10 place-items-center rounded-xl bg-indigo-100 text-sm font-bold text-indigo-700">{community.icon}</div><div><h3 className="text-sm font-semibold text-slate-900">{community.name}</h3><p className="line-clamp-2 text-xs text-slate-600">{community.description}</p></div></button></div><div className="flex items-center gap-3 text-[11px] text-slate-500"><span className="inline-flex items-center gap-1"><Users size={12} /> {community.membersCount}</span><span className="inline-flex items-center gap-1"><FileText size={12} /> {community.weeklyPosts} publicaciones</span></div><button className="w-full rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-70" disabled={action === "Solicitud enviada"} onClick={() => (action === "Entrar" ? onEnter() : onJoin(community))}>{action}</button>{community.privacy === "privada" ? <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-[11px] text-slate-700"><Lock size={10} /> Privada</span> : null}</div></article>;
 }

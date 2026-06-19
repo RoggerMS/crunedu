@@ -1,3 +1,0 @@
-export function CommunityInviteCard({ url, onCopy, onInvite }: { url: string; onCopy: () => void; onInvite: () => void }) {
-  return <aside className="rounded-2xl border border-slate-200 bg-white p-4"><h3 className="font-semibold">Invitar miembros</h3><p className="mt-1 text-sm text-slate-600">Comparte el enlace de esta comunidad para invitar a más personas.</p><div className="mt-3 flex gap-2"><input readOnly value={url} className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-xs" /><button onClick={onCopy} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">Copiar</button></div><button onClick={onInvite} className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Invitar miembros</button></aside>;
-}

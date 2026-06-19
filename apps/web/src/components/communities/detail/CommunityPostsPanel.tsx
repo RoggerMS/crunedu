@@ -1,6 +1,46 @@
-import { Bookmark, MessageSquare, MoreHorizontal, Share2, ThumbsUp } from "lucide-react";
 import type { CommunityPostModel } from "./types";
 
 export function CommunityPostsPanel({ posts, onCreatePost }: { posts: CommunityPostModel[]; onCreatePost: () => void }) {
-  return <section className="rounded-2xl border border-slate-200 bg-white p-5"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">Publicaciones recientes</h2><select className="rounded-lg border border-slate-300 px-2 py-1 text-sm"><option>Más recientes</option></select></div>{posts.length ? <div className="space-y-3">{posts.map((post) => <article key={post.id} className="rounded-xl border border-slate-200 p-4"><header className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><div className="h-10 w-10 overflow-hidden rounded-full bg-indigo-100">{post.authorAvatarUrl ? <img src={post.authorAvatarUrl} alt={post.authorName ?? "Autor"} className="h-full w-full object-cover" /> : null}</div><div><p className="text-sm font-semibold text-slate-900">{post.authorName ?? "Estudiante CrunEdu"}</p><p className="text-xs text-slate-500">{post.authorRole ?? "Miembro activo"} · {post.createdAt ?? "Hace poco"}</p></div></div><button className="rounded-lg p-1 text-slate-500"><MoreHorizontal className="h-4 w-4" /></button></header>{post.title ? <h3 className="mt-3 font-semibold text-slate-900">{post.title}</h3> : null}<p className="mt-2 text-sm text-slate-700">{post.content}</p><footer className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 sm:grid-cols-4">{[[ThumbsUp, "Me gusta"], [MessageSquare, "Comentar"], [Bookmark, "Guardar"], [Share2, "Compartir"]].map(([Icon, label]) => <button key={label as string} className="inline-flex items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"><Icon className="h-4 w-4" />{label as string}</button>)}</footer></article>)}</div> : <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center"><h3 className="font-bold text-slate-900">Aún no hay publicaciones</h3><p className="mt-1 text-sm text-slate-600">Sé el primero en compartir algo con esta comunidad.</p><button onClick={onCreatePost} className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Crear primera publicación</button></div>}</section>;
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-bold">Publicaciones recientes</h2>
+      </div>
+      {posts.length ? (
+        <div className="space-y-3">
+          {posts.map((post) => {
+            const authorName = post.authorName ?? "Estudiante CrunEdu";
+            const initial = authorName.trim().charAt(0).toUpperCase() || "U";
+            return (
+              <article key={post.id} className="rounded-xl border border-slate-200 p-4">
+                <header className="flex items-center gap-3">
+                  <div className="h-10 w-10 overflow-hidden rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">
+                    {post.authorAvatarUrl ? (
+                      <img src={post.authorAvatarUrl} alt={authorName} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">{initial}</div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{authorName}</p>
+                    <p className="text-xs text-slate-500">{post.createdAt ?? "Hace poco"}</p>
+                  </div>
+                </header>
+                {post.title ? <h3 className="mt-3 font-semibold text-slate-900">{post.title}</h3> : null}
+                <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{post.content}</p>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
+          <h3 className="font-bold text-slate-900">Aún no hay publicaciones</h3>
+          <p className="mt-1 text-sm text-slate-600">Sé la primera persona en compartir algo en esta comunidad.</p>
+          <button onClick={onCreatePost} className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">
+            Crear primera publicación
+          </button>
+        </div>
+      )}
+    </section>
+  );
 }
