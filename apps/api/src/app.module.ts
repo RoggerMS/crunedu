@@ -17,6 +17,7 @@ import { RateLimitGuard } from "./modules/core/rate-limit.guard";
 import { MarketplaceModule } from "./modules/marketplace/marketplace.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SearchModule } from "./modules/search/search.module";
+import { UniversityModule } from "./modules/university/university.module";
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { SearchModule } from "./modules/search/search.module";
     DebatesModule,
     MarketplaceModule,
     SearchModule,
+    UniversityModule,
     ReportsModule,
     ObservabilityModule,
   ],

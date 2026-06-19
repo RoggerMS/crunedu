@@ -210,3 +210,71 @@ export function getAdminStoreMetrics(token: string) {
     inquirySummary: { total: number; completed: number };
   }>("/marketplace/admin/metrics", { headers: { Authorization: `Bearer ${token}` } });
 }
+
+export type UniversityContentApiItem = {
+  id: number;
+  type: string;
+  title: string;
+  description: string;
+  area: string;
+  category: string;
+  visibility: string;
+  statusTags: string[];
+  startDate: string | null;
+  endDate: string | null;
+  deadline: string | null;
+  time: string | null;
+  location: string | null;
+  cost: string | null;
+  icon: string | null;
+  steps: string[] | null;
+  documents: string[] | null;
+  schedule: string | null;
+  warning: string | null;
+  fileUrl: string | null;
+  fileName: string | null;
+  fileType: string | null;
+  fileSize: number | null;
+  externalUrl: string | null;
+  views: number;
+  savesCount: number;
+  createdAt: string;
+};
+
+export type UniversityContentListResponse = {
+  items: UniversityContentApiItem[];
+  nextCursor: number | null;
+};
+
+export type SuggestionPayload = {
+  type: string;
+  title: string;
+  description: string;
+  area?: string;
+  date?: string;
+  location?: string;
+  externalUrl?: string;
+};
+
+export function getUniversityContent(query?: Record<string, string>) {
+  const searchParams = new URLSearchParams();
+  if (query) {
+    Object.entries(query).forEach(([key, value]) => {
+      if (value) searchParams.set(key, value);
+    });
+  }
+  const qs = searchParams.toString();
+  return apiRequest<UniversityContentListResponse>(qs ? `/universidad?${qs}` : "/universidad");
+}
+
+export function getUniversityContentById(id: string | number) {
+  return apiRequest<UniversityContentApiItem>(`/universidad/${id}`);
+}
+
+export function submitUniversitySuggestion(payload: SuggestionPayload) {
+  return apiRequest<{ id: number; message: string }>("/universidad/sugerir", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}

@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from "@prisma/client";
+import { PrismaClient, Role, UniversityContentType, UniversityContentVisibility } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -94,6 +94,72 @@ async function main() {
         slug: tag.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "-"),
       },
     });
+  }
+
+  const universityContent = [
+    {
+      type: UniversityContentType.TRAMITE,
+      title: "Matrícula extemporánea 2026-2",
+      description: "Proceso habilitado para estudiantes con observaciones académicas. Realiza el pago por concepto de matrícula extemporánea y presenta tus documentos en Secretaría Académica.",
+      area: "Secretaría Académica",
+      category: "Matrícula",
+      visibility: UniversityContentVisibility.OFICIAL,
+      statusTags: ["urgente", "oficial", "proximo_cierre"],
+      deadline: new Date("2026-05-15"),
+      icon: "📋",
+      steps: ["Solicita la autorización en Secretaría Académica.", "Realiza el pago en Tesorería.", "Presenta tu ficha de matrícula actualizada.", "Espera la confirmación por correo institucional."],
+      documents: ["Solicitud dirigida a Secretaría Académica", "Recibo de pago por matrícula extemporánea", "DNI o carné universitario vigente"],
+      schedule: "Lun-Vie 8:00 a.m. - 5:00 p.m.",
+      location: "Pabellón A, primer piso",
+      warning: "Las fechas exactas y requisitos pueden variar cada ciclo. Verifica siempre la información oficial publicada por la universidad.",
+      views: 1420,
+      savesCount: 230,
+      status: "PUBLISHED",
+      userId: admin.id,
+    },
+    {
+      type: UniversityContentType.EVENTO,
+      title: "Cine universitario: función especial este viernes",
+      description: "Proyección y conversatorio sobre cine peruano contemporáneo. Participa de esta actividad cultural abierta a toda la comunidad universitaria.",
+      area: "Cultura",
+      category: "Cultura",
+      visibility: UniversityContentVisibility.PUBLICO,
+      statusTags: ["nuevo"],
+      startDate: new Date("2026-05-14"),
+      time: "19:00",
+      location: "Aula Magna",
+      views: 640,
+      savesCount: 122,
+      status: "PUBLISHED",
+      userId: admin.id,
+    },
+    {
+      type: UniversityContentType.GUIA,
+      title: "Cómo solicitar una constancia de estudios",
+      description: "Guía paso a paso con requisitos y tiempos de respuesta para obtener tu constancia de estudios en La Cantuta.",
+      area: "Secretaría Académica",
+      category: "Trámites",
+      visibility: UniversityContentVisibility.OFICIAL,
+      statusTags: ["oficial", "actualizado"],
+      icon: "📘",
+      steps: ["Redacta una solicitud dirigida a Secretaría Académica.", "Adjunta el comprobante de pago por derecho de constancia.", "Presenta ambos documentos en Mesa de Partes.", "Espera de 3 a 5 días hábiles para la entrega."],
+      documents: ["Solicitud simple dirigida a Secretaría Académica", "Comprobante de pago (Tesorería)", "DNI o carné universitario"],
+      schedule: "Lun-Vie 8:00 a.m. - 4:00 p.m.",
+      location: "Mesa de Partes, Pabellón A",
+      warning: "Los tiempos de entrega pueden extenderse en períodos de matrícula o evaluaciones finales.",
+      fileUrl: "/files/requisitos-constancia.pdf",
+      fileName: "requisitos-constancia.pdf",
+      fileType: "pdf",
+      fileSize: 324000,
+      views: 2030,
+      savesCount: 410,
+      status: "PUBLISHED",
+      userId: admin.id,
+    },
+  ];
+
+  for (const content of universityContent) {
+    await prisma.universityContent.create({ data: content });
   }
 
   console.log("Seed completed.");

@@ -48,6 +48,28 @@ enum ReportStatus {
   REJECTED
 }
 
+enum UniversityContentType {
+  EVENTO
+  CONVOCATORIA
+  TRAMITE
+  SERVICIO
+  GUIA
+  AVISO
+}
+
+enum UniversityContentVisibility {
+  PUBLICO
+  OFICIAL
+  SUGERIDO
+}
+
+enum SuggestionStatus {
+  PENDING
+  REVIEWED
+  APPROVED
+  REJECTED
+}
+
 // --- 1. ESTRUCTURA ACADÉMICA ---
 model University {
   id        Int      @id @default(autoincrement())
@@ -129,6 +151,9 @@ model User {
   sanctions               UserSanction[]
   followers               Follow[]                 @relation("UserFollowers")
   following               Follow[]                 @relation("UserFollowing")
+
+  universityContents      UniversityContent[]
+  universitySuggestions   UniversitySuggestion[]
 
   @@index([role])
   @@index([createdAt])
@@ -707,4 +732,73 @@ model Notification {
   @@index([isRead])
   @@index([createdAt])
   @@map("notifications")
+}
+
+// --- 9. CONTENIDO UNIVERSITARIO ---
+model UniversityContent {
+  id          Int                        @id @default(autoincrement())
+  type        UniversityContentType      @map("type")
+  title       String
+  description String                     @db.Text
+  area        String                     @default("")
+  category    String                     @default("")
+  visibility  UniversityContentVisibility @default(PUBLICO)
+
+  statusTags  Json                       @default("[]")
+  startDate   DateTime?
+  endDate     DateTime?
+  deadline    DateTime?
+  time        String?
+  location    String?
+  cost        String?
+  icon        String?
+  steps       Json?
+  documents   Json?
+  schedule    String?
+  warning     String?
+  fileUrl     String?                    @map("file_url")
+  fileName    String?                    @map("file_name")
+  fileType    String?                    @map("file_type")
+  fileSize    Int?                       @map("file_size")
+  externalUrl String?                    @map("external_url")
+
+  views      Int          @default(0)
+  savesCount Int          @default(0) @map("saves_count")
+
+  status    ContentStatus @default(PUBLISHED)
+  userId    Int?          @map("user_id")
+  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([type])
+  @@index([status])
+  @@index([visibility])
+  @@index([createdAt])
+  @@index([type, status, createdAt(sort: Desc)])
+  @@map("university_contents")
+}
+
+model UniversitySuggestion {
+  id          Int              @id @default(autoincrement())
+  type        String
+  title       String
+  description String           @db.Text
+  area        String           @default("")
+  date        DateTime?
+  location    String?
+  externalUrl String?           @map("external_url")
+  status      SuggestionStatus @default(PENDING)
+
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([userId])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("university_suggestions")
 }
