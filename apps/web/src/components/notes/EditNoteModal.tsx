@@ -5,7 +5,7 @@ import { NOTE_MATERIAL_TYPES } from "./types";
 import type { NoteItem, NoteVisibility } from "./types";
 import type { Community } from "@crunedu/shared";
 import { NoteVisibilitySelector } from "./NoteVisibilitySelector";
-import { updateNote, mapApiError } from "@/lib/api-helpers";
+import { updateNote, mapApiError, type NoteApiItem } from "@/lib/api-helpers";
 
 type EditNoteModalProps = {
   open: boolean;
@@ -13,7 +13,7 @@ type EditNoteModalProps = {
   communities: Community[];
   accessToken: string | null;
   onClose: () => void;
-  onUpdated: (note: NoteItem) => void;
+  onUpdated: (note: NoteApiItem) => void;
   onToast: (message: string, type: "success" | "error" | "info") => void;
 };
 
@@ -75,7 +75,7 @@ export function EditNoteModal({ open, note, communities, accessToken, onClose, o
         tags: form.tagsText.split(",").map((tag) => tag.trim()).filter(Boolean),
       }, accessToken);
       onToast("Apunte actualizado correctamente.", "success");
-      onUpdated(updated as any);
+      onUpdated(updated);
       onClose();
     } catch (err) {
       onToast(mapApiError(err, "No se pudo actualizar el apunte."), "error");

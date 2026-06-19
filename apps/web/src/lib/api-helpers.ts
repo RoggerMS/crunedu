@@ -382,10 +382,10 @@ export function getNoteContributors() {
   return apiRequest<NoteContributor[]>("/apuntes/contributors");
 }
 
-export function uploadNoteFile(file: File) {
+export function uploadNoteFile(file: File, token: string) {
   const formData = new FormData();
   formData.append("file", file);
-  return apiRequest<UploadedNoteFile>("/apuntes/files", { method: "POST", body: formData });
+  return apiRequest<UploadedNoteFile>("/apuntes/files", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData });
 }
 
 export function createNote(payload: CreateNotePayload, token: string) {

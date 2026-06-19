@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { NoteDetail } from "@/components/notes/NoteDetail";
 import { EditNoteModal } from "@/components/notes/EditNoteModal";
+import { mapNoteApiToItem } from "@/components/notes/note-mappers";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useCommunities } from "@/hooks/useCommunities";
 import {
@@ -21,32 +22,6 @@ import {
 import { buildNoteDownloadUrl } from "@/lib/api-helpers";
 import type { NoteItem } from "@/components/notes/types";
 
-function mapDetail(api: NoteApiItem): NoteItem {
-  return {
-    id: String(api.id),
-    title: api.title,
-    description: api.description,
-    course: api.course,
-    cycle: api.cycle,
-    materialType: api.materialType,
-    file: {
-      name: api.originalName ?? api.title,
-      url: api.fileUrl,
-      downloadUrl: buildNoteDownloadUrl(api.id),
-      size: api.sizeBytes,
-      mimeType: api.mimeType ?? "",
-      fileType: api.fileType as NoteItem["file"]["fileType"],
-    },
-    author: api.author,
-    community: api.community,
-    visibility: api.visibility as NoteItem["visibility"],
-    tags: api.tags,
-    createdAt: api.createdAt,
-    rating: { average: api.rating.average, count: api.rating.count, viewerRating: api.rating.viewerRating },
-    stats: { downloads: api.stats.downloads, saves: api.stats.saves, views: api.stats.views },
-    viewerState: api.viewerState,
-  };
-}
 
 export default function NoteDetailPage() {
   const params = useParams<{ id: string }>();
@@ -63,17 +38,17 @@ export default function NoteDetailPage() {
 
   const notify = (message: string, type: "success" | "error" | "info" = "info") => { setToast({ message, type }); window.setTimeout(() => setToast(null), 3000); };
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await getNoteById(params.id);
-      const mapped = mapDetail(data);
+      const mapped = mapNoteApiToItem(data);
       setNote(mapped);
       const relatedQuery = mapped.course ? { course: mapped.course, sort: "best_rated" as const, limit: 5 } : { sort: "recent" as const, limit: 5 };
       try {
         const list = await getNotes(relatedQuery);
-        setRelated((list.items ?? []).filter((item) => String(item.id) !== String(params.id)).slice(0, 4).map(mapDetail));
+        setRelated((list.items ?? []).filter((item) => String(item.id) !== String(params.id)).slice(0, 4).map(mapNoteApiToItem));
       } catch {
         setRelated([]);
       }
@@ -82,9 +57,9 @@ export default function NoteDetailPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [params.id]);
 
-  useEffect(() => { void load(); }, [params.id]);
+  useEffect(() => { void load(); }, [load]);
 
   async function handleRate(value: number) {
     if (!note) return;
@@ -163,8 +138,8 @@ export default function NoteDetailPage() {
     setEditModalOpen(true);
   }
 
-  function handleNoteUpdated(updated: NoteItem) {
-    setNote(updated);
+  function handleNoteUpdated(updated: NoteApiItem) {
+    setNote(mapNoteApiToItem(updated));
   }
 
   if (loading) return <section className="mx-auto max-w-[1200px] space-y-4 px-4 py-6 sm:px-6 lg:px-8"><div className="h-64 animate-pulse rounded-2xl bg-slate-100" /></section>;

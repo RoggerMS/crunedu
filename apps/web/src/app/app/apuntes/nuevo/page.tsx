@@ -70,7 +70,7 @@ export default function NewNotePage() {
       setSending(true);
       setError(null);
       setUploadError(null);
-      const uploaded = await uploadNoteFile(file);
+      const uploaded = await uploadNoteFile(file, accessToken);
       await createNote({
         title: form.title.trim(),
         description: form.description.trim() || undefined,
