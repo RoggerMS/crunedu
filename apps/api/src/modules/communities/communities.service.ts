@@ -135,7 +135,7 @@ export class CommunitiesService {
       isCreator: community?.createdBy === userId,
     };
   }
-  async communityPosts(communityId: number, cursor?: number, limit?: number) {
+  async communityPosts(communityId: number, cursor?: number, limit?: number, userId?: number) {
     await this.ensureCommunityExists(communityId);
     const safeLimit = Number.isFinite(limit) && (limit as number) > 0 ? Math.min(Math.floor(limit as number), PAGINATION_LIMITS.communityPosts.max) : PAGINATION_LIMITS.communityPosts.default;
     const posts = await this.prisma.post.findMany({
@@ -147,6 +147,7 @@ export class CommunitiesService {
         id: true, title: true, content: true, createdAt: true,
         user: { select: { id: true, email: true, profile: { select: { firstName: true, lastName: true } } } },
         community: { select: { id: true, name: true, slug: true } },
+        images: { select: { id: true, imageUrl: true, mimeType: true, sizeBytes: true, position: true }, orderBy: { position: "asc" } },
         _count: { select: { comments: true } },
       },
     });
@@ -166,6 +167,8 @@ export class CommunitiesService {
         },
         community: post.community,
         commentsCount: post._count.comments,
+        images: post.images ?? [],
+        isMine: Boolean(userId && post.user.id === userId),
       })),
       nextCursor,
     };

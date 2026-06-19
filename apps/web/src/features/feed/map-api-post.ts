@@ -67,6 +67,7 @@ export function mapApiPostToFeedPost(apiPost: ApiFeedPost): FeedPost {
     viewerState: {
       liked: false,
       saved: false,
+      isMine: Boolean(apiPost.isMine),
     },
   };
 }

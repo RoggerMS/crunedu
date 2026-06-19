@@ -56,6 +56,20 @@ export default function AppPage() {
   const showToast = (message: string, type: "success" | "error" | "info") => { setToast({ message, type }); setTimeout(() => setToast(null), 3200); };
   const handleReport = (postId: string) => { const menu = REPORT_REASONS.map((reason, index) => `${index + 1}. ${reason}`).join("\n"); const selected = window.prompt(`Selecciona motivo de reporte:\n${menu}`, "1"); const index = Number(selected) - 1; const reason = REPORT_REASONS[index] ?? REPORT_REASONS[4]; void feed.reportPost(postId, reason); showToast("Reporte enviado.", "success"); };
   const requireLogin = () => { showToast("Para publicar necesitas iniciar sesión.", "info"); router.push("/login?returnUrl=/app"); };
+  const handleEditPost = async (post: import("@/features/feed/feed.types").FeedPost) => {
+    if (!post.viewerState.isMine) return;
+    const nextTitle = window.prompt("Editar título (opcional):", post.title ?? "") ?? post.title ?? "";
+    const nextContent = window.prompt("Editar contenido de la publicación:", post.content);
+    if (nextContent === null) return;
+    const trimmedContent = nextContent.trim();
+    if (!trimmedContent) { showToast("La publicación no puede quedar vacía.", "info"); return; }
+    try {
+      await feed.updatePost({ ...post, title: nextTitle.trim() || undefined, content: trimmedContent });
+      showToast("Publicación actualizada.", "success");
+    } catch {
+      showToast("No se pudo actualizar la publicación.", "error");
+    }
+  };
 
   const filteredPosts = filter === "recientes" ? [...feed.posts].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)) : filter === "siguiendo" ? feed.posts.filter((p) => p.destination.type === "community") : feed.posts;
   const activePost = activePostId ? feed.posts.find((post) => post.id === activePostId) ?? null : null;
@@ -126,7 +140,7 @@ export default function AppPage() {
         <FeedFilters active={filter} onChange={setFilter} />
         {feed.loading ? <StatusMessage type="loading">Cargando publicaciones...</StatusMessage> : null}
         {feed.error ? <StatusMessage type="error">{feed.error}</StatusMessage> : null}
-        {filteredPosts.map((post) => <PostCard key={post.id} post={post} onLike={(id) => { const liked = post.viewerState.liked; void feed.likePost(id); showToast(liked ? "Me gusta quitado." : "Me gusta registrado.", "info"); }} onSave={(id) => { const saved = post.viewerState.saved; void feed.savePost(id); showToast(saved ? "Guardado quitado." : "Publicación guardada.", "info"); }} onOpenPost={(id) => setActivePostId(id)} onShare={async (id) => { try { const shareUrl = `${window.location.origin}/app?post=${id}`; await navigator.clipboard.writeText(shareUrl); await feed.sharePost(id); showToast("Enlace copiado.", "success"); } catch { showToast("No se pudo copiar el enlace.", "error"); } }} onReport={handleReport} onHide={(id) => { void feed.hidePost(id); showToast("Publicación oculta.", "info"); }} onDelete={(id) => { void feed.deletePost(id); showToast("Publicación eliminada.", "success"); }} />)}
+        {filteredPosts.map((post) => <PostCard key={post.id} post={post} onLike={(id) => { const liked = post.viewerState.liked; void feed.likePost(id); showToast(liked ? "Me gusta quitado." : "Me gusta registrado.", "info"); }} onSave={(id) => { const saved = post.viewerState.saved; void feed.savePost(id); showToast(saved ? "Guardado quitado." : "Publicación guardada.", "info"); }} onOpenPost={(id) => setActivePostId(id)} onShare={async (id) => { try { const shareUrl = `${window.location.origin}/app?post=${id}`; await navigator.clipboard.writeText(shareUrl); await feed.sharePost(id); showToast("Enlace copiado.", "success"); } catch { showToast("No se pudo copiar el enlace.", "error"); } }} onReport={handleReport} onHide={(id) => { void feed.hidePost(id); showToast("Publicación oculta.", "info"); }} onDelete={(id) => { void feed.deletePost(id); showToast("Publicación eliminada.", "success"); }} onEdit={handleEditPost} />)}
         {!feed.loading && !feed.error && filteredPosts.length === 0 ? <div className="rounded-2xl border bg-white p-6 text-center"><h3 className="text-xl font-black">Tu feed académico está listo para empezar</h3><p className="mt-2 text-sm text-slate-500">Publica en el feed o explora comunidades para descubrir contenido.</p><div className="mt-4 flex flex-wrap justify-center gap-2"><PrimaryButton onClick={() => { setSelectedType("publicacion"); setIsOpen(true); }}>Crear publicación</PrimaryButton></div></div> : null}
       </section>
       <aside className="hidden self-start lg:block">

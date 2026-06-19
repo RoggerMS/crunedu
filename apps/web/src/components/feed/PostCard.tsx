@@ -5,7 +5,7 @@ import { PostActions } from "./PostActions";
 import { SharedEntityCard } from "./SharedEntityCard";
 import type { FeedPost } from "@/features/feed/feed.types";
 
-export function PostCard({ post, onLike, onSave, onShare, onReport, onHide, onDelete, onOpenPost }: { post: FeedPost; onLike: (id: string) => void; onSave: (id: string) => void; onShare: (id: string) => void; onReport: (id: string) => void; onHide: (id: string) => void; onDelete: (id: string) => void; onOpenPost: (id: string) => void }) {
+export function PostCard({ post, onLike, onSave, onShare, onReport, onHide, onDelete, onEdit, onOpenPost }: { post: FeedPost; onLike: (id: string) => void; onSave: (id: string) => void; onShare: (id: string) => void; onReport: (id: string) => void; onHide: (id: string) => void; onDelete: (id: string) => void; onEdit: (post: FeedPost) => void; onOpenPost: (id: string) => void }) {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const media = (post.attachments ?? []).map((a) => ({ id: a.id, type: a.mimeType.startsWith("video/") ? "video" as const : "image" as const, previewUrl: a.previewUrl, unavailableLabel: "Imagen pendiente de sincronización." }));
   return <article className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -29,6 +29,7 @@ export function PostCard({ post, onLike, onSave, onShare, onReport, onHide, onDe
       onReport={() => onReport(post.id)}
       onHide={() => onHide(post.id)}
       onDelete={() => onDelete(post.id)}
+      onEdit={() => onEdit(post)}
     />
     <FeedMediaViewer open={viewerIndex !== null} media={media} index={viewerIndex ?? 0} onClose={() => setViewerIndex(null)} onPrev={() => setViewerIndex((prev) => prev === null ? 0 : (prev - 1 + media.length) % media.length)} onNext={() => setViewerIndex((prev) => prev === null ? 0 : (prev + 1) % media.length)} />
   </article>;

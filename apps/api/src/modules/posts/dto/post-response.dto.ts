@@ -18,4 +18,5 @@ export class PostResponseDto {
   } | null;
   commentsCount: number;
   images: PostImageResponseDto[];
+  isMine?: boolean;
 }

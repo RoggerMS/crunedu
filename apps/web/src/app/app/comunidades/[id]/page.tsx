@@ -5,7 +5,7 @@ import { useAccessToken } from "@/hooks/useAccessToken";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { apiRequest, HttpClientError } from "@/lib/http-client";
+import { API_BASE_URL, apiRequest, HttpClientError } from "@/lib/http-client";
 import { uploadPostImage } from "@/lib/api-helpers";
 import { PageState, PrimaryButton } from "@/components/ui";
 import { CommunityHero } from "@/components/communities/detail/CommunityHero";
@@ -33,6 +33,14 @@ function readHiddenPostIds(): Set<string> {
   } catch {
     return new Set();
   }
+}
+
+
+function resolveApiImageUrl(imageUrl: string): string {
+  if (/^https?:\/\//i.test(imageUrl) || imageUrl.startsWith("data:") || imageUrl.startsWith("blob:")) return imageUrl;
+  if (imageUrl.startsWith("/api/")) return `${new URL(API_BASE_URL).origin}${imageUrl}`;
+  if (imageUrl.startsWith("/")) return `${API_BASE_URL}${imageUrl}`;
+  return `${API_BASE_URL}/${imageUrl}`;
 }
 
 function persistHiddenPostId(postId: number): void {
@@ -167,10 +175,10 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
         saves: 0,
         liked: false,
         saved: false,
-        isMine: Boolean(user && post.author?.id === user.id),
+        isMine: Boolean(post.isMine || (user && post.author?.id === user.id)),
         images: Array.isArray(post.images) ? post.images.map((image: any) => ({
           id: image.id,
-          imageUrl: image.imageUrl,
+          imageUrl: resolveApiImageUrl(image.imageUrl),
           mimeType: image.mimeType,
           sizeBytes: image.sizeBytes,
         })) : [],
@@ -306,6 +314,24 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
     showToast("Publicación oculta.", "info");
   };
 
+
+  const handleEditPost = async (post: CommunityPostModel) => {
+    if (!post.isMine) return;
+    const nextTitle = window.prompt("Editar título (opcional):", post.title ?? "") ?? post.title ?? "";
+    const nextContent = window.prompt("Editar contenido de la publicación:", post.content);
+    if (nextContent === null) return;
+    const trimmedContent = nextContent.trim();
+    if (!trimmedContent) { showToast("La publicación no puede quedar vacía.", "info"); return; }
+    if (!isAuthenticated || !accessToken) return requireLogin();
+    try {
+      const updated = await apiRequest<any>(`/posts/${post.id}`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ title: nextTitle.trim() || undefined, content: trimmedContent, communityId }) });
+      setPosts((prev) => prev.map((item) => item.id === post.id ? { ...item, title: updated.title, content: updated.content } : item));
+      showToast("Publicación actualizada.", "success");
+    } catch {
+      showToast("No se pudo actualizar la publicación.", "error");
+    }
+  };
+
   const mediaItems = useMemo<CommunityMediaItem[]>(() => posts.flatMap((post) => (post.images ?? []).map((image, index) => ({
     id: `${post.id}-${image.id ?? index}`,
     postId: post.id,
@@ -397,6 +423,7 @@ export default function CommunityDetailPage({ params }: { params: { id: string }
                 onReport={handleReportPost}
                 onHide={handleHidePost}
                 onDelete={handleDeletePost}
+                onEdit={handleEditPost}
               />
             </>
           )}
