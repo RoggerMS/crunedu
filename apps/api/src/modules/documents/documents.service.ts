@@ -239,7 +239,7 @@ export class DocumentsService {
     if (!cached || cached.expiresAt < Date.now()) {
       throw new BadRequestException("El archivo subido ha expirado. Vuelve a subirlo.");
     }
-    if (cached.data.sizeBytes !== uploaded.sizeBytes) {
+    if (cached.data.fileUrl !== uploaded.fileUrl || cached.data.storageKey !== uploaded.storageKey || cached.data.sizeBytes !== uploaded.sizeBytes) {
       throw new BadRequestException("La metadata del archivo no coincide. Vuelve a subirlo.");
     }
     const verified = cached.data;
@@ -432,8 +432,10 @@ export class DocumentsService {
   }
 
   async unsave(id: number, userId: number) {
-    const row = await this.prisma.document.findUnique({ where: { id }, select: { id: true, status: true } });
+    const row = await this.prisma.document.findUnique({ where: { id }, select: documentSelect });
     if (!row || row.status !== "PUBLISHED") throw new NotFoundException("Apunte no encontrado.");
+    const memberCommunityIds = await this.getViewerCommunityIds(userId);
+    if (!this.canViewerSee(row, userId, undefined, memberCommunityIds)) throw new NotFoundException("Apunte no encontrado.");
     await this.prisma.savedDocument.deleteMany({ where: { documentId: id, userId } });
     return { saved: false };
   }
@@ -544,7 +546,7 @@ export class DocumentsService {
 
   private mapDocument(row: DocumentRow, viewerUserId?: number, viewerRole?: string | undefined) {
     const isMine = viewerUserId != null && row.userId === viewerUserId;
-    const canEdit = isMine;
+    const canEdit = isMine || viewerRole === "ADMIN";
     const canDelete = isMine || viewerRole === "ADMIN";
     const canReport = viewerUserId != null && !isMine;
     const viewerRating = viewerUserId != null ? row.ratings.find((rating) => rating.userId === viewerUserId)?.value ?? null : null;

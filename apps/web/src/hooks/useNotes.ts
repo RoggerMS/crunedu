@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { NoteItem, NoteFileType, NoteVisibility } from "@/components/notes/types";
+import type { NoteItem } from "@/components/notes/types";
+import { mapNoteApiToItem } from "@/components/notes/note-mappers";
 import {
   createNote as createNoteApi,
   deleteNote as deleteNoteApi,
@@ -11,40 +12,12 @@ import {
   saveNote as saveNoteApi,
   unsaveNote as unsaveNoteApi,
   type CreateNotePayload,
-  type NoteApiItem,
   type NoteListQuery,
   type UploadedNoteFile,
 } from "@/lib/api-helpers";
 import { buildNoteDownloadUrl, buildNoteFileUrl } from "@/lib/api-helpers";
 import { useAccessToken } from "@/hooks/useAccessToken";
 
-function mapNote(api: NoteApiItem): NoteItem {
-  return {
-    id: String(api.id),
-    title: api.title,
-    description: api.description,
-    course: api.course,
-    cycle: api.cycle,
-    materialType: api.materialType,
-    file: {
-      name: api.originalName ?? api.title,
-      url: buildNoteFileUrl(api.fileUrl),
-      downloadUrl: buildNoteDownloadUrl(api.id),
-      size: api.sizeBytes,
-      mimeType: api.mimeType ?? "",
-      fileType: api.fileType as NoteFileType,
-    },
-    author: api.author,
-    community: api.community,
-    visibility: api.visibility as NoteVisibility,
-    tags: api.tags,
-    createdAt: api.createdAt,
-    updatedAt: api.updatedAt,
-    rating: { average: api.rating.average, count: api.rating.count, viewerRating: api.rating.viewerRating },
-    stats: { downloads: api.stats.downloads, saves: api.stats.saves, views: api.stats.views },
-    viewerState: api.viewerState,
-  };
-}
 
 export type NotesFetchOptions = NoteListQuery;
 
@@ -60,21 +33,20 @@ export function useNotes(options: NotesFetchOptions = {}) {
     window.setTimeout(() => setToast(null), 3000);
   };
 
-  const queryKey = JSON.stringify(options);
 
   const reload = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await getNotes(options);
-      setNotes((data.items ?? []).map(mapNote));
+      setNotes((data.items ?? []).map(mapNoteApiToItem));
     } catch (err) {
       setNotes([]);
       setError(mapApiError(err, "No se pudieron cargar los apuntes."));
     } finally {
       setLoading(false);
     }
-  }, [queryKey]);
+  }, [options]);
 
   useEffect(() => {
     void reload();
@@ -87,7 +59,7 @@ export function useNotes(options: NotesFetchOptions = {}) {
     }
     try {
       const created = await createNoteApi(payload, accessToken);
-      setNotes((prev) => [mapNote(created), ...prev]);
+      setNotes((prev) => [mapNoteApiToItem(created), ...prev]);
       notify("Apunte publicado correctamente.", "success");
       return created;
     } catch (err) {
