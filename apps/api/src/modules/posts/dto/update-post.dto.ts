@@ -3,6 +3,11 @@ import { IsInt, IsOptional, IsString, MaxLength, Min, MinLength } from "class-va
 export class UpdatePostDto {
   @IsOptional()
   @IsString()
+  @MaxLength(140, { message: "El título no puede superar 140 caracteres." })
+  title?: string;
+
+  @IsOptional()
+  @IsString()
   @MinLength(3, { message: "El contenido debe tener al menos 3 caracteres." })
   @MaxLength(5000, { message: "El contenido no puede superar 5000 caracteres." })
   content?: string;

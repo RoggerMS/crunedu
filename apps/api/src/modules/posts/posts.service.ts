@@ -81,8 +81,8 @@ export class PostsService {
 
   private readonly commentSelect = { id: true, content: true, createdAt: true, user: { select: { id: true, email: true, profile: { select: { firstName: true, lastName: true } } } } } as const;
 
-  private mapPostResponse(post: PostWithRelations): PostResponseDto {
-    return { id: post.id, title: post.title, content: post.content, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, commentsCount: post._count?.comments ?? 0, images: post.images };
+  private mapPostResponse(post: PostWithRelations, userId?: number): PostResponseDto {
+    return { id: post.id, title: post.title, content: post.content, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, commentsCount: post._count?.comments ?? 0, images: post.images, isMine: Boolean(userId && post.user.id === userId) };
   }
 
   private mapCommentResponse(comment: any): PostCommentResponseDto {
@@ -115,7 +115,7 @@ export class PostsService {
 
     this.registerFeedEvent("impression", userId, { mode });
 
-    const response = { items: paginated.map((post: PostWithRelations) => this.mapPostResponse(post)), nextCursor, mode };
+    const response = { items: paginated.map((post: PostWithRelations) => this.mapPostResponse(post, userId)), nextCursor, mode };
     if (cacheKey) this.cache.set(cacheKey, response, 20_000);
     return response;
   }
@@ -162,9 +162,9 @@ export class PostsService {
     const recommendedSlice = rankedRecommended.slice(skip, skip + perSection + 1);
 
     const sections = [
-      { key: "communities" as const, title: "De tus comunidades", items: communityPosts.slice(0, perSection).map((post: PostWithRelations) => this.mapPostResponse(post)) },
-      { key: "friends" as const, title: "De tus amigos", items: friendsPosts.slice(0, perSection).map((post: PostWithRelations) => this.mapPostResponse(post)) },
-      { key: "recommended" as const, title: "Recomendado para ti", items: recommendedSlice.slice(0, perSection).map((post: PostWithRelations) => this.mapPostResponse(post)) },
+      { key: "communities" as const, title: "De tus comunidades", items: communityPosts.slice(0, perSection).map((post: PostWithRelations) => this.mapPostResponse(post, userId)) },
+      { key: "friends" as const, title: "De tus amigos", items: friendsPosts.slice(0, perSection).map((post: PostWithRelations) => this.mapPostResponse(post, userId)) },
+      { key: "recommended" as const, title: "Recomendado para ti", items: recommendedSlice.slice(0, perSection).map((post: PostWithRelations) => this.mapPostResponse(post, userId)) },
     ];
 
     this.registerFeedEvent("impression", userId, { mode: "relevant" });
@@ -214,7 +214,7 @@ export class PostsService {
     await this.jobs.enqueueRankingRecalculation({ trigger: "POST_CREATED", postId: post.id });
     this.observability.recordPostCreated(userId, post.id);
     this.registerFeedEvent("create_post", userId, { postId: post.id });
-    return this.mapPostResponse(post);
+    return this.mapPostResponse(post, userId);
   }
 
   async uploadImage(file: any): Promise<UploadPostImageResponseDto> {
@@ -236,12 +236,12 @@ export class PostsService {
     const post = await this.prisma.post.findFirst({ where: { id, status: "PUBLISHED" }, select: this.postSelect });
     if (!post) throw new NotFoundException("Publicación no encontrada.");
     this.registerFeedEvent("click", userId, { postId: id });
-    return this.mapPostResponse(post);
+    return this.mapPostResponse(post, userId);
   }
 
-  async update(id: number, dto: UpdatePostDto, userId: number): Promise<PostResponseDto> { const existingPost = await this.prisma.post.findUnique({ where: { id }, select: { id: true, userId: true } }); if (!existingPost) throw new NotFoundException("Publicación no encontrada."); if (existingPost.userId !== userId) throw new ForbiddenException("No tienes permisos para editar esta publicación."); if (dto.communityId) { const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true } }); if (!community) throw new BadRequestException("La comunidad seleccionada no existe."); } const updatedPost = await this.prisma.post.update({ where: { id }, data: { ...(dto.content !== undefined ? { content: dto.content.trim() } : {}), ...(dto.communityId !== undefined ? { communityId: dto.communityId } : {}) }, select: this.postSelect }); return this.mapPostResponse(updatedPost); }
+  async update(id: number, dto: UpdatePostDto, userId: number): Promise<PostResponseDto> { const existingPost = await this.prisma.post.findUnique({ where: { id }, select: { id: true, userId: true } }); if (!existingPost) throw new NotFoundException("Publicación no encontrada."); if (existingPost.userId !== userId) throw new ForbiddenException("No tienes permisos para editar esta publicación."); if (dto.communityId) { const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true } }); if (!community) throw new BadRequestException("La comunidad seleccionada no existe."); } if (dto.content !== undefined) this.validateExtremeSize(dto.content, this.MAX_POST_LENGTH, "La publicación es demasiado extensa para el MVP."); const updatedPost = await this.prisma.post.update({ where: { id }, data: { ...(dto.title !== undefined ? { title: dto.title.trim() } : {}), ...(dto.content !== undefined ? { content: dto.content.trim() } : {}), ...(dto.communityId !== undefined ? { communityId: dto.communityId } : {}) }, select: this.postSelect }); this.cache.invalidate("hot:feed:initial"); return this.mapPostResponse(updatedPost, userId); }
 
-  async remove(id: number, userId: number, role: string): Promise<{ message: string }> { const existingPost = await this.prisma.post.findUnique({ where: { id }, select: { id: true, userId: true } }); if (!existingPost) throw new NotFoundException("Publicación no encontrada."); const isAuthor = existingPost.userId === userId; const isAdmin = role === "ADMIN"; if (!isAuthor && !isAdmin) throw new ForbiddenException("No tienes permisos para eliminar esta publicación."); await this.prisma.post.update({ where: { id }, data: { status: "DELETED" } }); return { message: "Publicación eliminada correctamente." }; }
+  async remove(id: number, userId: number, role: string): Promise<{ message: string }> { const existingPost = await this.prisma.post.findUnique({ where: { id }, select: { id: true, userId: true } }); if (!existingPost) throw new NotFoundException("Publicación no encontrada."); const isAuthor = existingPost.userId === userId; const isAdmin = role === "ADMIN"; if (!isAuthor && !isAdmin) throw new ForbiddenException("No tienes permisos para eliminar esta publicación."); await this.prisma.post.update({ where: { id }, data: { status: "DELETED" } }); this.cache.invalidate("hot:feed:initial"); return { message: "Publicación eliminada correctamente." }; }
 
   async getComments(postId: number): Promise<PostCommentResponseDto[]> { await this.ensurePublishedPost(postId); const comments = await this.prisma.comment.findMany({ where: { postId, status: "PUBLISHED" }, orderBy: { createdAt: "asc" }, select: this.commentSelect }); return comments.map((comment: (typeof comments)[number]) => this.mapCommentResponse(comment)); }
 

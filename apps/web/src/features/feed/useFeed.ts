@@ -28,6 +28,7 @@ export function useFeed() {
   useEffect(() => { void reload(); }, [reload]);
 
   const createPost = async (input: CreateFeedPostInput) => { const post = await repository.createPost(input); setPosts((prev) => [post, ...prev]); return post; };
+  const updatePost = async (post: FeedPost) => { const updated = await repository.updatePost(post); setPosts((prev) => prev.map((item) => item.id === post.id ? updated : item)); return updated; };
   const deletePost = async (postId: string) => { await repository.deletePost(postId); setPosts((prev) => prev.filter((post) => post.id !== postId)); };
   const likePost = async (postId: string) => { const post = posts.find((item) => item.id === postId); if (!post) return; const updated = post.viewerState.liked ? await repository.unlikePost(postId) : await repository.likePost(postId); setPosts((prev) => prev.map((item) => item.id === postId ? updated : item)); };
   const savePost = async (postId: string) => { const post = posts.find((item) => item.id === postId); if (!post) return; const updated = post.viewerState.saved ? await repository.unsavePost(postId) : await repository.savePost(postId); setPosts((prev) => prev.map((item) => item.id === postId ? updated : item)); };
@@ -37,5 +38,5 @@ export function useFeed() {
   const hidePost = async (postId: string) => { await repository.hidePost(postId); setPosts((prev) => prev.filter((item) => item.id !== postId)); };
   const sharePost = async (postId: string) => { const updated = await repository.sharePost(postId); setPosts((prev) => prev.map((item) => item.id === postId ? updated : item)); };
 
-  return { posts, commentsByPost, loading, hydrated: !loading, error, createPost, deletePost, likePost, savePost, addComment, likeComment, reportPost, hidePost, sharePost, reload };
+  return { posts, commentsByPost, loading, hydrated: !loading, error, createPost, updatePost, deletePost, likePost, savePost, addComment, likeComment, reportPost, hidePost, sharePost, reload };
 }

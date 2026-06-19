@@ -1,11 +1,12 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { Request } from "express";
 import { JwtAuthGuard, JwtPayload } from "../auth/guards/jwt-auth.guard";
+import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard";
 import { CommunitiesService } from "./communities.service";
 import { CreateCommunityDto } from "./dto/create-community.dto";
 
 interface AuthenticatedRequest extends Request {
-  user: JwtPayload;
+  user?: JwtPayload;
 }
 
 @Controller("communities")
@@ -20,13 +21,13 @@ export class CommunitiesController {
   @Get("recommended")
   @UseGuards(JwtAuthGuard)
   recommended(@Req() request: AuthenticatedRequest) {
-    return this.service.recommendedForUser(request.user.sub);
+    return this.service.recommendedForUser(request.user!.sub);
   }
 
   @Post()
   @UseGuards(JwtAuthGuard)
   create(@Body() body: CreateCommunityDto, @Req() request: AuthenticatedRequest) {
-    return this.service.create(body, request.user.sub);
+    return this.service.create(body, request.user!.sub);
   }
 
   @Get(":id")
@@ -37,28 +38,30 @@ export class CommunitiesController {
   @Get(":id/membership")
   @UseGuards(JwtAuthGuard)
   membership(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
-    return this.service.membershipStatus(id, request.user.sub);
+    return this.service.membershipStatus(id, request.user!.sub);
   }
 
   @Get(":id/posts")
+  @UseGuards(OptionalJwtAuthGuard)
   communityPosts(
     @Param("id", ParseIntPipe) id: number,
     @Query("cursor") cursor?: string,
     @Query("limit") limit?: string,
+    @Req() request?: AuthenticatedRequest,
   ) {
-    return this.service.communityPosts(id, cursor ? Number(cursor) : undefined, limit ? Number(limit) : undefined);
+    return this.service.communityPosts(id, cursor ? Number(cursor) : undefined, limit ? Number(limit) : undefined, request?.user?.sub);
   }
 
   @Post(":id/join")
   @UseGuards(JwtAuthGuard)
   join(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
-    return this.service.joinCommunity(id, request.user.sub);
+    return this.service.joinCommunity(id, request.user!.sub);
   }
 
   @Post(":id/leave")
   @UseGuards(JwtAuthGuard)
   leave(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
-    return this.service.leaveCommunity(id, request.user.sub);
+    return this.service.leaveCommunity(id, request.user!.sub);
   }
 
   @Post(":id/posts/:postId/hide")
@@ -69,6 +72,6 @@ export class CommunitiesController {
     @Body() body: { reason?: string },
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.service.hidePost(id, postId, request.user.sub, body.reason);
+    return this.service.hidePost(id, postId, request.user!.sub, body.reason);
   }
 }

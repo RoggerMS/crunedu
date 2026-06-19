@@ -1,3 +1,4 @@
+import { FeedMediaGallery } from "@/components/feed/FeedMediaGallery";
 import { PostActions } from "@/components/feed/PostActions";
 import type { CommunityPostModel } from "./types";
 
@@ -11,9 +12,10 @@ type Props = {
   onReport: (postId: number) => void;
   onHide: (postId: number) => void;
   onDelete?: (postId: number) => void;
+  onEdit?: (post: CommunityPostModel) => void;
 };
 
-export function CommunityPostsPanel({ posts, onCreatePost, onLike, onComment, onSave, onShare, onReport, onHide, onDelete }: Props) {
+export function CommunityPostsPanel({ posts, onCreatePost, onLike, onComment, onSave, onShare, onReport, onHide, onDelete, onEdit }: Props) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5">
       <div className="mb-4 flex items-center justify-between">
@@ -41,6 +43,7 @@ export function CommunityPostsPanel({ posts, onCreatePost, onLike, onComment, on
                 </header>
                 {post.title ? <h3 className="mt-3 font-semibold text-slate-900">{post.title}</h3> : null}
                 <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{post.content}</p>
+                {post.images?.length ? <div className="mt-3"><FeedMediaGallery images={post.images.map((image, index) => ({ id: String(image.id), type: "image" as const, previewUrl: image.imageUrl, unavailableLabel: "Imagen pendiente de sincronización." }))} /></div> : null}
                 <PostActions
                   likes={post.likes}
                   comments={post.commentsCount}
@@ -55,6 +58,7 @@ export function CommunityPostsPanel({ posts, onCreatePost, onLike, onComment, on
                   onReport={() => onReport(post.id)}
                   onHide={() => onHide(post.id)}
                   {...(onDelete && post.isMine ? { onDelete: () => onDelete(post.id) } : {})}
+                  {...(onEdit && post.isMine ? { onEdit: () => onEdit(post) } : {})}
                 />
               </article>
             );

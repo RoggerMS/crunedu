@@ -84,7 +84,7 @@ export const apiFeedRepository: FeedRepository = {
     return post;
   },
   async updatePost(post) {
-    const response = await apiRequest<ApiFeedPost>(`/posts/${post.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: post.content, communityId: post.destination.id }) });
+    const response = await apiRequest<ApiFeedPost>(`/posts/${post.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: post.title, content: post.content, communityId: post.destination.id }) });
     return replaceCachedPost(mapApiPostToFeedPost(response));
   },
   async deletePost(postId) {

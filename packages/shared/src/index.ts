@@ -88,6 +88,7 @@ export interface FeedPost {
   community: FeedCommunity | null;
   commentsCount: number;
   images: FeedPostImage[];
+  isMine?: boolean;
 }
 
 
