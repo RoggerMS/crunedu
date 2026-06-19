@@ -47,7 +47,7 @@ const productListSelect = {
   createdAt: true,
   category: { select: { id: true, name: true, slug: true, description: true, icon: true } },
   admin: { select: { id: true, email: true, profile: { select: { firstName: true, lastName: true, avatarUrl: true } } } },
-  images: { select: { id: true, imageUrl: true, mimeType: true, sizeBytes: true, position: true, isCover: true, altText: true }, orderBy: { position: Prisma.SortOrder.asc } },
+  images: { select: { id: true, imageUrl: true, mimeType: true, sizeBytes: true, position: true, isCover: true, altText: true }, orderBy: { position: "asc" as const } },
   safePoint: { select: { id: true, name: true } },
   _count: { select: { favorites: true, inquiries: true } },
 };
