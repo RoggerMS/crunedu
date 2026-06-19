@@ -1,227 +1,226 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { storeNeeds } from "@/components/store/store-data";
-import type { StoreCategory, StoreDeliveryType, StoreListing, StoreSort } from "@/components/store/types";
-import { getStoreCatalog } from "@/lib/api-helpers";
-import type { StoreProduct } from "@/lib/api-helpers";
-import { apiRequest } from "@/lib/http-client";
-
-function mapCategoryName(name?: string | null): StoreCategory {
-  if (!name) return "materials";
-  const lower = name.toLowerCase();
-  if (lower.includes("material") || lower.includes("estudio")) return "books";
-  if (lower.includes("útil") || lower.includes("util")) return "materials";
-  if (lower.includes("merch")) return "business";
-  if (lower.includes("curso") || lower.includes("taller")) return "services";
-  return "materials";
-}
-
-function mapApiProduct(product: StoreProduct): StoreListing {
-  return {
-    id: String(product.id),
-    type: "sale",
-    title: product.title,
-    description: product.description,
-    price: Number(product.price) || undefined,
-    currency: "PEN",
-    category: mapCategoryName(product.category?.name),
-    status: "available",
-    badges: product.isFeatured ? ["Destacado"] : [],
-    images: [],
-    seller: {
-      id: "crunedu",
-      name: "CrunEdu",
-      rating: 5,
-      verified: true,
-      sales: 0,
-    },
-    location: "Campus UNE",
-    deliveryType: "campus",
-    tags: [],
-    createdAt: product.createdAt ?? new Date().toISOString(),
-    stats: { views: 0, saves: 0, contacts: 0 },
-    viewerState: { saved: false },
-  };
-}
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import type { StoreListing, StoreSort } from "@/components/store/types";
+import {
+  getStoreCatalog,
+  favoriteStoreProduct,
+  reportStoreProduct,
+  createStoreInquiry,
+  getStoreMeStatistics,
+  getStoreMyFavorites,
+  getStoreMyListings,
+  getStoreMyInquiries,
+  type StoreProduct,
+  type StoreCatalogResponse,
+  type StoreMeStatistics,
+} from "@/lib/api-helpers";
+import { useAuth } from "@/providers/auth-provider";
 
 const TOKEN_KEY = "crunedu_access_token";
 
-export function useStore(initialQuery = "") {
-  const [listings, setListings] = useState<StoreListing[]>([]);
-  const [selectedNeed, setSelectedNeed] = useState<string>("all");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedSort, setSelectedSort] = useState<StoreSort>("recent");
-  const [selectedDeliveryType, setSelectedDeliveryType] = useState<StoreDeliveryType | "all">("all");
-  const [query, setQuery] = useState(initialQuery);
-  const [toast, setToast] = useState<string | null>(null);
+function getToken() {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(TOKEN_KEY)?.trim() ?? "";
+}
+
+export function useStore() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { isAuthenticated, accessToken } = useAuth();
+
+  const [listings, setListings] = useState<StoreProduct[]>([]);
+  const [featuredProducts, setFeatured] = useState<StoreProduct[]>([]);
+  const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hiddenListings, setHidden] = useState<string[]>([]);
-
-  const pushToast = useCallback((message: string) => {
-    setToast(message);
-    const timer = window.setTimeout(() => setToast(null), 2500);
-    return () => window.clearTimeout(timer);
+  const [toast, setToast] = useState<string | null>(null);
+  const popToast = useCallback((msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast(null), 2500);
   }, []);
 
+  // Admin role from JWT
+  const viewerRole = useMemo(() => {
+    try {
+      const token = accessToken || getToken();
+      if (!token) return null;
+      const [, payload] = token.split(".");
+      if (!payload) return null;
+      return JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/"))).role ?? null;
+    } catch {
+      return null;
+    }
+  }, [accessToken]);
+
+  const isAdmin = viewerRole === "ADMIN";
+
+  // Panel state
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [myListings, setMyListings] = useState<StoreProduct[]>([]);
+  const [myFavorites, setMyFavorites] = useState<StoreProduct[]>([]);
+  const [myInquiries, setMyInquiries] = useState<any[]>([]);
+  const [myStats, setMyStats] = useState<StoreMeStatistics | null>(null);
+  const panelLoading = useRef(false);
+
+  // Filters from URL
+  const q = searchParams.get("q") ?? "";
+  const categorySlug = searchParams.get("category") ?? "";
+  const type = searchParams.get("type") ?? "";
+  const deliveryType = searchParams.get("delivery") ?? "";
+  const conditionFilter = searchParams.get("condition") ?? "";
+  const sort = (searchParams.get("sort") ?? "recent") as StoreSort;
+  const priceMin = searchParams.get("priceMin") ?? "";
+  const priceMax = searchParams.get("priceMax") ?? "";
+  const safePointId = searchParams.get("safePoint") ?? "";
+
+  // Refresh catalog
   const fetchCatalog = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await getStoreCatalog({ limit: 40 });
-      const mapped = (response.items ?? []).map(mapApiProduct);
-      setListings(mapped);
+      const queryParams: Record<string, string | number | boolean> = { limit: 20 };
+      if (q) queryParams.q = q;
+      if (categorySlug) queryParams.categorySlug = categorySlug;
+      if (type) queryParams.type = type.toUpperCase();
+      if (deliveryType) queryParams.deliveryType = deliveryType.toUpperCase();
+      if (conditionFilter) queryParams.condition = conditionFilter.toUpperCase();
+      if (sort && sort !== "recent") queryParams.sort = sort;
+      if (priceMin) queryParams.priceMin = Number(priceMin);
+      if (priceMax) queryParams.priceMax = Number(priceMax);
+      if (safePointId) queryParams.safePointId = Number(safePointId);
+
+      const response: StoreCatalogResponse = await getStoreCatalog(queryParams);
+      setListings(response.items ?? []);
+      setFeatured(response.featuredProducts ?? []);
+      setNextCursor(response.nextCursor);
     } catch {
       setError("No se pudo cargar la tienda.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [q, categorySlug, type, deliveryType, conditionFilter, sort, priceMin, priceMax, safePointId]);
 
   useEffect(() => {
     fetchCatalog();
   }, [fetchCatalog]);
 
-  useEffect(() => {
-    setQuery(initialQuery);
-  }, [initialQuery]);
-
-  const filteredListings = useMemo(() => {
-    let data = listings.filter((listing) => !hiddenListings.includes(listing.id));
-    if (selectedNeed !== "all") {
-      const selected = storeNeeds.find((need) => need.id === selectedNeed);
-      data = data.filter((listing) => selected?.matcher(listing));
-    }
-    if (selectedCategory !== "all") data = data.filter((listing) => listing.category === selectedCategory);
-    if (selectedDeliveryType !== "all") data = data.filter((listing) => listing.deliveryType === selectedDeliveryType);
-    if (query.trim()) {
-      const normalizedQuery = query.toLowerCase();
-      data = data.filter((listing) => {
-        const haystack = [listing.title, listing.description, listing.category, listing.location, listing.seller.name, listing.tags.join(" ")].join(" ").toLowerCase();
-        return haystack.includes(normalizedQuery);
-      });
-    }
-    return sortListings(data, selectedSort);
-  }, [hiddenListings, listings, query, selectedCategory, selectedDeliveryType, selectedNeed, selectedSort]);
-
-  function createListing() {
-    pushToast("En esta fase Beta, la tienda es administrada por CrunEdu. Contáctanos para publicar tus productos.");
-  }
-
-  function saveListing(id: string) {
-    setListings((previous) =>
-      previous.map((listing) =>
-        listing.id === id
-          ? { ...listing, viewerState: { ...listing.viewerState, saved: !listing.viewerState.saved } }
-          : listing,
-      ),
-    );
-    pushToast("Guardado actualizado.");
-  }
-
-  function shareListing(id: string) {
-    navigator.clipboard.writeText(`${window.location.origin}/app/tienda/${id}`);
-    pushToast("Enlace copiado.");
-  }
-
-  function reportListing() {
-    pushToast("Función en desarrollo.");
-  }
-
-  function reserveListing(_id: string) {
-    pushToast("Función en desarrollo.");
-  }
-
-  function hideListing(id: string) {
-    setHidden((previous) => [...previous, id]);
-    pushToast("Publicación ocultada.");
-  }
-
-  function saveDraft(payload: unknown) {
-    localStorage.setItem("crunedu_store_drafts", JSON.stringify(payload));
-    pushToast("Borrador guardado.");
-  }
-
-  async function contactSeller(payload: { productId: string; contactName: string; contactPhone: string; message: string }) {
-    const token =
-      typeof window !== "undefined" ? window.localStorage.getItem(TOKEN_KEY)?.trim() : null;
-    if (!token) {
-      pushToast("Inicia sesión para contactar al vendedor.");
-      return;
-    }
+  // Load personal panel data
+  const loadPanel = useCallback(async () => {
+    const token = accessToken || getToken();
+    if (!token) return;
+    if (panelLoading.current) return;
+    panelLoading.current = true;
     try {
-      await apiRequest(`/marketplace/products/${payload.productId}/inquiries`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          contactName: payload.contactName,
-          contactPhone: payload.contactPhone,
-          message: payload.message,
-          preferredContactMethod: "whatsapp",
-        }),
-      });
-      pushToast("Consulta enviada.");
+      const [listings, favs, inquiries, stats] = await Promise.all([
+        getStoreMyListings(token),
+        getStoreMyFavorites(token),
+        getStoreMyInquiries(token),
+        getStoreMeStatistics(token),
+      ]);
+      setMyListings(listings);
+      setMyFavorites(favs);
+      setMyInquiries(inquiries);
+      setMyStats(stats);
     } catch {
-      pushToast("Error al enviar la consulta.");
+      // Silently fail panel
+    } finally {
+      panelLoading.current = false;
+    }
+  }, [accessToken]);
+
+  // URL helpers
+  const updateUrl = useCallback((updates: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    });
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, router, pathname]);
+
+  // Actions
+  const filterByCategory = (slug: string) => updateUrl({ category: slug === "all" ? "" : slug });
+  const filterByType = (t: string) => updateUrl({ type: t === "all" ? "" : t });
+  const filterByDelivery = (d: string) => updateUrl({ delivery: d === "all" ? "" : d });
+  const filterBySearch = (text: string) => updateUrl({ q: text });
+  const setSort = (s: string) => updateUrl({ sort: s === "recent" ? "" : s });
+
+  async function toggleSave(productId: string) {
+    const token = accessToken || getToken();
+    if (!token) { popToast("Inicia sesión para guardar productos."); return; }
+    try {
+      await favoriteStoreProduct(productId, token);
+      popToast("Guardado actualizado.");
+      fetchCatalog();
+    } catch { popToast("Error al guardar."); }
+  }
+
+  function shareProduct(id: string) {
+    navigator.clipboard.writeText(`${window.location.origin}/app/tienda/${id}`);
+    popToast("Enlace copiado.");
+  }
+
+  async function reportProduct(productId: string, reason: string, description?: string) {
+    const token = accessToken || getToken();
+    if (!token) { popToast("Inicia sesión para reportar."); return; }
+    try {
+      await reportStoreProduct(productId, { reason, description }, token);
+      popToast("Reporte enviado. Gracias por ayudarnos.");
+    } catch (err: any) {
+      popToast(err?.message ?? "Error al enviar el reporte.");
     }
   }
 
-  function getListingById(id: string) {
-    return listings.find((listing) => listing.id === id);
-  }
-
-  function getSimilarListings(id: string) {
-    const current = getListingById(id);
-    if (!current) return [];
-    const sameCategory = listings.filter((listing) => listing.id !== id && listing.category === current.category);
-    const byTags = listings.filter(
-      (listing) => listing.id !== id && listing.category !== current.category && listing.tags.some((tag) => current.tags.includes(tag)),
-    );
-    return [...sameCategory, ...byTags].slice(0, 4);
+  async function sendInquiry(productId: string, message: string, quickMessageType?: string) {
+    const token = accessToken || getToken();
+    if (!token) { popToast("Inicia sesión para contactar."); return; }
+    try {
+      await createStoreInquiry(productId, { message, quickMessageType, preferredContactMethod: "chat" }, token);
+      popToast("Consulta enviada.");
+    } catch { popToast("Error al enviar la consulta."); }
   }
 
   return {
     listings,
-    filteredListings,
-    selectedNeed,
-    selectedCategory,
-    selectedSort,
-    selectedDeliveryType,
-    query,
-    toast,
+    featuredProducts,
+    filteredListings: listings,
+    nextCursor,
     loading,
     error,
-    setQuery,
-    setSelectedSort,
-    setSelectedDeliveryType,
-    createListing,
-    saveListing,
-    contactSeller,
-    shareListing,
-    reportListing,
-    reserveListing,
-    hideListing,
-    saveDraft,
-    filterByNeed: setSelectedNeed,
-    filterByCategory: setSelectedCategory,
-    filterBySearch: setQuery,
-    getListingById,
-    getSimilarListings,
+    toast,
+    popToast,
+    q,
+    categorySlug,
+    type,
+    deliveryType,
+    conditionFilter,
+    sort,
+    priceMin,
+    priceMax,
+    safePointId,
+    isAdmin,
+    filterByCategory,
+    filterByType,
+    filterByDelivery,
+    filterBySearch,
+    setSort,
+    toggleSave,
+    shareProduct,
+    reportProduct,
+    sendInquiry,
     refetch: fetchCatalog,
-    pushToast,
+    panelOpen,
+    setPanelOpen,
+    myListings,
+    myFavorites,
+    myInquiries,
+    myStats,
+    loadPanel,
   };
-}
-
-export function sortListings(data: StoreListing[], sort: StoreSort) {
-  const arr = [...data];
-  if (sort === "low_price") return arr.sort((a, b) => (a.price ?? 99999) - (b.price ?? 99999));
-  if (sort === "high_price") return arr.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-  if (sort === "verified") return arr;
-  if (sort === "campus") return arr.filter((listing) => listing.deliveryType === "campus" || listing.deliveryType === "safe_point");
-  if (sort === "off_campus") return arr.filter((listing) => listing.deliveryType === "off_campus");
-  return arr;
 }

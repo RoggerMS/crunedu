@@ -20,52 +20,100 @@ type Question = {
 };
 
 export type StoreProduct = {
-  id: number;
+  id: string;
+  type: string;
   title: string;
   description: string;
-  price: string;
-  isFeatured: boolean;
-  category: { name: string } | null;
-  createdAt?: string;
-};
-
-export type StoreCatalogParams = {
-  categoryId?: number;
-  faculty?: string | null;
-  career?: string | null;
-  cursor?: number | null;
-  limit?: number;
-};
-
-export type StoreInquiryPayload = {
-  contactName: string;
-  contactPhone: string;
-  message: string;
-  preferredContactMethod: "whatsapp" | "email";
-};
-
-export type StoreInquiryResponse = {
-  id: number;
-  productId: number;
-  userId: number;
+  price: number | null;
+  currency: string;
+  priceType: string;
+  isNegotiable: boolean;
+  condition: string | null;
   status: string;
+  deliveryType: string;
+  campus: string | null;
+  course: string | null;
+  brand: string | null;
+  model: string | null;
+  quantity: number;
+  isFeatured: boolean;
+  category: { id: number; slug: string; name: string; icon?: string | null };
+  images: StoreImage[];
+  seller: { id: string; name: string; avatarUrl?: string | null; rating?: number | null; verified?: boolean; sales?: number };
+  safePoint: { id: number; name: string } | null;
+  location: string | null;
   createdAt: string;
+  publishedAt: string | null;
+  stats: { views: number; saves: number; contacts: number };
+  viewerState: { saved: boolean; isMine: boolean; canEdit: boolean; canDelete: boolean; canReport: boolean };
 };
 
-export type CatalogResponse = {
+export type StoreImage = {
+  id: number;
+  imageUrl: string;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
+  position: number;
+  isCover: boolean;
+  altText?: string | null;
+};
+
+export type StoreCatalogResponse = {
   items: StoreProduct[];
   featuredProducts: StoreProduct[];
   nextCursor: number | null;
-  context: { faculty: string; career: string };
+  filters: Record<string, string | number | null>;
 };
-export type ProductDetailResponse = StoreProduct & { contactMethod?: string; stock?: number; viewCount?: number };
-export type AdminStoreInquiry = StoreInquiryResponse & {
-  contactName: string;
-  contactPhone: string;
+
+export type StoreCategory = { id: number; name: string; slug: string; description?: string | null; icon?: string | null };
+export type StoreSafePoint = { id: number; name: string; campus?: string | null; description?: string | null; reference?: string | null; schedule?: string | null };
+
+export type StoreCreatePayload = {
+  title: string;
+  description: string;
+  categoryId: number;
+  type?: string;
+  priceType?: string;
+  price?: number;
+  isNegotiable?: boolean;
+  condition?: string;
+  deliveryType?: string;
+  campus?: string;
+  district?: string;
+  safePointId?: number;
+  course?: string;
+  brand?: string;
+  model?: string;
+  quantity?: number;
+  status?: string;
+  images?: StoreImageUpload[];
+};
+
+export type StoreImageUpload = {
+  imageUrl: string;
+  storageKey: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  altText?: string;
+  isCover?: boolean;
+};
+
+export type StoreInquiryPayload = {
   message: string;
-  preferredContactMethod: "whatsapp" | "email";
-  product: { id: number; title: string };
-  user: { id: number; email: string };
+  quickMessageType?: string;
+  preferredContactMethod?: string;
+};
+
+export type StoreReportPayload = {
+  reason: string;
+  description?: string;
+};
+
+export type StoreMeStatistics = {
+  activeProducts: number;
+  inquiriesReceived: number;
+  inquiriesSent: number;
+  favorites: number;
 };
 
 export function login(email: string, password: string) {
@@ -156,53 +204,148 @@ export function deleteQuestion(questionId: number, token: string) {
   return apiRequest<{ message: string }>(`/questions/${questionId}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
 }
 
-function buildStoreCatalogParams(params: StoreCatalogParams = {}) {
+function buildStoreCatalogUrl(params: Record<string, string | number | boolean | undefined | null>) {
   const searchParams = new URLSearchParams();
-
-  if (params.categoryId) searchParams.set("categoryId", String(params.categoryId));
-  if (params.faculty?.trim()) searchParams.set("faculty", params.faculty.trim());
-  if (params.career?.trim()) searchParams.set("career", params.career.trim());
-  if (params.cursor) searchParams.set("cursor", String(params.cursor));
-  if (params.limit) searchParams.set("limit", String(params.limit));
-
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      searchParams.set(key, String(value));
+    }
+  });
   return searchParams.toString();
 }
 
-export function getStoreCatalog(params?: StoreCatalogParams) {
-  const query = buildStoreCatalogParams(params);
-  return apiRequest<CatalogResponse>(query ? `/marketplace/products?${query}` : "/marketplace/products");
+export function getStoreCatalog(query?: Record<string, string | number | boolean | undefined | null>) {
+  const qs = query ? buildStoreCatalogUrl(query) : "";
+  return apiRequest<StoreCatalogResponse>(qs ? `/marketplace/products?${qs}` : "/marketplace/products");
 }
 
-export function getStoreProductDetail(productId: number) {
-  return apiRequest<ProductDetailResponse>(`/marketplace/products/${productId}`);
+export function getStoreProductDetail(productId: number | string) {
+  return apiRequest<StoreProduct>(`/marketplace/products/${productId}`);
 }
 
-export function createStoreInquiry(
-  productId: number,
-  payload: StoreInquiryPayload,
-  token: string,
-) {
-  return apiRequest<StoreInquiryResponse>(`/marketplace/products/${productId}/inquiries`, {
+export function getStoreCategories() {
+  return apiRequest<StoreCategory[]>("/marketplace/categories");
+}
+
+export function getStoreSafePoints() {
+  return apiRequest<StoreSafePoint[]>("/marketplace/safe-points");
+}
+
+export function createStoreProduct(payload: StoreCreatePayload, token: string) {
+  return apiRequest<StoreProduct>("/marketplace/products", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
   });
 }
 
-export function getStoreCategories() {
-  return apiRequest<Array<{ id: number; name: string }>>("/marketplace/categories");
+export function updateStoreProduct(id: number | string, payload: Partial<StoreCreatePayload>, token: string) {
+  return apiRequest<StoreProduct>(`/marketplace/products/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
 }
 
+export function deleteStoreProduct(id: number | string, token: string) {
+  return apiRequest<{ message: string }>(`/marketplace/products/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function uploadStoreProductImage(file: File, token: string) {
+  const formData = new FormData();
+  formData.append("image", file);
+  return apiRequest<{ imageUrl: string; storageKey: string; mimeType: string; sizeBytes: number }>(
+    "/marketplace/products/images",
+    { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: formData },
+  );
+}
+
+export function favoriteStoreProduct(id: number | string, token: string) {
+  return apiRequest<{ saved: boolean; favoriteCount: number }>(`/marketplace/products/${id}/favorite`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function createStoreInquiry(productId: number | string, payload: StoreInquiryPayload, token: string) {
+  return apiRequest(`/marketplace/products/${productId}/inquiries`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function reportStoreProduct(productId: number | string, payload: StoreReportPayload, token: string) {
+  return apiRequest(`/marketplace/products/${productId}/reports`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function publishStoreProduct(id: number | string, token: string) {
+  return apiRequest<StoreProduct>(`/marketplace/products/${id}/publish`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function pauseStoreProduct(id: number | string, token: string) {
+  return apiRequest<StoreProduct>(`/marketplace/products/${id}/pause`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function markProductSold(id: number | string, token: string) {
+  return apiRequest<StoreProduct>(`/marketplace/products/${id}/mark-sold`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getStoreMyFavorites(token: string) {
+  return apiRequest<StoreProduct[]>("/marketplace/me/favorites", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getStoreMyListings(token: string) {
+  return apiRequest<StoreProduct[]>("/marketplace/me/listings", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getStoreMyInquiries(token: string) {
+  return apiRequest<any[]>("/marketplace/me/inquiries", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getStoreMeStatistics(token: string) {
+  return apiRequest<StoreMeStatistics>("/marketplace/me/statistics", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+// --- Admin store helpers ---
 export function createAdminProduct(payload: Record<string, unknown>, token: string) {
-  return apiRequest("/marketplace/admin/products", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+  return apiRequest("/marketplace/admin/products", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
 }
 
 export function getAdminStoreProducts(token: string) {
-  return apiRequest<Array<StoreProduct & { status: string }>>("/marketplace/admin/products", { headers: { Authorization: `Bearer ${token}` } });
+  return apiRequest<any[]>("/marketplace/admin/products", { headers: { Authorization: `Bearer ${token}` } });
 }
 
 export function getAdminStoreInquiries(token: string) {
-  return apiRequest<{ items: AdminStoreInquiry[]; nextCursor: number | null }>("/marketplace/admin/inquiries", { headers: { Authorization: `Bearer ${token}` } });
+  return apiRequest<{ items: any[]; nextCursor: number | null }>("/marketplace/admin/inquiries", { headers: { Authorization: `Bearer ${token}` } });
 }
 
 export function updateAdminStoreInquiryStatus(inquiryId: number, status: string, token: string) {
@@ -213,11 +356,24 @@ export function updateAdminStoreInquiryStatus(inquiryId: number, status: string,
   });
 }
 
+export function updateAdminProductStatus(productId: number, status: string, token: string) {
+  return apiRequest(`/marketplace/admin/products/${productId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function getAdminStoreReports(token: string, cursor?: number, limit?: number) {
+  const params = new URLSearchParams();
+  if (cursor) params.set("cursor", String(cursor));
+  if (limit) params.set("limit", String(limit));
+  const qs = params.toString();
+  return apiRequest<{ items: any[]; nextCursor: number | null }>(qs ? `/marketplace/admin/reports?${qs}` : "/marketplace/admin/reports", { headers: { Authorization: `Bearer ${token}` } });
+}
+
 export function getAdminStoreMetrics(token: string) {
-  return apiRequest<{
-    totals: { views: number; contactClicks: number; inquiries: number };
-    inquirySummary: { total: number; completed: number };
-  }>("/marketplace/admin/metrics", { headers: { Authorization: `Bearer ${token}` } });
+  return apiRequest<any>("/marketplace/admin/metrics", { headers: { Authorization: `Bearer ${token}` } });
 }
 
 export type UniversityContentApiItem = {

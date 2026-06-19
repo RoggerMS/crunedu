@@ -1,1 +1,71 @@
-export function StoreFilters(props:{category:string;setCategory:(v:string)=>void;sort:string;setSort:(v:any)=>void;delivery:string;setDelivery:(v:any)=>void;}){return <div className="flex flex-wrap gap-2 rounded-2xl border bg-white p-3"><select value={props.category} onChange={(e)=>props.setCategory(e.target.value)} className="rounded border p-2 text-sm"><option value="all">Todo</option><option value="books">Libros</option><option value="printed_notes">Apuntes impresos</option><option value="calculators">Calculadoras</option><option value="technology">Tecnología</option><option value="uniforms">Uniformes</option><option value="materials">Materiales</option><option value="food">Comida</option><option value="services">Servicios</option><option value="business">Emprendimientos</option><option value="events">Eventos</option><option value="exchange">Intercambios</option><option value="free">Gratis / Donaciones</option></select><select value={props.sort} onChange={(e)=>props.setSort(e.target.value)} className="rounded border p-2 text-sm"><option value="recent">Más recientes</option><option value="low_price">Menor precio</option><option value="high_price">Mayor precio</option><option value="verified">Verificados</option><option value="campus">En campus</option><option value="off_campus">Fuera de campus</option></select><select value={props.delivery} onChange={(e)=>props.setDelivery(e.target.value)} className="rounded border p-2 text-sm"><option value="all">Todas las entregas</option><option value="campus">En campus</option><option value="safe_point">Punto seguro</option><option value="near_campus">Cerca del campus</option><option value="off_campus">Fuera de campus</option><option value="virtual">Virtual</option></select></div>}
+import { useEffect, useState } from "react";
+import type { StoreCategory } from "@/lib/api-helpers";
+import { getStoreCategories } from "@/lib/api-helpers";
+
+export function StoreFilters({
+  categorySlug,
+  setCategorySlug,
+  type,
+  setType,
+  deliveryType,
+  setDeliveryType,
+  sort,
+  setSort,
+}: {
+  categorySlug: string;
+  setCategorySlug: (v: string) => void;
+  type: string;
+  setType: (v: string) => void;
+  deliveryType: string;
+  setDeliveryType: (v: string) => void;
+  sort: string;
+  setSort: (v: string) => void;
+}) {
+  const [categories, setCategories] = useState<StoreCategory[]>([]);
+
+  useEffect(() => {
+    getStoreCategories()
+      .then(setCategories)
+      .catch(() => {});
+  }, []);
+
+  return (
+    <div className="flex flex-wrap gap-2 rounded-2xl border bg-white p-3">
+      <select value={categorySlug} onChange={(e) => setCategorySlug(e.target.value)} className="rounded-lg border px-2.5 py-2 text-sm" aria-label="Categoría">
+        <option value="">Todas las categorías</option>
+        {categories.map((cat) => (
+          <option key={cat.slug} value={cat.slug}>{cat.name}</option>
+        ))}
+      </select>
+
+      <select value={type} onChange={(e) => setType(e.target.value)} className="rounded-lg border px-2.5 py-2 text-sm" aria-label="Tipo">
+        <option value="">Todos los tipos</option>
+        <option value="SALE">Venta</option>
+        <option value="SERVICE">Servicio</option>
+        <option value="EXCHANGE">Intercambio</option>
+        <option value="DONATION">Donación</option>
+        <option value="RENTAL">Alquiler</option>
+        <option value="REQUEST">Solicitud</option>
+      </select>
+
+      <select value={deliveryType} onChange={(e) => setDeliveryType(e.target.value)} className="rounded-lg border px-2.5 py-2 text-sm" aria-label="Entrega">
+        <option value="">Todas las entregas</option>
+        <option value="CAMPUS">En campus</option>
+        <option value="SAFE_POINT">Punto seguro</option>
+        <option value="PICKUP">Recojo</option>
+        <option value="COORDINATED">Coordinado</option>
+        <option value="SHIPPING">Envío</option>
+        <option value="DIGITAL">Digital</option>
+      </select>
+
+      <select value={sort} onChange={(e) => setSort(e.target.value)} className="rounded-lg border px-2.5 py-2 text-sm" aria-label="Orden">
+        <option value="recent">Más recientes</option>
+        <option value="low_price">Menor precio</option>
+        <option value="high_price">Mayor precio</option>
+        <option value="most_viewed">Más vistos</option>
+        <option value="most_saved">Más guardados</option>
+        <option value="campus">En campus</option>
+      </select>
+    </div>
+  );
+}

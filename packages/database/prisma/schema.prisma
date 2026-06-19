@@ -41,6 +41,43 @@ enum InquiryStatus {
   CANCELLED
 }
 
+enum ProductType {
+  SALE
+  SERVICE
+  EXCHANGE
+  DONATION
+  RENTAL
+  REQUEST
+}
+
+enum ProductPriceType {
+  FIXED
+  NEGOTIABLE
+  FREE
+  CONTACT
+  EXCHANGE
+  HOURLY
+  FROM
+}
+
+enum ProductCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  USED
+  WITH_DETAILS
+  NOT_APPLICABLE
+}
+
+enum ProductDeliveryType {
+  CAMPUS
+  SAFE_POINT
+  PICKUP
+  COORDINATED
+  SHIPPING
+  DIGITAL
+}
+
 enum ReportStatus {
   OPEN
   UNDER_REVIEW
@@ -618,6 +655,9 @@ model ProductCategory {
   name        String
   slug        String   @unique
   description String?
+  icon        String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -627,25 +667,41 @@ model ProductCategory {
 }
 
 model Product {
-  id                Int           @id @default(autoincrement())
+  id                Int                 @id @default(autoincrement())
   title             String
   description       String
-  price             Decimal       @db.Decimal(10, 2)
-  currency          String        @default("PEN")
-  categoryId        Int           @map("category_id")
-  status            ProductStatus @default(DRAFT)
-  stock             Int           @default(1)
-  isFeatured        Boolean       @default(false) @map("is_featured")
-  contactMethod     String        @map("contact_method")
-  whatsappMessage   String?       @map("whatsapp_message")
-  viewCount         Int           @default(0) @map("view_count")
-  contactClickCount Int           @default(0) @map("contact_click_count")
-  createdBy         Int           @map("created_by")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
+  price             Decimal?            @db.Decimal(10, 2)
+  currency          String              @default("PEN")
+  categoryId        Int                 @map("category_id")
+  status            ProductStatus       @default(DRAFT)
+  type              ProductType         @default(SALE)
+  priceType         ProductPriceType    @default(FIXED) @map("price_type")
+  isNegotiable      Boolean             @default(false) @map("is_negotiable")
+  condition         ProductCondition?
+  deliveryType      ProductDeliveryType @default(CAMPUS) @map("delivery_type")
+  campus            String?
+  district          String?
+  safePointId       Int?                @map("safe_point_id")
+  course            String?
+  brand             String?
+  model             String?
+  quantity          Int                 @default(1)
+  stock             Int                 @default(1)
+  isFeatured        Boolean             @default(false) @map("is_featured")
+  contactMethod     String              @default("chat") @map("contact_method")
+  whatsappMessage   String?             @map("whatsapp_message")
+  viewCount         Int                 @default(0) @map("view_count")
+  contactClickCount Int                 @default(0) @map("contact_click_count")
+  favoriteCount     Int                 @default(0) @map("favorite_count")
+  createdBy         Int                 @map("created_by")
+  publishedAt       DateTime?           @map("published_at")
+  deletedAt         DateTime?           @map("deleted_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
 
   category  ProductCategory   @relation(fields: [categoryId], references: [id])
   admin     User              @relation(fields: [createdBy], references: [id])
+  safePoint ProductSafePoint? @relation(fields: [safePointId], references: [id])
   images    ProductImage[]
   favorites ProductFavorite[]
   inquiries ProductInquiry[]
@@ -656,7 +712,29 @@ model Product {
   @@index([status])
   @@index([isFeatured])
   @@index([createdAt])
+  @@index([type])
+  @@index([deliveryType])
+  @@index([safePointId])
+  @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@map("products")
+}
+
+model ProductSafePoint {
+  id           Int      @id @default(autoincrement())
+  name         String
+  universityId Int?     @map("university_id")
+  campus       String?
+  description  String?
+  reference    String?
+  schedule     String?
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  products Product[]
+
+  @@index([isActive])
+  @@map("product_safe_points")
 }
 
 model ProductImage {
@@ -664,6 +742,10 @@ model ProductImage {
   productId  Int      @map("product_id")
   imageUrl   String   @map("image_url")
   storageKey String   @map("storage_key")
+  mimeType   String?  @map("mime_type")
+  sizeBytes  Int?     @map("size_bytes")
+  altText    String?  @map("alt_text")
+  isCover    Boolean  @default(false) @map("is_cover")
   position   Int      @default(0)
   createdAt  DateTime @default(now()) @map("created_at")
 
@@ -691,10 +773,11 @@ model ProductInquiry {
   id                     Int           @id @default(autoincrement())
   productId              Int           @map("product_id")
   userId                 Int           @map("user_id")
-  contactName            String        @map("contact_name")
-  contactPhone           String        @map("contact_phone")
+  contactName            String?       @map("contact_name")
+  contactPhone           String?       @map("contact_phone")
   message                String
-  preferredContactMethod String        @map("preferred_contact_method")
+  quickMessageType       String?       @map("quick_message_type")
+  preferredContactMethod String        @default("chat") @map("preferred_contact_method")
   status                 InquiryStatus @default(PENDING)
   createdAt              DateTime      @default(now()) @map("created_at")
   updatedAt              DateTime      @updatedAt @map("updated_at")

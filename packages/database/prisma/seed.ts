@@ -1,4 +1,4 @@
-import { PrismaClient, Role, UniversityContentType, UniversityContentVisibility } from "@prisma/client";
+import { PrismaClient, ProductType, ProductPriceType, ProductCondition, ProductDeliveryType, Role, UniversityContentType, UniversityContentVisibility } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -69,29 +69,246 @@ async function main() {
     });
   }
 
+  // --- Store categories with icons ---
   const categories = [
-    { name: "Materiales de estudio", slug: "materiales-estudio" },
-    { name: "Útiles", slug: "utiles" },
-    { name: "Merch universitario", slug: "merch-universitario" },
-    { name: "Cursos y talleres", slug: "cursos-talleres" },
+    { name: "Libros y separatas", slug: "libros-separatas", description: "Textos, copias y material de cursos", icon: "BookOpen", order: 1 },
+    { name: "Calculadoras", slug: "calculadoras", description: "Científicas y básicas para exámenes", icon: "Calculator", order: 2 },
+    { name: "Materiales y útiles", slug: "materiales-utiles", description: "Cuadernos, lapiceros, mochilas y más", icon: "Backpack", order: 3 },
+    { name: "Tecnología", slug: "tecnologia", description: "Laptops, accesorios y electrónicos", icon: "Laptop", order: 4 },
+    { name: "Impresiones y copias", slug: "impresiones-copias", description: "Servicios de impresión, anillado y escaneo", icon: "Printer", order: 5 },
+    { name: "Servicios académicos", slug: "servicios-academicos", description: "Tutorías, clases, diseño y edición", icon: "BriefcaseBusiness", order: 6 },
+    { name: "Alimentación", slug: "alimentacion", description: "Comida y bebidas en el campus", icon: "Utensils", order: 7 },
+    { name: "Emprendimientos", slug: "emprendimientos", description: "Negocios y propuestas estudiantiles", icon: "Rocket", order: 8 },
+    { name: "Intercambios", slug: "intercambios", description: "Cambia sin pagar", icon: "Repeat2", order: 9 },
+    { name: "Donaciones", slug: "donaciones", description: "Apoyo gratuito entre estudiantes", icon: "Gift", order: 10 },
   ];
 
   for (const category of categories) {
     await prisma.productCategory.upsert({
       where: { slug: category.slug },
-      update: {},
+      update: { name: category.name, description: category.description, icon: category.icon, order: category.order },
       create: category,
+    });
+  }
+
+  // --- Safe points ---
+  const safePoints = [
+    { name: "Biblioteca Central", campus: "Campus UNE", description: "Zona amplia con mesas, iluminación y vigilancia.", reference: "Primer piso, junto a la entrada principal", schedule: "Lun-Vie 8:00 a.m. - 8:00 p.m." },
+    { name: "Patio Principal", campus: "Campus UNE", description: "Espacio abierto, concurrido y con bancas disponibles.", reference: "Frente al Pabellón A", schedule: "Lun-Sáb 7:00 a.m. - 6:00 p.m." },
+    { name: "Cafetería Central", campus: "Campus UNE", description: "Punto de encuentro habitual con mesas y personal.", reference: "Junto al comedor universitario", schedule: "Lun-Vie 7:00 a.m. - 5:00 p.m." },
+    { name: "Entrada Principal", campus: "Campus UNE", description: "Puerta principal con control de ingreso.", reference: "Av. Las Palmeras s/n", schedule: "Lun-Dom 6:00 a.m. - 10:00 p.m." },
+  ];
+
+  for (const sp of safePoints) {
+    await prisma.productSafePoint.upsert({
+      where: { id: safePoints.indexOf(sp) + 1 },
+      update: sp,
+      create: sp,
+    });
+  }
+
+  // --- Products ---
+  const products = [
+    {
+      title: "Calculadora Casio fx-991ES PLUS",
+      description: "Ideal para Matemática I y Física. Incluye estuche original y pilas nuevas. Poco uso, como nueva. Perfecta para parciales y finales.",
+      price: 120,
+      type: ProductType.SALE,
+      priceType: ProductPriceType.FIXED,
+      condition: ProductCondition.GOOD,
+      deliveryType: ProductDeliveryType.CAMPUS,
+      campus: "Biblioteca Central",
+      course: "Matemática I",
+      isFeatured: true,
+      categorySlug: "calculadoras",
+    },
+    {
+      title: "Libro de Cálculo Stewart 7ma edición",
+      description: "Libro original en buen estado. Algunas marcas de lápiz borrables. Incluye solucionario parcial. Ideal para Cálculo I y II.",
+      price: 85,
+      type: ProductType.SALE,
+      priceType: ProductPriceType.FIXED,
+      condition: ProductCondition.GOOD,
+      deliveryType: ProductDeliveryType.CAMPUS,
+      campus: "Patio Principal",
+      course: "Cálculo I",
+      isFeatured: true,
+      categorySlug: "libros-separatas",
+    },
+    {
+      title: "Pack de separatas de Estadística",
+      description: "Incluye ejercicios resueltos de Estadística Descriptiva e Inferencial. Separata completa del ciclo 2026-1.",
+      price: 25,
+      type: ProductType.SALE,
+      priceType: ProductPriceType.FIXED,
+      condition: ProductCondition.GOOD,
+      deliveryType: ProductDeliveryType.CAMPUS,
+      campus: "Facultad de Ciencias",
+      course: "Estadística",
+      isFeatured: false,
+      categorySlug: "libros-separatas",
+    },
+    {
+      title: "Servicio de impresión y anillado",
+      description: "Impresiones blanco/negro desde S/ 0.15 y color desde S/ 0.50. Anillado con tapa incluida. Entrega en 1 hora. Para trabajos y monografías.",
+      price: null,
+      type: ProductType.SERVICE,
+      priceType: ProductPriceType.FROM,
+      isNegotiable: false,
+      condition: ProductCondition.NOT_APPLICABLE,
+      deliveryType: ProductDeliveryType.CAMPUS,
+      campus: "Frente al campus",
+      isFeatured: true,
+      categorySlug: "impresiones-copias",
+    },
+    {
+      title: "Laptop Lenovo i5 8GB RAM 256 SSD",
+      description: "Perfecta para clases, trabajos y programación. Batería dura 4 horas. Cargador original incluido. Windows 11 instalado.",
+      price: 1100,
+      type: ProductType.SALE,
+      priceType: ProductPriceType.NEGOTIABLE,
+      isNegotiable: true,
+      condition: ProductCondition.USED,
+      deliveryType: ProductDeliveryType.SAFE_POINT,
+      safePointId: 1,
+      brand: "Lenovo",
+      model: "ThinkPad T480",
+      isFeatured: true,
+      categorySlug: "tecnologia",
+    },
+    {
+      title: "Menú universitario por pedido",
+      description: "Almuerzos desde S/ 9 con segundo, sopa/entrada y refresco. Opciones vegetarianas. Pedidos por WhatsApp antes de las 11 a.m.",
+      price: 9,
+      type: ProductType.SERVICE,
+      priceType: ProductPriceType.FROM,
+      isNegotiable: false,
+      condition: ProductCondition.NOT_APPLICABLE,
+      deliveryType: ProductDeliveryType.CAMPUS,
+      campus: "Cafetería Central",
+      isFeatured: false,
+      categorySlug: "alimentacion",
+    },
+    {
+      title: "Clases de reforzamiento Matemática I",
+      description: "Clases particulares presenciales o virtuales. Preparación para parciales con ejercicios tipo examen. Primera clase de prueba gratis.",
+      price: 20,
+      type: ProductType.SERVICE,
+      priceType: ProductPriceType.HOURLY,
+      isNegotiable: false,
+      condition: ProductCondition.NOT_APPLICABLE,
+      deliveryType: ProductDeliveryType.CAMPUS,
+      campus: "Biblioteca Central",
+      course: "Matemática I",
+      isFeatured: false,
+      categorySlug: "servicios-academicos",
+    },
+    {
+      title: "Intercambio libro de Física por Cálculo",
+      description: "Tengo Física Universitaria Vol. 1 de Sears Zemansky. Busco Cálculo de Stewart o similar. Buen estado ambos. Intercambio temporal también aceptado.",
+      price: null,
+      type: ProductType.EXCHANGE,
+      priceType: ProductPriceType.EXCHANGE,
+      isNegotiable: false,
+      condition: ProductCondition.GOOD,
+      deliveryType: ProductDeliveryType.CAMPUS,
+      campus: "Patio Principal",
+      course: "Física I",
+      isFeatured: false,
+      categorySlug: "intercambios",
+    },
+    {
+      title: "Donación de separatas usadas",
+      description: "Separatas de varios cursos en buen estado. Gratis para cachimbos que estén empezando. Solo recoger en campus.",
+      price: null,
+      type: ProductType.DONATION,
+      priceType: ProductPriceType.FREE,
+      isNegotiable: false,
+      condition: ProductCondition.USED,
+      deliveryType: ProductDeliveryType.CAMPUS,
+      campus: "Biblioteca Central",
+      isFeatured: false,
+      categorySlug: "donaciones",
+    },
+    {
+      title: "Diseño de diapositivas para exposición",
+      description: "Presentaciones limpias y profesionales para tus exposiciones. Incluye imágenes y diagramas. Entrega en 24 horas. Revisión incluida.",
+      price: 30,
+      type: ProductType.SERVICE,
+      priceType: ProductPriceType.FIXED,
+      isNegotiable: false,
+      condition: ProductCondition.NOT_APPLICABLE,
+      deliveryType: ProductDeliveryType.DIGITAL,
+      isFeatured: false,
+      categorySlug: "servicios-academicos",
+    },
+    {
+      title: "Cuadernos nuevos pack x5",
+      description: "Pack de 5 cuadernos universitarios tamaño A4, 100 hojas rayadas. Varios colores disponibles. Sellados de fábrica.",
+      price: 18,
+      type: ProductType.SALE,
+      priceType: ProductPriceType.FIXED,
+      condition: ProductCondition.NEW,
+      deliveryType: ProductDeliveryType.CAMPUS,
+      campus: "Cafetería Central",
+      isFeatured: false,
+      categorySlug: "materiales-utiles",
+    },
+    {
+      title: "Servicio de escaneo de documentos",
+      description: "Escaneo de documentos a PDF de alta calidad. Hasta 100 páginas por entrega. Corrección básica de orientación. USB o correo.",
+      price: 8,
+      type: ProductType.SERVICE,
+      priceType: ProductPriceType.FIXED,
+      condition: ProductCondition.NOT_APPLICABLE,
+      deliveryType: ProductDeliveryType.DIGITAL,
+      isFeatured: false,
+      categorySlug: "impresiones-copias",
+    },
+  ];
+
+  for (const p of products) {
+    const category = await prisma.productCategory.findUnique({ where: { slug: p.categorySlug } });
+    if (!category) continue;
+
+    const safePointField = p.safePointId ? { safePointId: p.safePointId } : {};
+
+    await prisma.product.create({
+      data: {
+        title: p.title,
+        description: p.description,
+        price: p.price,
+        currency: "PEN",
+        categoryId: category.id,
+        status: "ACTIVE",
+        type: p.type,
+        priceType: p.priceType,
+        isNegotiable: p.isNegotiable ?? false,
+        condition: p.condition ?? null,
+        deliveryType: p.deliveryType,
+        campus: p.campus ?? null,
+        course: p.course ?? null,
+        brand: p.brand ?? null,
+        model: p.model ?? null,
+        quantity: 1,
+        stock: 1,
+        isFeatured: p.isFeatured ?? false,
+        contactMethod: "chat",
+        createdBy: admin.id,
+        publishedAt: new Date(),
+        ...safePointField,
+      },
     });
   }
 
   const tags = ["matrícula", "carnet", "comedor", "apuntes", "matemática", "programación", "trámites"];
   for (const tag of tags) {
     await prisma.tag.upsert({
-      where: { slug: tag.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "-") },
+      where: { slug: tag.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "-") },
       update: {},
       create: {
         name: tag,
-        slug: tag.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "-"),
+        slug: tag.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "-"),
       },
     });
   }
@@ -165,6 +382,7 @@ async function main() {
   console.log("Seed completed.");
   console.log("Admin email: admin@crunedu.local");
   console.log("Admin password: CrunEdu123!");
+  console.log("Store: 10 categories, 4 safe points, 12 products created.");
 }
 
 main()

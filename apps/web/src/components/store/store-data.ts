@@ -1,34 +1,48 @@
-import type { StoreListing, StoreNeed } from "./types";
+import type { StoreCategoryConfig, StoreNeed, ReportReason, QuickMessage } from "./types";
 
-const now = new Date().toISOString();
-export const storeListingsSeed: StoreListing[] = [
-  {id:"1",type:"sale",title:"Calculadora Casio fx-991ES PLUS",description:"Ideal para Matemática I y Física.",price:120,currency:"PEN",category:"calculators",condition:"used",status:"available",badges:["Entrega hoy","En campus"],images:[{id:"1"}],seller:{id:"s1",name:"María Fernanda",rating:4.9,verified:true,sales:42},location:"Biblioteca Central",deliveryType:"campus",deliveryMethod:"En campus",course:"Matemática I",faculty:"Ciencias",tags:["calculadora","casio"],createdAt:now,stats:{views:120,saves:19,contacts:11},viewerState:{saved:false}},
-  {id:"2",type:"sale",title:"Libro de Cálculo Stewart",description:"7ma edición, buen estado",price:85,currency:"PEN",category:"books",condition:"like_new",status:"available",badges:["Disponible"],images:[{id:"2"}],seller:{id:"s2",name:"CopyUNI",rating:4.8,verified:true,sales:180},location:"Patio Principal",deliveryType:"safe_point",deliveryMethod:"Punto acordado",course:"Cálculo",faculty:"Ingeniería",tags:["libro","calculo"],createdAt:now,stats:{views:210,saves:33,contacts:20},viewerState:{saved:false}},
-  {id:"3",type:"sale",title:"Pack de separatas de Estadística",description:"Incluye ejercicios resueltos.",price:25,currency:"PEN",category:"printed_notes",status:"available",badges:["En campus"],images:[{id:"3"}],seller:{id:"s3",name:"Juan Torres",rating:4.5,sales:15},location:"Facultad de Ciencias",deliveryType:"campus",deliveryMethod:"En campus",course:"Estadística",tags:["separatas"],createdAt:now,stats:{views:90,saves:12,contacts:6},viewerState:{saved:false}},
-  {id:"4",type:"sale",title:"Laptop Lenovo i5 para clases",description:"8GB RAM, SSD 256GB",price:1100,currency:"PEN",category:"technology",condition:"used",status:"available",badges:["Urgente"],images:[{id:"4"}],seller:{id:"s4",name:"Carlos M",rating:4.2,sales:4},location:"Cerca de la universidad",deliveryType:"near_campus",deliveryMethod:"Punto acordado",tags:["laptop"],createdAt:now,stats:{views:300,saves:40,contacts:18},viewerState:{saved:false}},
-  {id:"5",type:"sale",title:"Mandil blanco de laboratorio",description:"Talla M",price:35,currency:"PEN",category:"uniforms",condition:"like_new",status:"available",badges:["Entrega hoy"],images:[{id:"5"}],seller:{id:"s5",name:"Sabor Campus",rating:4.7,verified:true,sales:66},location:"Entrada Principal",deliveryType:"safe_point",deliveryMethod:"Punto acordado",tags:["mandil"],createdAt:now,stats:{views:78,saves:10,contacts:4},viewerState:{saved:false}},
-  {id:"6",type:"service",title:"Servicio de impresión y anillado",description:"Entrega en 1 hora.",price:0,priceLabel:"Desde S/ 0.15 por hoja",currency:"PEN",category:"services",status:"available",badges:["Disponible ahora"],images:[{id:"6"}],seller:{id:"s2",name:"CopyUNI",rating:4.8,verified:true,sales:180},location:"Frente al campus",deliveryType:"near_campus",deliveryMethod:"Delivery local",tags:["impresión"],createdAt:now,stats:{views:420,saves:74,contacts:56},viewerState:{saved:false}},
-  {id:"7",type:"student_business",title:"Menú universitario por pedido",description:"Almuerzos desde S/ 9",price:9,currency:"PEN",category:"food",status:"available",badges:["En campus"],images:[{id:"7"}],seller:{id:"s5",name:"Sabor Campus",rating:4.7,verified:true,sales:66},location:"Cafetería Central",deliveryType:"campus",deliveryMethod:"En campus",tags:["comida"],createdAt:now,stats:{views:134,saves:21,contacts:13},viewerState:{saved:false}},
-  {id:"8",type:"sale",title:"Mochila universitaria",description:"Varios compartimentos",price:60,currency:"PEN",category:"materials",condition:"used",status:"available",badges:[],images:[{id:"8"}],seller:{id:"s6",name:"Lucía R",rating:4.3,sales:9},location:"Los olivos",deliveryType:"off_campus",deliveryMethod:"Punto acordado",tags:["mochila"],createdAt:now,stats:{views:68,saves:9,contacts:3},viewerState:{saved:false}},
-  {id:"9",type:"exchange",title:"Intercambio libro de Física por Cálculo",description:"Busco Stewart",currency:"PEN",priceLabel:"Intercambio",category:"exchange",status:"available",badges:["Intercambio"],images:[{id:"9"}],seller:{id:"s7",name:"Ana P",rating:4.6,sales:3},location:"Patio Principal",deliveryType:"campus",deliveryMethod:"Punto acordado",tags:["intercambio"],createdAt:now,stats:{views:49,saves:8,contacts:4},viewerState:{saved:false}},
-  {id:"10",type:"donation",title:"Donación de separatas usadas",description:"Gratis para cachimbos",currency:"PEN",priceLabel:"Gratis",category:"free",status:"available",badges:["Donación"],images:[{id:"10"}],seller:{id:"s8",name:"Profe Nico",rating:5,verified:true,sales:120},location:"Biblioteca Central",deliveryType:"safe_point",deliveryMethod:"En campus",tags:["gratis"],createdAt:now,stats:{views:155,saves:50,contacts:31},viewerState:{saved:false}},
-  {id:"11",type:"service",title:"Clases de reforzamiento Matemática I",description:"Modalidad virtual o campus",price:20,currency:"PEN",category:"services",status:"available",badges:["Virtual"],images:[{id:"11"}],seller:{id:"s8",name:"Profe Nico",rating:5,verified:true,sales:120},location:"Virtual",deliveryType:"virtual",deliveryMethod:"Virtual",course:"Matemática I",tags:["clases"],createdAt:now,stats:{views:190,saves:22,contacts:15},viewerState:{saved:false}},
-  {id:"12",type:"event",title:"Entrada cine universitario",description:"Función solidaria",price:12,currency:"PEN",category:"events",status:"available",badges:[],images:[{id:"12"}],seller:{id:"s9",name:"Centro Cultural",rating:4.1,sales:2},location:"Fuera de campus",deliveryType:"off_campus",deliveryMethod:"Punto acordado",tags:["evento"],createdAt:now,stats:{views:60,saves:5,contacts:2},viewerState:{saved:false}},
-  {id:"13",type:"service",title:"Diseño de diapositivas para exposición",description:"Presentaciones limpias",price:30,currency:"PEN",category:"services",status:"available",badges:["Entrega hoy"],images:[{id:"13"}],seller:{id:"s10",name:"Stickers Factory",rating:4.4,sales:17},location:"Virtual",deliveryType:"virtual",deliveryMethod:"Virtual",tags:["diapositivas"],createdAt:now,stats:{views:97,saves:11,contacts:9},viewerState:{saved:false}},
-  {id:"14",type:"service",title:"Servicio de escaneo de documentos",description:"PDF alta calidad",price:8,currency:"PEN",category:"services",status:"available",badges:["Disponible ahora"],images:[{id:"14"}],seller:{id:"s2",name:"CopyUNI",rating:4.8,verified:true,sales:180},location:"Frente al campus",deliveryType:"near_campus",deliveryMethod:"Delivery local",tags:["escaneo"],createdAt:now,stats:{views:72,saves:7,contacts:4},viewerState:{saved:false}},
-  {id:"15",type:"sale",title:"Cuadernos nuevos",description:"Pack x5",price:18,currency:"PEN",category:"materials",condition:"new",status:"available",badges:["En campus"],images:[{id:"15"}],seller:{id:"s11",name:"Papelería UNI",rating:4.5,sales:37},location:"Cafetería Central",deliveryType:"campus",deliveryMethod:"En campus",tags:["cuadernos"],createdAt:now,stats:{views:83,saves:13,contacts:8},viewerState:{saved:false}},
-  {id:"16",type:"student_business",title:"Stickers personalizados universitarios",description:"Por facultad y curso",price:5,currency:"PEN",category:"business",status:"available",badges:["Verificado"],images:[{id:"16"}],seller:{id:"s10",name:"Stickers Factory",rating:4.4,verified:true,sales:17},location:"Surco",deliveryType:"off_campus",deliveryMethod:"Delivery local",tags:["emprendimiento"],createdAt:now,stats:{views:113,saves:16,contacts:12},viewerState:{saved:false}},
+export const STORE_CATEGORY_CONFIG: StoreCategoryConfig[] = [
+  { key: "libros-separatas", label: "Libros y separatas", description: "Textos, copias y material de cursos", iconKey: "BookOpen" },
+  { key: "calculadoras", label: "Calculadoras", description: "Científicas y básicas", iconKey: "Calculator" },
+  { key: "materiales-utiles", label: "Materiales y útiles", description: "Cuadernos, mochilas y más", iconKey: "Backpack" },
+  { key: "tecnologia", label: "Tecnología", description: "Laptops y accesorios", iconKey: "Laptop" },
+  { key: "impresiones-copias", label: "Impresiones y copias", description: "Servicios de impresión", iconKey: "Printer" },
+  { key: "servicios-academicos", label: "Servicios académicos", description: "Clases, tutorías y diseño", iconKey: "BriefcaseBusiness" },
+  { key: "alimentacion", label: "Alimentación", description: "Comida en el campus", iconKey: "Utensils" },
+  { key: "emprendimientos", label: "Emprendimientos", description: "Negocios estudiantiles", iconKey: "Rocket" },
+  { key: "intercambios", label: "Intercambios", description: "Cambia sin pagar", iconKey: "Repeat2" },
+  { key: "donaciones", label: "Donaciones", description: "Apoyo gratuito", iconKey: "Gift" },
 ];
 
 export const storeNeeds: StoreNeed[] = [
-{id:"study",label:"Estudiar",subtitle:"para una clase",icon:"📚",matcher:(l)=>["books","printed_notes"].includes(l.category)},
-{id:"print",label:"Imprimir / Anillar",subtitle:"servicios rápidos",icon:"🖨️",matcher:(l)=>l.title.toLowerCase().includes("impresi")||l.tags.some(t=>t.includes("imp"))},
-{id:"materials",label:"Comprar materiales",subtitle:"laboratorio y cursos",icon:"🎒",matcher:(l)=>["materials","uniforms"].includes(l.category)},
-{id:"calculator",label:"Conseguir calculadora",subtitle:"para exámenes",icon:"🧮",matcher:(l)=>l.category==="calculators"},
-{id:"book",label:"Buscar libro",subtitle:"por curso",icon:"📘",matcher:(l)=>l.category==="books"},
-{id:"food",label:"Comer en campus",subtitle:"pedidos y menú",icon:"🍽️",matcher:(l)=>l.category==="food"},
-{id:"free",label:"Gratis / Donaciones",subtitle:"apoyo entre estudiantes",icon:"🎁",matcher:(l)=>l.type==="donation"||l.category==="free"},
-{id:"exchange",label:"Intercambios",subtitle:"cambia sin pagar",icon:"🔁",matcher:(l)=>l.type==="exchange"},
-{id:"services",label:"Servicios académicos",subtitle:"reforzamiento y apoyo",icon:"🛠️",matcher:(l)=>l.type==="service"},
-{id:"business",label:"Emprendimientos",subtitle:"negocios estudiantiles",icon:"🚀",matcher:(l)=>l.type==="student_business"},
+  { id: "buy_book", label: "Buscar libro", subtitle: "por curso", iconKey: "BookMarked", matcher: (l) => l.category?.slug === "libros-separatas" || l.type === "sale" && (l.course != null) },
+  { id: "print", label: "Imprimir / Anillar", subtitle: "servicios rápidos", iconKey: "Printer", matcher: (l) => l.title.toLowerCase().includes("impresi") || l.category?.slug === "impresiones-copias" },
+  { id: "calculator", label: "Conseguir calculadora", subtitle: "para exámenes", iconKey: "Calculator", matcher: (l) => l.category?.slug === "calculadoras" },
+  { id: "materials", label: "Comprar materiales", subtitle: "laboratorio y cursos", iconKey: "Package", matcher: (l) => l.category?.slug === "materiales-utiles" },
+  { id: "food", label: "Comer en campus", subtitle: "pedidos y menú", iconKey: "Utensils", matcher: (l) => l.category?.slug === "alimentacion" },
+  { id: "free", label: "Donaciones", subtitle: "apoyo entre estudiantes", iconKey: "Gift", matcher: (l) => l.type === "donation" || l.category?.slug === "donaciones" },
+  { id: "exchange", label: "Intercambios", subtitle: "cambia sin pagar", iconKey: "Repeat2", matcher: (l) => l.type === "exchange" || l.category?.slug === "intercambios" },
+  { id: "services", label: "Servicios académicos", subtitle: "reforzamiento y apoyo", iconKey: "BriefcaseBusiness", matcher: (l) => l.type === "service" || l.category?.slug === "servicios-academicos" },
+  { id: "business", label: "Emprendimientos", subtitle: "negocios estudiantiles", iconKey: "Rocket", matcher: (l) => l.category?.slug === "emprendimientos" },
+  { id: "laptop", label: "Tecnología", subtitle: "laptops y accesorios", iconKey: "Laptop", matcher: (l) => l.category?.slug === "tecnologia" },
+];
+
+export const STORE_REPORT_REASONS: ReportReason[] = [
+  { value: "PRODUCT_FORBIDDEN", label: "Producto prohibido" },
+  { value: "FRAUD", label: "Fraude o sospecha" },
+  { value: "MISLEADING", label: "Información engañosa" },
+  { value: "FAKE_PRICE", label: "Precio falso" },
+  { value: "DUPLICATE", label: "Duplicado" },
+  { value: "OFFENSIVE", label: "Contenido ofensivo" },
+  { value: "PERSONAL_DATA", label: "Datos personales" },
+  { value: "SPAM", label: "Spam" },
+  { value: "SOLD_STILL_ACTIVE", label: "Producto vendido que sigue activo" },
+  { value: "OTHER", label: "Otro" },
+];
+
+export const QUICK_MESSAGES: QuickMessage[] = [
+  { type: "AVAILABILITY", label: "¿Sigue disponible?", template: "Hola, ¿este producto sigue disponible?" },
+  { type: "PRICE", label: "¿El precio es negociable?", template: "Hola, me interesa. ¿El precio es negociable?" },
+  { type: "LOCATION", label: "¿Dónde coordinar?", template: "Hola, ¿dónde podríamos coordinar la entrega?" },
+  { type: "RESERVE", label: "Quiero reservarlo", template: "Hola, me interesa reservar este producto. ¿Es posible?" },
+  { type: "CUSTOM", label: "Escribir mensaje", template: "" },
 ];
