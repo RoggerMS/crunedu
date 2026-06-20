@@ -553,13 +553,89 @@ export type ExtendedContentApiItem = {
 export type MonthEventApiItem = {
   id: number; title: string; type: string;
   startsAt: string | null; endsAt: string | null; allDay: boolean;
-  category: { color: string; name: string; icon: string | null };
+  category: { id: number; color: string; name: string; icon: string | null };
   occurrences: { startsAt: string; endsAt: string; allDay: boolean }[];
 };
 
 export type DayEventsApiResponse = {
   items: any[]; occurrences: any[];
 };
+
+export type CalendarItemDetailApiItem = {
+  id: number;
+  title: string;
+  slug: string;
+  summary: string | null;
+  description: string;
+  type: string;
+  modality: string;
+  status: string;
+  priority: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  allDay: boolean;
+  locationName: string | null;
+  onlineUrl: string | null;
+  sourceUrl: string | null;
+  officialUrl: string | null;
+  price: number | null;
+  capacity: number | null;
+  timezone: string;
+  isFeatured: boolean;
+  viewCount: number;
+  saveCount: number;
+  createdAt: string;
+  updatedAt: string;
+  category: { id: number; name: string; slug: string; icon: string | null; color: string };
+  area: { id: number; name: string; slug: string; contactEmail: string | null } | null;
+  creator: { id: number; name: string | null } | null;
+  occurrences: { id: number; startsAt: string; endsAt: string; allDay: boolean; locationName: string | null }[];
+};
+
+export type SavedCalendarItemApiItem = {
+  id: number;
+  title: string;
+  slug: string;
+  summary: string | null;
+  type: string;
+  modality: string;
+  priority: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  allDay: boolean;
+  locationName: string | null;
+  category: { id: number; name: string; color: string; icon: string | null } | null;
+  area: { id: number; name: string } | null;
+  savedAt: string;
+};
+
+export function getUniversityCalendarItemById(id: number) {
+  return apiRequest<CalendarItemDetailApiItem>(`/universidad/calendario/items/${id}`);
+}
+
+export function saveCalendarItem(id: number, token: string) {
+  return apiRequest<{ saved: boolean }>(`/universidad/calendario/items/${id}/guardar`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function removeSavedCalendarItem(id: number, token: string) {
+  return apiRequest<{ saved: boolean }>(`/universidad/calendario/items/${id}/guardar`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getSavedCalendarItems(token: string) {
+  return apiRequest<SavedCalendarItemApiItem[]>("/universidad/calendario/guardados", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function buildCalendarItemIcsUrl(id: number): string {
+  return `${API_BASE_URL}/universidad/calendario/items/${id}/ics`;
+}
 
 export function getUniversityOverview(query?: Record<string, string>) {
   const searchParams = new URLSearchParams();

@@ -85,6 +85,38 @@ export class UniversityController {
     return this.service.createSuggestion(dto, request.user.sub);
   }
 
+  // --- Calendario item detail, save, ICS (before :id to avoid conflict) ---
+  @Get("calendario/items/:id")
+  getCalendarItemById(@Param("id", ParseIntPipe) id: number) {
+    return this.service.getCalendarItemById(id);
+  }
+
+  @Post("calendario/items/:id/guardar")
+  @UseGuards(JwtAuthGuard)
+  toggleCalendarItemSave(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
+    return this.service.toggleCalendarItemSave(request.user.sub, id);
+  }
+
+  @Delete("calendario/items/:id/guardar")
+  @UseGuards(JwtAuthGuard)
+  removeCalendarItemSave(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
+    return this.service.removeCalendarItemSave(request.user.sub, id);
+  }
+
+  @Get("calendario/items/:id/ics")
+  async getCalendarItemIcs(@Param("id", ParseIntPipe) id: number, @Res() res: Response) {
+    const ics = await this.service.getCalendarItemIcs(id);
+    res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="evento-${id}.ics"`);
+    res.send(ics);
+  }
+
+  @Get("calendario/guardados")
+  @UseGuards(JwtAuthGuard)
+  getSavedCalendarItems(@Req() request: AuthenticatedRequest) {
+    return this.service.getSavedCalendarItems(request.user.sub);
+  }
+
   // --- Calendario by date (before :id) ---
   @Get("calendario/:date")
   getDayEventsByDate(@Param("date") date: string) {

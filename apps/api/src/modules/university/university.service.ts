@@ -5,7 +5,7 @@ import { UniversityQueryDto } from "./dto/university-query.dto";
 import { CalendarQueryDto } from "./dto/calendar-query.dto";
 import { SearchQueryDto } from "./dto/search-query.dto";
 import { OverviewQueryDto } from "./dto/overview-query.dto";
-import { Prisma } from "@prisma/client";
+import { Prisma, UniversityItemStatus } from "@prisma/client";
 
 @Injectable()
 export class UniversityService {
@@ -169,13 +169,15 @@ export class UniversityService {
 
     const where: Prisma.UniversityCalendarOccurrenceWhereInput = {
       item: { universityId, status: { in: ["PUBLISHED", "ACTIVE"] } },
-      startsAt: { gte: startDate },
-      endsAt: { lte: endDate },
+      startsAt: { lte: endDate },
+      endsAt: { gte: startDate },
     };
 
     if (query.categoryId) (where.item as any).categoryId = query.categoryId;
     if (query.areaId) (where.item as any).areaId = query.areaId;
     if (query.priority) (where.item as any).priority = query.priority;
+    if (query.type) (where.item as any).type = query.type;
+    if (query.modality) (where.item as any).modality = query.modality;
     if (query.q) {
       (where.item as any).OR = [
         { title: { contains: query.q, mode: "insensitive" } },
@@ -224,6 +226,10 @@ export class UniversityService {
     if (query.categoryId) where.categoryId = query.categoryId;
     if (query.areaId) where.areaId = query.areaId;
     if (query.priority) (where as any).priority = query.priority;
+    if (query.type) (where as any).type = query.type;
+    if (query.modality) (where as any).modality = query.modality;
+    if (query.status) (where as any).status = query.status;
+    if (query.onlyFeatured === "true") (where as any).isFeatured = true;
     if (query.q) {
       where.OR = [
         { title: { contains: query.q, mode: "insensitive" } },
@@ -231,11 +237,16 @@ export class UniversityService {
       ];
     }
 
+    const limit = query.limit ?? 100;
+    const safeLimit = Math.min(limit, 200);
+    const take = safeLimit + 1;
+
     const items = await this.prisma.universityCalendarItem.findMany({
       where,
       include: { category: true, area: true, occurrences: true },
       orderBy: [{ isFeatured: "desc" }, { startsAt: "asc" }],
-      take: 100,
+      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+      take,
     });
 
     return items.map((item) => ({
@@ -270,6 +281,158 @@ export class UniversityService {
     }));
   }
 
+  async getCalendarItemById(id: number) {
+    const item = await this.prisma.universityCalendarItem.findFirst({
+      where: { id, status: { in: ["PUBLISHED", "ACTIVE"] } },
+      include: {
+        category: true,
+        area: true,
+        creator: { select: { id: true, profile: { select: { firstName: true, lastName: true } } } },
+        occurrences: { orderBy: { startsAt: "asc" } },
+      },
+    });
+    if (!item) throw new NotFoundException("Evento de calendario no encontrado.");
+
+    await this.prisma.universityCalendarItem.update({
+      where: { id },
+      data: { viewCount: { increment: 1 } },
+    }).catch(() => {});
+
+    return {
+      id: item.id,
+      title: item.title,
+      slug: item.slug,
+      summary: item.summary,
+      description: item.description,
+      type: item.type,
+      modality: item.modality,
+      status: item.status,
+      priority: item.priority,
+      startsAt: item.startsAt?.toISOString() ?? null,
+      endsAt: item.endsAt?.toISOString() ?? null,
+      allDay: item.allDay,
+      locationName: item.locationName,
+      onlineUrl: item.onlineUrl,
+      sourceUrl: item.sourceUrl,
+      officialUrl: item.officialUrl,
+      price: item.price ? Number(item.price) : null,
+      capacity: item.capacity,
+      timezone: item.timezone,
+      isFeatured: item.isFeatured,
+      viewCount: item.viewCount + 1,
+      saveCount: item.saveCount,
+      createdAt: item.createdAt.toISOString(),
+      updatedAt: item.updatedAt.toISOString(),
+      category: { id: item.category.id, name: item.category.name, slug: item.category.slug, icon: item.category.icon, color: item.category.color },
+      area: item.area ? { id: item.area.id, name: item.area.name, slug: item.area.slug, contactEmail: item.area.contactEmail } : null,
+      creator: item.creator ? { id: item.creator.id, name: item.creator.profile ? `${item.creator.profile.firstName} ${item.creator.profile.lastName}`.trim() : null } : null,
+      occurrences: item.occurrences.map((o) => ({
+        id: o.id,
+        startsAt: o.startsAt.toISOString(),
+        endsAt: o.endsAt.toISOString(),
+        allDay: o.allDay,
+        locationName: o.locationName,
+      })),
+    };
+  }
+
+  async toggleCalendarItemSave(userId: number, itemId: number) {
+    const item = await this.prisma.universityCalendarItem.findFirst({
+      where: { id: itemId, status: { in: ["PUBLISHED", "ACTIVE"] } },
+    });
+    if (!item) throw new NotFoundException("Evento no encontrado.");
+
+    const existing = await this.prisma.universitySavedItem.findUnique({
+      where: { itemId_userId: { itemId, userId } },
+    });
+
+    if (existing) {
+      await this.prisma.universitySavedItem.delete({ where: { id: existing.id } });
+      await this.prisma.universityCalendarItem.updateMany({
+        where: { id: itemId, saveCount: { gt: 0 } },
+        data: { saveCount: { decrement: 1 } },
+      });
+      return { saved: false };
+    }
+
+    await this.prisma.universitySavedItem.create({ data: { itemId, userId } });
+    await this.prisma.universityCalendarItem.update({
+      where: { id: itemId },
+      data: { saveCount: { increment: 1 } },
+    });
+    return { saved: true };
+  }
+
+  async removeCalendarItemSave(userId: number, itemId: number) {
+    const existing = await this.prisma.universitySavedItem.findUnique({
+      where: { itemId_userId: { itemId, userId } },
+    });
+    if (!existing) return { saved: false };
+    await this.prisma.universitySavedItem.delete({ where: { id: existing.id } });
+    await this.prisma.universityCalendarItem.updateMany({
+      where: { id: itemId, saveCount: { gt: 0 } },
+      data: { saveCount: { decrement: 1 } },
+    });
+    return { saved: false };
+  }
+
+  async getSavedCalendarItems(userId: number) {
+    const saved = await this.prisma.universitySavedItem.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        item: { include: { category: true, area: true } },
+      },
+    });
+    return saved.map((s) => ({
+      id: s.item.id,
+      title: s.item.title,
+      slug: s.item.slug,
+      summary: s.item.summary,
+      type: s.item.type,
+      modality: s.item.modality,
+      priority: s.item.priority,
+      startsAt: s.item.startsAt?.toISOString() ?? null,
+      endsAt: s.item.endsAt?.toISOString() ?? null,
+      allDay: s.item.allDay,
+      locationName: s.item.locationName,
+      category: s.item.category ? { id: s.item.category.id, name: s.item.category.name, color: s.item.category.color, icon: s.item.category.icon } : null,
+      area: s.item.area ? { id: s.item.area.id, name: s.item.area.name } : null,
+      savedAt: s.createdAt.toISOString(),
+    }));
+  }
+
+  async getCalendarItemIcs(itemId: number) {
+    const item = await this.prisma.universityCalendarItem.findFirst({
+      where: { id: itemId, status: { in: ["PUBLISHED", "ACTIVE"] } },
+    });
+    if (!item) throw new NotFoundException("Evento de calendario no encontrado.");
+
+    const dtStart = item.startsAt || new Date();
+    const dtEnd = item.endsAt || dtStart;
+    const now = new Date();
+    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//CrunEdu//CalendarioUniversitario//ES",
+      "BEGIN:VEVENT",
+      `UID:cal-${itemId}@crunedu.local`,
+      `DTSTAMP:${fmt(now)}`,
+      `DTSTART:${fmt(dtStart)}`,
+      `DTEND:${fmt(dtEnd)}`,
+      `SUMMARY:${item.title}`,
+      item.summary ? `DESCRIPTION:${item.summary.replace(/\n/g, "\\n")}` : "",
+      item.locationName ? `LOCATION:${item.locationName}` : "",
+      item.officialUrl ? `URL:${item.officialUrl}` : "",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].filter(Boolean).join("\r\n");
+
+    return ics;
+  }
+
   async getMonthEvents(universityId: number, year: number, month: number) {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
@@ -294,7 +457,7 @@ export class UniversityService {
       startsAt: item.startsAt?.toISOString() ?? null,
       endsAt: item.endsAt?.toISOString() ?? null,
       allDay: item.allDay,
-      category: { color: item.category.color, name: item.category.name, icon: item.category.icon },
+      category: { id: item.category.id, color: item.category.color, name: item.category.name, icon: item.category.icon },
       occurrences: item.occurrences.map((o) => ({
         startsAt: o.startsAt.toISOString(),
         endsAt: o.endsAt.toISOString(),
