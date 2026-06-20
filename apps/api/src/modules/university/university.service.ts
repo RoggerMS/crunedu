@@ -1,19 +1,15 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateSuggestionDto } from "./dto/create-suggestion.dto";
 import { UniversityQueryDto } from "./dto/university-query.dto";
 import { CalendarQueryDto } from "./dto/calendar-query.dto";
 import { SearchQueryDto } from "./dto/search-query.dto";
 import { OverviewQueryDto } from "./dto/overview-query.dto";
-import { Prisma, UniversityItemStatus, UniversityContentVisibility } from "@prisma/client";
-import { DevSecurityService } from "../core/dev-security.service";
+import { Prisma } from "@prisma/client";
 
 @Injectable()
 export class UniversityService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly devSecurity: DevSecurityService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async overview(query: OverviewQueryDto) {
     const universityId = query.universityId ?? 1;
@@ -393,8 +389,8 @@ export class UniversityService {
 
     if (existing) {
       await this.prisma.universityContentSaved.delete({ where: { id: existing.id } });
-      await this.prisma.universityContent.update({
-        where: { id: contentId },
+      await this.prisma.universityContent.updateMany({
+        where: { id: contentId, savesCount: { gt: 0 } },
         data: { savesCount: { decrement: 1 } },
       });
       return { saved: false };
@@ -406,6 +402,21 @@ export class UniversityService {
       data: { savesCount: { increment: 1 } },
     });
     return { saved: true };
+  }
+
+  async removeSave(userId: number, contentId: number) {
+    const existing = await this.prisma.universityContentSaved.findUnique({
+      where: { contentId_userId: { contentId, userId } },
+    });
+
+    if (!existing) return { saved: false };
+
+    await this.prisma.universityContentSaved.delete({ where: { id: existing.id } });
+    await this.prisma.universityContent.updateMany({
+      where: { id: contentId, savesCount: { gt: 0 } },
+      data: { savesCount: { decrement: 1 } },
+    });
+    return { saved: false };
   }
 
   async getSavedItems(userId: number, type?: string) {
@@ -435,7 +446,7 @@ export class UniversityService {
     if (!item) throw new NotFoundException("Evento no encontrado.");
 
     const remindDate = new Date(remindAt);
-    if (isNaN(remindDate.getTime())) throw new Error("Fecha de recordatorio inválida.");
+    if (isNaN(remindDate.getTime())) throw new BadRequestException("Fecha de recordatorio inválida.");
 
     const existing = await this.prisma.universityReminder.findFirst({
       where: { userId, itemId, remindAt: remindDate },
