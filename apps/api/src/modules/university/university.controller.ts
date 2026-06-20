@@ -161,6 +161,21 @@ export class UniversityController {
   }
 
   // --- Admin routes ---
+
+  @Post("admin/calendario")
+  @UseGuards(JwtAuthGuard)
+  adminCreateCalendarItem(@Body() data: any, @Req() request: AuthenticatedRequest) {
+    this.assertAdmin(request.user.role);
+    return this.service.adminCreateCalendarItem(data, request.user.sub);
+  }
+
+  @Patch("admin/calendario/:id")
+  @UseGuards(JwtAuthGuard)
+  adminUpdateCalendarItem(@Param("id", ParseIntPipe) id: number, @Body() data: any, @Req() request: AuthenticatedRequest) {
+    this.assertAdmin(request.user.role);
+    return this.service.adminUpdateCalendarItem(id, data, request.user.sub);
+  }
+
   @Get("admin/contenido")
   @UseGuards(JwtAuthGuard)
   adminList(@Query() query: SearchQueryDto, @Req() request: AuthenticatedRequest) {
