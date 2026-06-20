@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards, Headers, Res } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { Request, Response } from "express";
 import { JwtAuthGuard, JwtPayload } from "../auth/guards/jwt-auth.guard";
 import { DevSecurityService } from "../core/dev-security.service";
@@ -91,21 +91,6 @@ export class UniversityController {
     return this.service.getDayEvents(1, date);
   }
 
-  // --- ICS export ---
-  @Get(":id/ics")
-  async getIcs(@Param("id", ParseIntPipe) id: number, @Res() res: Response) {
-    const ics = await this.service.getIcsCalendar(id);
-    res.setHeader("Content-Type", "text/calendar; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename="evento-${id}.ics"`);
-    res.send(ics);
-  }
-
-  // --- Parameterized routes ---
-  @Get(":id")
-  findOne(@Param("id", ParseIntPipe) id: number) {
-    return this.service.findOne(id);
-  }
-
   @Post(":id/guardar")
   @UseGuards(JwtAuthGuard)
   toggleSave(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
@@ -115,7 +100,7 @@ export class UniversityController {
   @Delete(":id/guardar")
   @UseGuards(JwtAuthGuard)
   removeSave(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
-    return this.service.toggleSave(request.user.sub, id);
+    return this.service.removeSave(request.user.sub, id);
   }
 
   @Post(":id/recordatorios")
@@ -233,6 +218,21 @@ export class UniversityController {
   getAuditLogs(@Req() request: AuthenticatedRequest) {
     this.assertAdmin(request.user.role);
     return this.service.getAuditLogs();
+  }
+
+
+  // --- ICS export and parameterized read routes (after static/admin GET routes) ---
+  @Get(":id/ics")
+  async getIcs(@Param("id", ParseIntPipe) id: number, @Res() res: Response) {
+    const ics = await this.service.getIcsCalendar(id);
+    res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="evento-${id}.ics"`);
+    res.send(ics);
+  }
+
+  @Get(":id")
+  findOne(@Param("id", ParseIntPipe) id: number) {
+    return this.service.findOne(id);
   }
 
   private assertAdmin(role: string) {

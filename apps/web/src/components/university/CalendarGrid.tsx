@@ -107,8 +107,7 @@ export function CalendarGrid({
         {cells.map((cell, idx) => {
           const isToday = cell.dateStr === todayStr;
           const isSelected = cell.dateStr === selectedDate;
-          const maxVisible = window.innerWidth < 768 ? 1 : 2;
-          const visibleEvents = cell.events.slice(0, maxVisible);
+          const visibleEvents = cell.events.slice(0, 2);
           const remainingCount = cell.events.length - visibleEvents.length;
 
           return (
@@ -133,13 +132,16 @@ export function CalendarGrid({
               </div>
               <div className="mt-0.5 md:mt-1 space-y-0.5">
                 {visibleEvents.map((evt, eidx) => (
-                  <div key={eidx} className="flex items-center gap-1 px-1 py-0.5 rounded" style={{ backgroundColor: evt.category?.color ? `${evt.category.color}15` : "#EEF2FF" }}>
+                  <div key={eidx} title={`${evt.category?.name ?? "Actividad"}: ${evt.title}`} className={`items-center gap-1 px-1 py-0.5 rounded ${eidx === 1 ? "hidden md:flex" : "flex"}`} style={{ backgroundColor: evt.category?.color ? `${evt.category.color}15` : "#EEF2FF" }}>
                     <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full shrink-0" style={{ backgroundColor: evt.category?.color || "#6366F1" }} />
                     <span className="text-[9px] md:text-[10px] font-medium truncate leading-tight" style={{ color: evt.category?.color || "#6366F1" }}>{evt.title}</span>
                   </div>
                 ))}
+                {cell.events.length > 1 && (
+                  <div className="px-1 text-[9px] font-medium text-gray-400 md:hidden">+{cell.events.length - 1} más</div>
+                )}
                 {remainingCount > 0 && (
-                  <div className="text-[9px] md:text-[10px] font-medium text-gray-400 px-1">+{remainingCount} más</div>
+                  <div className="hidden px-1 text-[9px] font-medium text-gray-400 md:block md:text-[10px]">+{remainingCount} más</div>
                 )}
               </div>
             </div>
