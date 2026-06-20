@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { X, Plus, Heart, MessageCircle, Package, Eye } from "lucide-react";
+import { X, Heart, MessageCircle, Package } from "lucide-react";
 import { StoreAcademicRadar } from "@/components/store/StoreAcademicRadar";
 import { StoreEmptyState } from "@/components/store/StoreEmptyState";
 import { StoreFilters } from "@/components/store/StoreFilters";
@@ -16,7 +16,6 @@ import { StoreSidebar } from "@/components/store/StoreSidebar";
 import { useStore } from "@/hooks/useStore";
 import { useAuth } from "@/providers/auth-provider";
 import type { StoreProduct, StoreMeStatistics } from "@/lib/api-helpers";
-import { publishStoreProduct, pauseStoreProduct, markProductSold } from "@/lib/api-helpers";
 
 function PersonalPanel({
   open,
@@ -30,7 +29,7 @@ function PersonalPanel({
   onClose: () => void;
   myListings: StoreProduct[];
   myFavorites: StoreProduct[];
-  myInquiries: any[];
+  myInquiries: Array<{ id: string | number; product?: { title?: string | null } | null; message?: string | null; status?: string | null }>;
   myStats: StoreMeStatistics | null;
 }) {
   if (!open) return null;
@@ -38,9 +37,9 @@ function PersonalPanel({
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative z-50 w-full max-w-md overflow-y-auto border-l bg-white shadow-lg">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
+      <div className="relative z-50 w-full max-w-md min-w-0 overflow-y-auto border-l bg-white shadow-lg">
+        <div className="flex min-w-0 items-center justify-between gap-3 border-b px-4 py-3">
+          <h2 className="flex min-w-0 items-center gap-2 text-lg font-bold">
             <Package className="h-5 w-5" /> Mi panel
           </h2>
           <button onClick={onClose} className="rounded-lg p-1 hover:bg-slate-100">
@@ -50,7 +49,7 @@ function PersonalPanel({
 
         <div className="px-4 py-3">
           {myStats && (
-            <div className="mb-4 grid grid-cols-2 gap-2 text-xs">
+            <div className="mb-4 grid min-w-0 grid-cols-2 gap-2 text-xs">
               <div className="rounded-lg border bg-emerald-50 p-2 text-center"><span className="block text-lg font-black">{myStats.activeProducts}</span>Publicaciones activas</div>
               <div className="rounded-lg border bg-indigo-50 p-2 text-center"><span className="block text-lg font-black">{myStats.favorites}</span>Guardados</div>
               <div className="rounded-lg border bg-sky-50 p-2 text-center"><span className="block text-lg font-black">{myStats.inquiriesSent}</span>Consultas enviadas</div>
@@ -69,8 +68,8 @@ function PersonalPanel({
               <ul className="mt-2 space-y-1.5">
                 {myListings.slice(0, 10).map((p) => (
                   <li key={p.id}>
-                    <Link href={`/app/tienda/${p.id}`} className="flex items-center justify-between rounded-lg bg-slate-50 px-2.5 py-2 text-xs hover:bg-slate-100">
-                      <span className="line-clamp-1 flex-1">{p.title}</span>
+                    <Link href={`/app/tienda/${p.id}`} className="flex min-w-0 items-center justify-between gap-2 overflow-hidden rounded-lg bg-slate-50 px-2.5 py-2 text-xs hover:bg-slate-100">
+                      <span className="line-clamp-1 min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{p.title}</span>
                       <span className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] ${
                         p.status === "active" || p.status === "available" ? "bg-emerald-100 text-emerald-700" :
                         p.status === "draft" ? "bg-slate-100 text-slate-600" :
@@ -96,8 +95,8 @@ function PersonalPanel({
               <ul className="mt-2 space-y-1.5">
                 {myFavorites.slice(0, 10).map((p) => (
                   <li key={p.id}>
-                    <Link href={`/app/tienda/${p.id}`} className="block rounded-lg bg-slate-50 px-2.5 py-2 text-xs hover:bg-slate-100">
-                      <span className="line-clamp-1">{p.title}</span>
+                    <Link href={`/app/tienda/${p.id}`} className="block min-w-0 overflow-hidden rounded-lg bg-slate-50 px-2.5 py-2 text-xs hover:bg-slate-100">
+                      <span className="line-clamp-1 break-words [overflow-wrap:anywhere]">{p.title}</span>
                       {p.price != null && <span className="text-[10px] text-slate-500">S/ {p.price}</span>}
                     </Link>
                   </li>
@@ -115,10 +114,10 @@ function PersonalPanel({
               <p className="mt-1 text-xs text-slate-500">No has enviado consultas.</p>
             ) : (
               <ul className="mt-2 space-y-1.5">
-                {myInquiries.slice(0, 10).map((inq: any) => (
-                  <li key={inq.id} className="rounded-lg bg-slate-50 px-2.5 py-2 text-xs">
-                    <p className="font-medium">{inq.product?.title ?? "Producto"}</p>
-                    <p className="line-clamp-1 text-slate-600">{inq.message}</p>
+                {myInquiries.slice(0, 10).map((inq) => (
+                  <li key={inq.id} className="min-w-0 overflow-hidden rounded-lg bg-slate-50 px-2.5 py-2 text-xs">
+                    <p className="break-words font-medium [overflow-wrap:anywhere]">{inq.product?.title ?? "Producto"}</p>
+                    <p className="line-clamp-1 break-words text-slate-600 [overflow-wrap:anywhere]">{inq.message}</p>
                     <span className="text-[10px] text-slate-500">{inq.status}</span>
                   </li>
                 ))}
@@ -148,7 +147,7 @@ export default function TiendaPage() {
   const viewerRole = store.isAdmin ? "ADMIN" : null;
 
   return (
-    <div className="mx-auto grid min-w-0 max-w-[1600px] gap-4 px-6 py-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="mx-auto grid min-w-0 max-w-[1600px] gap-4 overflow-hidden px-4 py-4 sm:px-6 xl:grid-cols-[minmax(0,1fr)_minmax(240px,300px)]">
       <main className="min-w-0 space-y-4">
         <StoreHeader
           onSearch={store.filterBySearch}
