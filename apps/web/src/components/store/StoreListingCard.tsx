@@ -72,7 +72,7 @@ export function StoreListingCard({
               <img
                 src={coverImage!.imageUrl}
                 alt={coverImage!.altText ?? item.title}
-                className="h-full w-full object-cover"
+                className="h-full w-full max-w-full object-cover"
                 loading="lazy"
               />
             </div>
@@ -109,11 +109,11 @@ export function StoreListingCard({
 
       <div className="flex min-w-0 flex-1 flex-col p-3">
         <Link href={`/app/tienda/${item.id}`} className="block min-w-0">
-          <h3 className="line-clamp-2 break-words text-sm font-bold text-slate-900">{item.title}</h3>
+          <h3 className="line-clamp-2 break-words [overflow-wrap:anywhere] text-sm font-bold text-slate-900">{item.title}</h3>
         </Link>
-        <p className="mt-1 truncate text-base font-black text-indigo-700">{priceDisplay}</p>
+        <p className="mt-1 max-w-full truncate text-base font-black text-indigo-700">{priceDisplay}</p>
         {item.isNegotiable && priceDisplay !== "Gratis" && priceDisplay !== "Intercambio" && (
-          <span className="truncate text-[11px] text-slate-500">Precio negociable</span>
+          <span className="max-w-full truncate text-[11px] text-slate-500">Precio negociable</span>
         )}
         <p className="mt-0.5 flex min-w-0 items-center gap-0.5 truncate text-xs text-slate-600">
           <MapPin className="h-3 w-3 shrink-0" />
@@ -122,16 +122,16 @@ export function StoreListingCard({
 
         <div className="mt-2 flex min-w-0 items-center justify-between gap-2 text-xs text-slate-600">
           <span className="flex min-w-0 items-center gap-1 truncate">
-            <span className="truncate">{item.seller.name}</span>
+            <span className="truncate [overflow-wrap:anywhere]">{item.seller.name}</span>
             {item.seller.verified && <BadgeCheck className="h-3 w-3 shrink-0 text-indigo-500" />}
           </span>
           <span className="shrink-0 text-[11px] text-slate-500">{relativeTime(item.createdAt)}</span>
         </div>
 
-        <div className="mt-2 flex items-center justify-between gap-1">
+        <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-1">
           <Link
             href={`/app/tienda/${item.id}`}
-            className="rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+            className="max-w-full truncate rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
           >
             Ver
           </Link>
@@ -145,7 +145,7 @@ export function StoreListingCard({
               <MoreHorizontal className="h-4 w-4" />
             </button>
             {menuOpen && (
-              <div className="absolute bottom-full right-0 z-30 mb-1 w-36 rounded-lg border bg-white py-1 shadow-lg text-xs">
+              <div className="absolute bottom-full right-0 z-30 mb-1 w-36 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border bg-white py-1 text-xs shadow-lg">
                 <button type="button" onClick={() => { onShare(item.id); setMenuOpen(false); }} className="w-full px-3 py-1.5 text-left hover:bg-slate-50">Compartir</button>
                 {viewerRole !== null && (
                   <button type="button" onClick={() => { onReport(item.id); setMenuOpen(false); }} className="w-full px-3 py-1.5 text-left text-rose-600 hover:bg-rose-50">Reportar</button>

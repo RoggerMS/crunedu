@@ -15,12 +15,12 @@ export function StoreSidebar({ onSearch, onSafePoint }: { onSearch: (q: string) 
   }, []);
 
   return (
-    <aside className="space-y-3">
+    <aside className="min-w-0 space-y-3">
       {safePoints.length > 0 && (
         <div className="overflow-hidden rounded-2xl border bg-white p-3">
-          <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+          <h3 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
             <MapPin className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
-            Puntos seguros
+            <span className="min-w-0 truncate">Puntos seguros</span>
           </h3>
           <ul className="mt-2 space-y-1 text-xs text-slate-600">
             {safePoints.map((sp) => (
@@ -34,9 +34,9 @@ export function StoreSidebar({ onSearch, onSafePoint }: { onSearch: (q: string) 
       )}
 
       <div className="overflow-hidden rounded-2xl border bg-white p-3">
-        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+        <h3 className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
           <Search className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
-          Más buscado
+          <span className="min-w-0 truncate">Más buscado</span>
         </h3>
         <div className="mt-2 space-y-1 text-xs">
           {trendingSearches.map((term, i) => (
@@ -46,7 +46,7 @@ export function StoreSidebar({ onSearch, onSafePoint }: { onSearch: (q: string) 
               onClick={() => onSearch(term)}
               className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 text-left hover:bg-indigo-50 transition"
             >
-              <span className="min-w-0 truncate">{i + 1}. {term}</span>
+              <span className="min-w-0 truncate [overflow-wrap:anywhere]">{i + 1}. {term}</span>
               <span className="shrink-0 text-[11px] text-slate-400">Ver</span>
             </button>
           ))}
@@ -54,9 +54,9 @@ export function StoreSidebar({ onSearch, onSafePoint }: { onSearch: (q: string) 
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-sky-100 bg-sky-50 p-3 text-xs text-sky-900">
-        <p className="flex items-center gap-1.5 font-semibold">
+        <p className="flex min-w-0 items-center gap-1.5 font-semibold">
           <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
-          Consejos de compra segura
+          <span className="min-w-0 break-words">Consejos de compra segura</span>
         </p>
         <ul className="mt-1.5 list-disc space-y-0.5 pl-4">
           <li>Revisa el producto antes de pagar.</li>

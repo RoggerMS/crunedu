@@ -7,7 +7,7 @@ import { Heart, MapPin, ShieldAlert, Flag, Share2, MoreHorizontal, BadgeCheck, E
 import { StoreListingFallbackMedia } from "@/components/store/StoreListingFallbackMedia";
 import { StoreReportModal } from "@/components/store/StoreReportModal";
 import { StoreSection } from "@/components/store/StoreSection";
-import type { StoreProduct, StoreMeStatistics } from "@/lib/api-helpers";
+import type { StoreImage, StoreProduct } from "@/lib/api-helpers";
 import {
   getStoreProductDetail,
   favoriteStoreProduct,
@@ -138,30 +138,30 @@ export default function TiendaDetailPage() {
     : "Consultar";
 
   return (
-    <div className="mx-auto min-w-0 max-w-[1500px] space-y-4 px-6 py-4">
+    <div className="mx-auto min-w-0 max-w-[1500px] space-y-4 overflow-hidden px-4 py-4 sm:px-6">
       {/* Breadcrumb */}
       <div>
         <Link href="/app/tienda" className="text-sm font-medium text-indigo-700">← Volver a Tienda</Link>
         <span className="text-xs text-slate-500"> / {item.category?.name}</span>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_280px]">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(240px,280px)]">
         {/* Image gallery */}
         <div className="overflow-hidden rounded-2xl border bg-white">
           {item.images && item.images.length > 0 ? (
             <div>
-              <div className="h-[380px] bg-slate-100 cursor-pointer" onClick={() => {
-                const cover = item.images.find((i: any) => i.isCover) ?? item.images[0];
+              <div className="h-[260px] max-w-full cursor-pointer bg-slate-100 sm:h-[340px] xl:h-[380px]" onClick={() => {
+                const cover = item.images.find((i: StoreImage) => i.isCover) ?? item.images[0];
                 if (cover) setLightboxImg(cover.imageUrl);
               }}>
                 {(() => {
-                  const cover = item.images.find((i: any) => i.isCover) ?? item.images[0];
-                  return <img src={cover!.imageUrl} alt={cover!.altText ?? item.title} className="h-full w-full object-contain" />;
+                  const cover = item.images.find((i: StoreImage) => i.isCover) ?? item.images[0];
+                  return <img src={cover!.imageUrl} alt={cover!.altText ?? item.title} className="h-full w-full max-w-full object-contain" />;
                 })()}
               </div>
               {item.images.length > 1 && (
-                <div className="flex gap-2 border-t p-2 overflow-x-auto">
-                  {item.images.map((img: any) => (
+                <div className="flex max-w-full gap-2 overflow-x-auto border-t p-2">
+                  {item.images.map((img: StoreImage) => (
                     <button key={img.id} onClick={() => setLightboxImg(img.imageUrl)} className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-slate-200 hover:border-indigo-400">
                       <img src={img.imageUrl} alt={img.altText ?? ""} className="h-full w-full object-cover" />
                     </button>
@@ -170,76 +170,76 @@ export default function TiendaDetailPage() {
               )}
             </div>
           ) : (
-            <div className="h-[380px]">
+            <div className="h-[260px] sm:h-[340px] xl:h-[380px]">
               <StoreListingFallbackMedia categorySlug={item.category?.slug} iconKey={item.category?.icon} />
             </div>
           )}
         </div>
 
         {/* Product info */}
-        <div className="space-y-3 rounded-2xl border bg-white p-4">
-          <h1 className="text-xl font-black text-slate-900 lg:text-2xl">{item.title}</h1>
-          <p className="text-2xl font-black text-indigo-700 lg:text-3xl">{priceDisplay}</p>
+        <div className="min-w-0 space-y-3 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h1 className="break-words text-xl font-black text-slate-900 [overflow-wrap:anywhere] lg:text-2xl">{item.title}</h1>
+          <p className="max-w-full truncate text-2xl font-black text-indigo-700 lg:text-3xl">{priceDisplay}</p>
           {item.isNegotiable && priceDisplay !== "Gratis" && priceDisplay !== "Intercambio" && (
             <p className="text-sm text-slate-500">Precio negociable</p>
           )}
 
-          <div className="flex flex-wrap gap-1.5 text-xs">
-            <span className={`rounded-full px-2 py-0.5 ${
+          <div className="flex min-w-0 flex-wrap gap-1.5 text-xs">
+            <span className={`max-w-full rounded-full px-2 py-0.5 ${
               item.status === "active" || item.status === "available" ? "bg-emerald-100 text-emerald-700" :
               item.status === "draft" ? "bg-slate-100 text-slate-600" :
               "bg-amber-100 text-amber-700"
             }`}>{item.status === "active" || item.status === "available" ? "Disponible" : item.status}</span>
-            {item.type && <span className="rounded-full bg-slate-100 px-2 py-0.5">{item.type === "sale" ? "Venta" : item.type === "service" ? "Servicio" : item.type === "exchange" ? "Intercambio" : item.type === "donation" ? "Donación" : item.type}</span>}
-            {item.condition && item.condition !== "not_applicable" && <span className="rounded-full bg-sky-100 px-2 py-0.5 capitalize">{item.condition === "new" ? "Nuevo" : item.condition === "like_new" ? "Como nuevo" : item.condition === "good" ? "Buen estado" : "Usado"}</span>}
-            {item.seller.verified && <span className="rounded-full bg-indigo-100 px-2 py-0.5 inline-flex items-center gap-1"><BadgeCheck className="h-3 w-3" />Verificado</span>}
+            {item.type && <span className="max-w-full truncate rounded-full bg-slate-100 px-2 py-0.5">{item.type === "sale" ? "Venta" : item.type === "service" ? "Servicio" : item.type === "exchange" ? "Intercambio" : item.type === "donation" ? "Donación" : item.type}</span>}
+            {item.condition && item.condition !== "not_applicable" && <span className="max-w-full truncate rounded-full bg-sky-100 px-2 py-0.5 capitalize">{item.condition === "new" ? "Nuevo" : item.condition === "like_new" ? "Como nuevo" : item.condition === "good" ? "Buen estado" : "Usado"}</span>}
+            {item.seller.verified && <span className="inline-flex max-w-full items-center gap-1 truncate rounded-full bg-indigo-100 px-2 py-0.5"><BadgeCheck className="h-3 w-3" />Verificado</span>}
           </div>
 
-          <div className="rounded-xl border bg-slate-50 p-3 text-sm">
+          <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
             <p className="font-semibold">Vendedor</p>
-            <p className="mt-0.5">{item.seller.name}</p>
+            <p className="mt-0.5 break-words [overflow-wrap:anywhere]">{item.seller.name}</p>
           </div>
 
-          <div className="rounded-xl border bg-slate-50 p-3 text-sm">
+          <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
             <p className="font-semibold flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />Entrega</p>
-            <p className="mt-0.5">{item.campus ?? item.safePoint?.name ?? "Coordinado"}</p>
+            <p className="mt-0.5 break-words [overflow-wrap:anywhere]">{item.campus ?? item.safePoint?.name ?? "Coordinado"}</p>
             {item.deliveryType === "shipping" && <p className="mt-1 text-amber-700 flex items-center gap-1"><ShieldAlert className="h-4 w-4" />Coordinar en lugar público.</p>}
           </div>
 
           {item.course && (
-            <div className="rounded-xl border bg-slate-50 p-3 text-sm">
+            <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
               <p className="font-semibold">Curso relacionado</p>
-              <p className="mt-0.5">{item.course}</p>
+              <p className="mt-0.5 break-words [overflow-wrap:anywhere]">{item.course}</p>
             </div>
           )}
 
           {item.brand && (
-            <div className="rounded-xl border bg-slate-50 p-3 text-sm">
+            <div className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
               <p className="font-semibold">Marca / Modelo</p>
-              <p className="mt-0.5">{item.brand}{item.model ? ` · ${item.model}` : ""}</p>
+              <p className="mt-0.5 break-words [overflow-wrap:anywhere]">{item.brand}{item.model ? ` · ${item.model}` : ""}</p>
             </div>
           )}
 
-          <div className="flex items-center gap-2 text-xs text-slate-500">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-slate-500">
             <span>{item.stats.views} vistas</span>
             <span>{item.stats.saves} guardados</span>
             <span>{item.stats.contacts} contactos</span>
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex min-w-0 flex-wrap gap-2">
             {isAuthenticated && !isMine && (
-              <button type="button" onClick={toggleSave} className={`rounded-lg border px-3 py-2 text-xs font-semibold flex items-center gap-1.5 ${saved ? "bg-rose-50 text-rose-700 border-rose-200" : ""}`}>
+              <button type="button" onClick={toggleSave} className={`flex max-w-full items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold ${saved ? "bg-rose-50 text-rose-700 border-rose-200" : ""}`}>
                 <Heart className={`h-3.5 w-3.5 ${saved ? "fill-rose-600 text-rose-600" : ""}`} />{saved ? "Guardado" : "Guardar"}
               </button>
             )}
             {!isMine && (
-              <button type="button" onClick={shareProduct} className="rounded-lg border px-3 py-2 text-xs font-semibold flex items-center gap-1.5">
+              <button type="button" onClick={shareProduct} className="flex max-w-full items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold">
                 <Share2 className="h-3.5 w-3.5" />Compartir
               </button>
             )}
             {isAuthenticated && !isMine && (
-              <button type="button" onClick={() => setShowReport(true)} className="rounded-lg border px-3 py-2 text-xs font-semibold text-rose-600 flex items-center gap-1.5">
+              <button type="button" onClick={() => setShowReport(true)} className="flex max-w-full items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold text-rose-600">
                 <Flag className="h-3.5 w-3.5" />Reportar
               </button>
             )}
@@ -247,7 +247,7 @@ export default function TiendaDetailPage() {
             {/* Owner actions */}
             {canEdit && (
               <div className="relative">
-                <button type="button" onClick={() => setMenuOpen(!menuOpen)} className="rounded-lg border px-3 py-2 text-xs font-semibold flex items-center gap-1.5">
+                <button type="button" onClick={() => setMenuOpen(!menuOpen)} className="flex max-w-full items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold">
                   <MoreHorizontal className="h-3.5 w-3.5" />Gestionar
                 </button>
                 {menuOpen && (
@@ -265,10 +265,10 @@ export default function TiendaDetailPage() {
         </div>
 
         {/* Right sidebar */}
-        <aside className="space-y-3">
+        <aside className="min-w-0 space-y-3">
           {/* Contact section */}
           {isAuthenticated && !isMine && (
-            <div className="rounded-2xl border bg-white p-3">
+            <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-3">
               <h3 className="text-sm font-bold">Contactar al vendedor</h3>
               <div className="mt-2 space-y-1.5">
                 {QUICK_MESSAGES.filter((qm) => qm.type !== "CUSTOM").map((qm) => (
@@ -276,7 +276,7 @@ export default function TiendaDetailPage() {
                     key={qm.type}
                     type="button"
                     onClick={() => setQuickMessage(qm.template)}
-                    className="w-full rounded-lg border bg-slate-50 px-2.5 py-1.5 text-left text-xs hover:bg-indigo-50 transition"
+                    className="w-full min-w-0 break-words rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-left text-xs transition hover:bg-indigo-50 [overflow-wrap:anywhere]"
                   >
                     {qm.label}
                   </button>
@@ -287,7 +287,7 @@ export default function TiendaDetailPage() {
                 onChange={(e) => setInquiryMsg(e.target.value)}
                 placeholder="Escribe tu consulta..."
                 rows={3}
-                className="mt-2 w-full rounded-lg border px-2.5 py-2 text-sm"
+                className="mt-2 w-full min-w-0 resize-y rounded-lg border border-slate-200 px-2.5 py-2 text-sm [overflow-wrap:anywhere]"
               />
               <button
                 onClick={sendInquiry}
@@ -333,8 +333,8 @@ export default function TiendaDetailPage() {
 
       {/* Description */}
       <StoreSection title="Descripción" subtitle="Información del producto.">
-        <div className="rounded-2xl border bg-white p-4 text-sm text-slate-700">
-          <p className="whitespace-pre-wrap">{item.description}</p>
+        <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+          <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.description}</p>
         </div>
       </StoreSection>
 

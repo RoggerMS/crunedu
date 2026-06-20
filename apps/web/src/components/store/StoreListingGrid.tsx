@@ -17,7 +17,7 @@ export function StoreListingGrid({
   viewerRole?: string | null;
 }) {
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((item) => (
         <StoreListingCard
           key={item.id}
