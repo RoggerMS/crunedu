@@ -9,6 +9,8 @@ type CalendarItemDetailProps = {
   itemId: number | null;
   onClose: () => void;
   token: string | null;
+  initialSaved?: boolean;
+  onSavedChange?: (itemId: number, saved: boolean) => void;
 };
 
 const REMINDER_OPTIONS = [
@@ -20,7 +22,7 @@ const REMINDER_OPTIONS = [
   { label: "1 semana antes", minutes: 10080 },
 ];
 
-export function CalendarItemDetail({ itemId, onClose, token }: CalendarItemDetailProps) {
+export function CalendarItemDetail({ itemId, onClose, token, initialSaved = false, onSavedChange }: CalendarItemDetailProps) {
   const [item, setItem] = useState<CalendarItemDetailApiItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,13 +34,13 @@ export function CalendarItemDetail({ itemId, onClose, token }: CalendarItemDetai
     if (!itemId) { setItem(null); return; }
     setLoading(true);
     setError(null);
-    setSaved(false);
+    setSaved(initialSaved);
     setReminderMsg(null);
     getUniversityCalendarItemById(itemId)
       .then((data) => { setItem(data); })
       .catch((err) => { setError(err?.message || "Error al cargar detalle."); })
       .finally(() => setLoading(false));
-  }, [itemId]);
+  }, [itemId, initialSaved]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -59,13 +61,15 @@ export function CalendarItemDetail({ itemId, onClose, token }: CalendarItemDetai
       if (saved) {
         await removeSavedCalendarItem(item.id, token);
         setSaved(false);
+        onSavedChange?.(item.id, false);
       } else {
         await saveCalendarItem(item.id, token);
         setSaved(true);
+        onSavedChange?.(item.id, true);
       }
     } catch { setReminderMsg("Error al guardar."); }
     setSaving(false);
-  }, [item, token, saved]);
+  }, [item, token, saved, onSavedChange]);
 
   const handleReminder = useCallback(async (minutes: number) => {
     if (!item || !token || !item.startsAt) return;

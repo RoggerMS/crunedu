@@ -173,9 +173,10 @@ export function UniversityCalendarPage() {
   }, []);
 
   const filteredItems = useMemo(() => {
-    if (activeCategoryIds.size === categories.length) return allItems;
-    return allItems.filter((item) => activeCategoryIds.has(item.category?.id || 0));
-  }, [allItems, activeCategoryIds, categories.length]);
+    const bySaved = filterSaved ? allItems.filter((item) => savedIds.has(item.id)) : allItems;
+    if (activeCategoryIds.size === categories.length) return bySaved;
+    return bySaved.filter((item) => activeCategoryIds.has(item.category?.id || 0));
+  }, [allItems, activeCategoryIds, categories.length, filterSaved, savedIds]);
 
   const rightSideEvents = useMemo(() => {
     const sorted = [...filteredItems].sort((a, b) => (a.startsAt || "").localeCompare(b.startsAt || "")).slice(0, 8);
@@ -273,11 +274,17 @@ export function UniversityCalendarPage() {
                 <option value="HYBRID">Mixto</option>
               </select>
             </div>
-            <div className="flex items-end gap-3">
+            <div className="flex items-end gap-3 flex-wrap">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={filterFeatured} onChange={(e) => setFilterFeatured(e.target.checked)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-400" />
                 <span className="text-sm text-slate-700">Solo destacados</span>
               </label>
+              {token && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={filterSaved} onChange={(e) => setFilterSaved(e.target.checked)} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-400" />
+                  <span className="text-sm text-slate-700">Solo guardados</span>
+                </label>
+              )}
             </div>
           </div>
         </div>
@@ -465,6 +472,15 @@ export function UniversityCalendarPage() {
         itemId={detailItemId}
         onClose={() => setDetailItemId(null)}
         token={token}
+        initialSaved={detailItemId ? savedIds.has(detailItemId) : false}
+        onSavedChange={(itemId, isSaved) => {
+          setSavedIds((prev) => {
+            const next = new Set(prev);
+            if (isSaved) next.add(itemId);
+            else next.delete(itemId);
+            return next;
+          });
+        }}
       />
     </div>
   );
