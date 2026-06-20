@@ -444,6 +444,213 @@ export function submitUniversitySuggestion(payload: SuggestionPayload) {
   });
 }
 
+export type CalendarEventApiItem = {
+  id: number;
+  itemId: number;
+  title: string;
+  summary: string | null;
+  type: string;
+  modality: string;
+  priority: string;
+  startsAt: string;
+  endsAt: string;
+  allDay: boolean;
+  location: string | null;
+  category: { id: number; name: string; color: string; icon: string | null };
+  area: { id: number; name: string } | null;
+};
+
+export type CalendarItemApiItem = {
+  id: number;
+  title: string;
+  slug: string;
+  summary: string | null;
+  description: string;
+  type: string;
+  modality: string;
+  status: string;
+  priority: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  allDay: boolean;
+  locationName: string | null;
+  onlineUrl: string | null;
+  sourceUrl: string | null;
+  isFeatured: boolean;
+  viewCount: number;
+  saveCount: number;
+  category: { id: number; name: string; color: string; icon: string | null };
+  area: { id: number; name: string } | null;
+  occurrences: { id: number; startsAt: string; endsAt: string; allDay: boolean; locationName: string | null }[];
+  createdAt: string;
+};
+
+export type PriorityAlertApiItem = {
+  id: number;
+  title: string;
+  summary: string | null;
+  priority: string;
+  endsAt: Date | null;
+  category: { id: number; name: string; color: string; icon: string | null };
+};
+
+export function getUniversityCalendarEvents(query?: Record<string, string>) {
+  const searchParams = new URLSearchParams();
+  if (query) {
+    Object.entries(query).forEach(([key, value]) => {
+      if (value) searchParams.set(key, value);
+    });
+  }
+  const qs = searchParams.toString();
+  return apiRequest<CalendarEventApiItem[]>(qs ? `/universidad/calendario/eventos?${qs}` : "/universidad/calendario/eventos");
+}
+
+export function getUniversityCalendarItems(query?: Record<string, string>) {
+  const searchParams = new URLSearchParams();
+  if (query) {
+    Object.entries(query).forEach(([key, value]) => {
+      if (value) searchParams.set(key, value);
+    });
+  }
+  const qs = searchParams.toString();
+  return apiRequest<CalendarItemApiItem[]>(qs ? `/universidad/calendario/items?${qs}` : "/universidad/calendario/items");
+}
+
+export function getUniversityPriorityAlerts() {
+  return apiRequest<PriorityAlertApiItem[]>("/universidad/calendario/alertas");
+}
+
+export type OverviewApiResponse = {
+  alerts: { id: number; title: string; summary: string | null; priority: string; endsAt: string | null; daysRemaining: number | null; category: { name: string; color: string; icon: string | null } | null }[];
+  upcomingDates: { id: number; title: string; startsAt: string | null; category: { name: string; color: string } | null }[];
+  mostConsulted: { id: number; title: string; views: number; type: string }[];
+  areas: { id: number; name: string; slug: string; icon: string | null; contactEmail: string | null }[];
+  upcomingEvents: { id: number; title: string; startsAt: string; location: string | null; category: { name: string; color: string } | null }[];
+};
+
+export type ContentCategoryApiItem = {
+  id: number; name: string; slug: string; description: string | null;
+  icon: string | null; color: string; order: number;
+};
+
+export type ExtendedContentApiItem = {
+  id: number; type: string; title: string; description: string;
+  area: string; category: string; visibility: string; priority: string;
+  modality: string; statusTags: unknown; startDate: string | null;
+  endDate: string | null; deadline: string | null; time: string | null;
+  location: string | null; cost: string | null; icon: string | null;
+  steps: unknown; documents: unknown; schedule: string | null;
+  warning: string | null; sourceUrl: string | null; officialUrl: string | null;
+  contactEmail: string | null; contactPhone: string | null;
+  capacity: number | null; timezone: string;
+  fileUrl: string | null; fileName: string | null; fileType: string | null;
+  fileSize: number | null; externalUrl: string | null;
+  views: number; savesCount: number; createdAt: string;
+  categoryRel: { id: number; name: string; slug: string; icon: string | null; color: string } | null;
+  areaRel: { id: number; name: string; slug: string; icon: string | null; contactEmail: string | null } | null;
+};
+
+export type MonthEventApiItem = {
+  id: number; title: string; type: string;
+  startsAt: string | null; endsAt: string | null; allDay: boolean;
+  category: { color: string; name: string; icon: string | null };
+  occurrences: { startsAt: string; endsAt: string; allDay: boolean }[];
+};
+
+export type DayEventsApiResponse = {
+  items: any[]; occurrences: any[];
+};
+
+export function getUniversityOverview(query?: Record<string, string>) {
+  const searchParams = new URLSearchParams();
+  if (query) {
+    Object.entries(query).forEach(([key, value]) => {
+      if (value) searchParams.set(key, value);
+    });
+  }
+  const qs = searchParams.toString();
+  return apiRequest<OverviewApiResponse>(qs ? `/universidad/overview?${qs}` : "/universidad/overview");
+}
+
+export function getUniversityCategories() {
+  return apiRequest<ContentCategoryApiItem[]>("/universidad/categorias");
+}
+
+export function getUniversityAreas() {
+  return apiRequest<{ id: number; name: string; slug: string; icon: string | null; contactEmail: string | null }[]>("/universidad/areas");
+}
+
+export function searchUniversityContent(query: Record<string, string>) {
+  const searchParams = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value) searchParams.set(key, value);
+  });
+  const qs = searchParams.toString();
+  return apiRequest<{ items: ExtendedContentApiItem[]; nextCursor: number | null }>(`/universidad/search?${qs}`);
+}
+
+export function getUniversityMonthEvents(year?: number, month?: number) {
+  const params = new URLSearchParams();
+  if (year) params.set("year", String(year));
+  if (month) params.set("month", String(month));
+  return apiRequest<MonthEventApiItem[]>(`/universidad/calendario/mes?${params.toString()}`);
+}
+
+export function getUniversityDayEvents(date: string) {
+  return apiRequest<DayEventsApiResponse>(`/universidad/calendario/dia?date=${date}`);
+}
+
+export function toggleSaveContent(id: number, token: string) {
+  return apiRequest<{ saved: boolean }>(`/universidad/${id}/guardar`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getSavedContent(token: string, type?: string) {
+  const params = type ? `?type=${type}` : "";
+  return apiRequest<ExtendedContentApiItem[]>(`/universidad/guardados${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function createContentReminder(id: number, remindAt: string, token: string) {
+  return apiRequest<{ id: number; message: string }>(`/universidad/${id}/recordatorios`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ remindAt }),
+  });
+}
+
+export function getReminders(token: string) {
+  return apiRequest<any[]>("/universidad/recordatorios", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function deleteReminder(reminderId: number, token: string) {
+  return apiRequest<any>(`/universidad/recordatorios/${reminderId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function reportContent(id: number, reason: string, token: string, description?: string) {
+  return apiRequest<{ id: number; message: string }>(`/universidad/${id}/reportar`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ reason, description }),
+  });
+}
+
+export function suggestCorrection(id: number, suggestion: string, token: string) {
+  return apiRequest<{ message: string }>(`/universidad/${id}/sugerir-correccion`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ suggestion }),
+  });
+}
+
 export type NoteVisibility = "public" | "community" | "private";
 
 export type NoteApiItem = {

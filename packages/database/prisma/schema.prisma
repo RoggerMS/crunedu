@@ -113,6 +113,48 @@ enum SuggestionStatus {
   REJECTED
 }
 
+enum UniversityItemType {
+  PROCEDURE
+  CALL
+  EVENT
+  SERVICE
+  GUIDE
+  NOTICE
+  ACADEMIC
+  PAYMENT
+  SCHOLARSHIP
+  CULTURE
+  SPORTS
+  WELLBEING
+}
+
+enum UniversityItemStatus {
+  DRAFT
+  PENDING_REVIEW
+  SCHEDULED
+  PUBLISHED
+  ACTIVE
+  CLOSED
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+  REJECTED
+}
+
+enum UniversityItemModality {
+  IN_PERSON
+  ONLINE
+  HYBRID
+  NOT_APPLICABLE
+}
+
+enum UniversityItemPriority {
+  NORMAL
+  IMPORTANT
+  URGENT
+  CRITICAL
+}
+
 // --- 1. ESTRUCTURA ACADÉMICA ---
 model University {
   id        Int      @id @default(autoincrement())
@@ -122,8 +164,10 @@ model University {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  faculties Faculty[]
-  profiles  Profile[]
+  faculties               Faculty[]
+  profiles                Profile[]
+  universityAreas         UniversityArea[]
+  universityCalendarItems UniversityCalendarItem[]
 
   @@map("universities")
 }
@@ -197,8 +241,13 @@ model User {
   followers               Follow[]                 @relation("UserFollowers")
   following               Follow[]                 @relation("UserFollowing")
 
-  universityContents      UniversityContent[]
-  universitySuggestions   UniversitySuggestion[]
+  universityContents     UniversityContent[]
+  universitySuggestions  UniversitySuggestion[]
+  universitySavedItems   UniversitySavedItem[]
+  universityReminders    UniversityReminder[]
+  UniversityCalendarItem UniversityCalendarItem[]
+  savedContents          UniversityContentSaved[]
+  auditLogs              UniversityAuditLog[]
 
   @@index([role])
   @@index([createdAt])
@@ -392,8 +441,8 @@ model Question {
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
-  user      User          @relation(fields: [userId], references: [id])
-  community Community?    @relation(fields: [communityId], references: [id])
+  user      User            @relation(fields: [userId], references: [id])
+  community Community?      @relation(fields: [communityId], references: [id])
   answers   Answer[]
   images    QuestionImage[]
   reports   Report[]
@@ -434,8 +483,8 @@ model Answer {
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
 
-  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id])
+  question Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id])
   reports  Report[]
   images   AnswerImage[]
   votes    AnswerVote[]
@@ -447,29 +496,29 @@ model Answer {
 }
 
 model Document {
-  id          Int           @id @default(autoincrement())
-  userId      Int           @map("user_id")
-  communityId Int?          @map("community_id")
-  title       String
-  description String?
-  course      String        @default("")
-  cycle       String?
-  fileUrl     String        @map("file_url")
-  storageKey  String        @map("storage_key")
-  fileType    String        @map("file_type")
-  sizeBytes   Int           @map("size_bytes")
-  status      ContentStatus @default(PUBLISHED)
-  visibility  DocumentVisibility @default(PUBLIC)
-  materialType String?      @map("material_type")
-  originalName String?      @map("original_name")
-  mimeType    String?       @map("mime_type")
-  downloadsCount Int        @default(0) @map("downloads_count")
-  viewsCount  Int           @default(0) @map("views_count")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  id             Int                @id @default(autoincrement())
+  userId         Int                @map("user_id")
+  communityId    Int?               @map("community_id")
+  title          String
+  description    String?
+  course         String             @default("")
+  cycle          String?
+  fileUrl        String             @map("file_url")
+  storageKey     String             @map("storage_key")
+  fileType       String             @map("file_type")
+  sizeBytes      Int                @map("size_bytes")
+  status         ContentStatus      @default(PUBLISHED)
+  visibility     DocumentVisibility @default(PUBLIC)
+  materialType   String?            @map("material_type")
+  originalName   String?            @map("original_name")
+  mimeType       String?            @map("mime_type")
+  downloadsCount Int                @default(0) @map("downloads_count")
+  viewsCount     Int                @default(0) @map("views_count")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
 
-  user      User          @relation(fields: [userId], references: [id])
-  community Community?    @relation(fields: [communityId], references: [id])
+  user      User             @relation(fields: [userId], references: [id])
+  community Community?       @relation(fields: [communityId], references: [id])
   reports   Report[]
   tags      DocumentTag[]
   posts     Post[]
@@ -871,15 +920,26 @@ model Notification {
 
 // --- 9. CONTENIDO UNIVERSITARIO ---
 model UniversityContent {
-  id          Int                        @id @default(autoincrement())
-  type        UniversityContentType      @map("type")
+  id          Int                         @id @default(autoincrement())
+  type        UniversityContentType       @map("type")
   title       String
-  description String                     @db.Text
-  area        String                     @default("")
-  category    String                     @default("")
+  description String                      @db.Text
+  area        String                      @default("")
+  category    String                      @default("")
   visibility  UniversityContentVisibility @default(PUBLICO)
 
-  statusTags  Json                       @default("[]")
+  categoryId   Int?    @map("category_id")
+  areaId       Int?    @map("area_id")
+  priority     String? @default("normal")
+  sourceUrl    String? @map("source_url")
+  officialUrl  String? @map("official_url")
+  contactEmail String? @map("contact_email")
+  contactPhone String? @map("contact_phone")
+  modality     String? @default("presencial")
+  capacity     Int?
+  timezone     String  @default("America/Lima")
+
+  statusTags  Json      @default("[]")
   startDate   DateTime?
   endDate     DateTime?
   deadline    DateTime?
@@ -891,18 +951,24 @@ model UniversityContent {
   documents   Json?
   schedule    String?
   warning     String?
-  fileUrl     String?                    @map("file_url")
-  fileName    String?                    @map("file_name")
-  fileType    String?                    @map("file_type")
-  fileSize    Int?                       @map("file_size")
-  externalUrl String?                    @map("external_url")
+  fileUrl     String?   @map("file_url")
+  fileName    String?   @map("file_name")
+  fileType    String?   @map("file_type")
+  fileSize    Int?      @map("file_size")
+  externalUrl String?   @map("external_url")
 
-  views      Int          @default(0)
-  savesCount Int          @default(0) @map("saves_count")
+  views      Int @default(0)
+  savesCount Int @default(0) @map("saves_count")
 
   status    ContentStatus @default(PUBLISHED)
+  deletedAt DateTime?     @map("deleted_at")
   userId    Int?          @map("user_id")
   user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  categoryRel UniversityCategory? @relation("ContentCategory", fields: [categoryId], references: [id])
+  areaRel     UniversityArea?     @relation("ContentArea", fields: [areaId], references: [id])
+
+  savedBy UniversityContentSaved[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -911,8 +977,45 @@ model UniversityContent {
   @@index([status])
   @@index([visibility])
   @@index([createdAt])
+  @@index([categoryId])
+  @@index([areaId])
+  @@index([priority])
   @@index([type, status, createdAt(sort: Desc)])
+  @@index([status, deletedAt])
   @@map("university_contents")
+}
+
+model UniversityContentSaved {
+  id        Int      @id @default(autoincrement())
+  contentId Int      @map("content_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  content UniversityContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, userId])
+  @@index([userId])
+  @@map("university_content_saved")
+}
+
+model UniversityAuditLog {
+  id         Int      @id @default(autoincrement())
+  action     String
+  entityType String   @map("entity_type")
+  entityId   Int      @map("entity_id")
+  before     Json?
+  after      Json?
+  reason     String?
+  userId     Int      @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("university_audit_logs")
 }
 
 model UniversitySuggestion {
@@ -923,11 +1026,11 @@ model UniversitySuggestion {
   area        String           @default("")
   date        DateTime?
   location    String?
-  externalUrl String?           @map("external_url")
+  externalUrl String?          @map("external_url")
   status      SuggestionStatus @default(PENDING)
 
-  userId    Int      @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int  @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -936,4 +1039,147 @@ model UniversitySuggestion {
   @@index([userId])
   @@index([status, createdAt(sort: Desc)])
   @@map("university_suggestions")
+}
+
+// --- 10. CALENDARIO UNIVERSITARIO ---
+
+model UniversityCategory {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  description String?
+  icon        String?
+  color       String   @default("#6B7280")
+  order       Int      @default(0)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  items    UniversityCalendarItem[]
+  contents UniversityContent[]      @relation("ContentCategory")
+
+  @@map("university_categories")
+}
+
+model UniversityArea {
+  id           Int      @id @default(autoincrement())
+  universityId Int      @map("university_id")
+  parentId     Int?     @map("parent_id")
+  name         String
+  slug         String
+  description  String?
+  icon         String?
+  contactEmail String?  @map("contact_email")
+  contactPhone String?  @map("contact_phone")
+  website      String?
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  university   University               @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  items        UniversityCalendarItem[]
+  contentItems UniversityContent[]      @relation("ContentArea")
+
+  @@unique([universityId, slug])
+  @@index([universityId])
+  @@map("university_areas")
+}
+
+model UniversityCalendarItem {
+  id           Int  @id @default(autoincrement())
+  universityId Int  @map("university_id")
+  categoryId   Int  @map("category_id")
+  areaId       Int? @map("area_id")
+  createdById  Int  @map("created_by_id")
+
+  type        UniversityItemType
+  title       String
+  slug        String                 @unique
+  summary     String?
+  description String                 @db.Text
+  modality    UniversityItemModality @default(NOT_APPLICABLE)
+  status      UniversityItemStatus   @default(PUBLISHED)
+  priority    UniversityItemPriority @default(NORMAL)
+
+  sourceUrl    String? @map("source_url")
+  officialUrl  String? @map("official_url")
+  locationName String? @map("location_name")
+  onlineUrl    String? @map("online_url")
+
+  price    Decimal? @db.Decimal(10, 2)
+  capacity Int?
+
+  startsAt DateTime? @map("starts_at")
+  endsAt   DateTime? @map("ends_at")
+  allDay   Boolean   @default(false) @map("all_day")
+  timezone String    @default("America/Lima")
+
+  isFeatured Boolean @default(false) @map("is_featured")
+  viewCount  Int     @default(0) @map("view_count")
+  saveCount  Int     @default(0) @map("save_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  university University         @relation(fields: [universityId], references: [id])
+  category   UniversityCategory @relation(fields: [categoryId], references: [id])
+  area       UniversityArea?    @relation(fields: [areaId], references: [id])
+  creator    User               @relation(fields: [createdById], references: [id])
+
+  occurrences UniversityCalendarOccurrence[]
+  savedBy     UniversitySavedItem[]
+  reminders   UniversityReminder[]
+
+  @@index([universityId])
+  @@index([startsAt])
+  @@index([status, type])
+  @@map("university_calendar_items")
+}
+
+model UniversityCalendarOccurrence {
+  id           Int                  @id @default(autoincrement())
+  itemId       Int                  @map("item_id")
+  startsAt     DateTime             @map("starts_at")
+  endsAt       DateTime             @map("ends_at")
+  allDay       Boolean              @default(false) @map("all_day")
+  status       UniversityItemStatus @default(ACTIVE)
+  locationName String?              @map("location_name")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  item UniversityCalendarItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+  @@index([startsAt, endsAt])
+  @@map("university_calendar_occurrences")
+}
+
+model UniversitySavedItem {
+  id        Int      @id @default(autoincrement())
+  itemId    Int      @map("item_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  item UniversityCalendarItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, userId])
+  @@index([userId])
+  @@map("university_saved_items")
+}
+
+model UniversityReminder {
+  id        Int      @id @default(autoincrement())
+  itemId    Int      @map("item_id")
+  userId    Int      @map("user_id")
+  remindAt  DateTime @map("remind_at")
+  isSent    Boolean  @default(false) @map("is_sent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  item UniversityCalendarItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([remindAt, isSent])
+  @@map("university_reminders")
 }
