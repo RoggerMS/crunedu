@@ -1,148 +1,81 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { Bell, Lock, UserRound } from "lucide-react";
 import { LoginRequiredNotice } from "@/components/auth/login-required-notice";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, mapApiError } from "@/lib/http-client";
 
-type ProfileForm = {
-  username: string;
-  firstName: string;
-  lastName: string;
-  bio: string;
-  faculty: string;
-  career: string;
-  cycle: string;
-};
-
-type SocialProfile = {
-  id: number;
-  fullName: string;
-  academicInfo: { faculty: string | null; career: string | null; cycle: string | null };
-  activeCommunities: Array<{ id: number; name: string; slug: string }>;
-  recentPosts: Array<{ id: number; title: string; content: string; createdAt: string; community: { id: number; name: string } | null }>;
-  activitySummary: { recentContributions: Array<{ type: string; id: number; title: string; createdAt: string }> };
-  reputation: { usefulContributions: number; answersGiven: number };
-  relationship: { isFollowing: boolean; isFollowedBy: boolean; isFriend: boolean };
-};
-
-type SocialUser = {
-  id: number;
-  fullName: string;
-  isFollowing: boolean;
-  isFollowedBy: boolean;
-  isFriend: boolean;
-};
-
-const EMPTY_FORM: ProfileForm = { username: "", firstName: "", lastName: "", bio: "", faculty: "", career: "", cycle: "" };
+type ProfileForm = { firstName: string; lastName: string; bio: string; faculty: string; career: string; cycle: string };
+type PreferenceKey = "emailActivity" | "compactFeed" | "publicAcademicInfo";
+type Preferences = Record<PreferenceKey, boolean>;
+const EMPTY_FORM: ProfileForm = { firstName: "", lastName: "", bio: "", faculty: "", career: "", cycle: "" };
+const DEFAULT_PREFERENCES: Preferences = { emailActivity: false, compactFeed: false, publicAcademicInfo: true };
+const PREFERENCES_KEY = "crunedu_user_preferences";
 
 export function ProfileSettingsPanel() {
-  const { accessToken, isAuthenticated, isLoading, refreshUser } = useAuth();
+  const { accessToken, isAuthenticated, isLoading, refreshUser, user } = useAuth();
+  const [tab, setTab] = useState<"profile" | "notifications" | "privacy">("profile");
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
-  const [targetUserId, setTargetUserId] = useState("2");
-  const [socialProfile, setSocialProfile] = useState<SocialProfile | null>(null);
+  const [preferences, setPreferences] = useState<Preferences>(DEFAULT_PREFERENCES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [socialLoading, setSocialLoading] = useState(false);
-  const [friends, setFriends] = useState<SocialUser[]>([]);
-  const [friendsLoading, setFriendsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const loadProfile = useCallback(async () => {
     try {
       const data = await apiRequest<ProfileForm>("/users/me", { headers: { Authorization: `Bearer ${accessToken}` } });
       setForm({ ...EMPTY_FORM, ...data });
-    } catch {
-      // Preserve current behavior: if profile cannot be loaded, keep empty form.
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) {
+      setMessage({ type: "error", text: mapApiError(error, "No se pudo cargar tu perfil.") });
+    } finally { setLoading(false); }
   }, [accessToken]);
 
-  useEffect(() => { if (isLoading) return; if (isAuthenticated) void loadProfile(); else setLoading(false); }, [isLoading, isAuthenticated, loadProfile]);
+  useEffect(() => {
+    if (isLoading) return;
+    if (isAuthenticated) void loadProfile(); else setLoading(false);
+    try { setPreferences({ ...DEFAULT_PREFERENCES, ...JSON.parse(localStorage.getItem(PREFERENCES_KEY) ?? "{}") }); } catch { setPreferences(DEFAULT_PREFERENCES); }
+  }, [isAuthenticated, isLoading, loadProfile]);
 
-  async function loadSocialProfile() {
-    if (!targetUserId) return;
-    setSocialLoading(true);
-    setError(null);
+  async function saveProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setSaving(true); setMessage(null);
     try {
-      const profile = await apiRequest<SocialProfile>(`/users/${targetUserId}`);
-      setSocialProfile(profile);
-    } catch (err) {
-      setError(mapApiError(err, "No se pudo cargar el perfil público."));
-    } finally { setSocialLoading(false); }
-  }
-
-  async function loadFriends() {
-    if (!targetUserId) return;
-    setFriendsLoading(true);
-    try {
-      const data = await apiRequest<SocialUser[]>(`/users/${targetUserId}/friends`);
-      setFriends(data);
-    } catch (err) {
-      setError(mapApiError(err, "No se pudo cargar la lista de amigos."));
-      setFriends([]);
-    } finally {
-      setFriendsLoading(false);
-    }
-  }
-
-  async function toggleFollow() {
-    if (!isAuthenticated || !socialProfile) return;
-    const method = socialProfile.relationship.isFollowing ? "DELETE" : "POST";
-    const relation = await apiRequest<SocialProfile["relationship"]>(`/follows/${socialProfile.id}`, { method, headers: { Authorization: `Bearer ${accessToken}` } });
-    setSocialProfile({ ...socialProfile, relationship: relation });
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setSaving(true); setError(null); setSuccess(null);
-    try {
-      const { username: _username, ...profilePayload } = form;
-      const profile = await apiRequest<ProfileForm>("/users/me", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(profilePayload) });
-      setForm({ ...EMPTY_FORM, ...profile });
-      await refreshUser();
-      setSuccess("Perfil actualizado correctamente.");
-    } catch (err) { setError(mapApiError(err, "No se pudo guardar tu perfil.")); }
+      const updated = await apiRequest<ProfileForm>("/users/me", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(form) });
+      setForm({ ...EMPTY_FORM, ...updated }); await refreshUser();
+      setMessage({ type: "success", text: "Perfil actualizado correctamente." });
+    } catch (error) { setMessage({ type: "error", text: mapApiError(error, "No se pudo guardar tu perfil.") }); }
     finally { setSaving(false); }
   }
 
-  if (isLoading) return <p className="rounded-2xl border border-slate-200 bg-white p-4 text-slate-600">Cargando perfil...</p>;
+  function updatePreference(key: PreferenceKey, value: boolean) {
+    const next = { ...preferences, [key]: value };
+    setPreferences(next); localStorage.setItem(PREFERENCES_KEY, JSON.stringify(next));
+    setMessage({ type: "success", text: "Preferencia guardada en este dispositivo." });
+  }
 
-  if (!isAuthenticated) return <LoginRequiredNotice title="Inicia sesión para editar tu perfil." description="Necesitas una sesión activa para cambiar tus datos." returnUrl="/app/configuracion-perfil" />;
+  if (isLoading) return <p className="rounded-2xl border bg-white p-4 text-slate-600">Cargando configuración...</p>;
+  if (!isAuthenticated) return <LoginRequiredNotice title="Inicia sesión para abrir Configuración." description="Necesitas una sesión activa para cambiar tu cuenta." returnUrl="/app/configuracion-perfil" />;
 
-  return <section className="mx-auto max-w-3xl space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-soft"><div><h1 className="text-2xl font-black">Configuración de perfil</h1><p className="mt-1 text-sm text-slate-600">Edita tus datos para mantener tu perfil al día.</p></div>
-    <p className="rounded-2xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-      La foto de perfil y la portada se editan desde <strong>Mi perfil</strong> con los botones de cámara.
-    </p>
-    {loading ? <p className="text-slate-600">Cargando perfil...</p> : null}
-    {error ? <p className="rounded-2xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p> : null}
-    {success ? <p className="rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-700">{success}</p> : null}
+  const tabs = [
+    { id: "profile" as const, label: "Perfil", icon: UserRound },
+    { id: "notifications" as const, label: "Notificaciones", icon: Bell },
+    { id: "privacy" as const, label: "Privacidad", icon: Lock },
+  ];
 
-    <form className="grid gap-4" onSubmit={handleSubmit}>
-      <label className="grid gap-1 text-sm font-semibold text-slate-700">
-        Nombre de usuario
-        <input
-          className="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-2 text-slate-500"
-          value={form.username ? `@${form.username}` : ""}
-          placeholder="@proximamente"
-          disabled
-          readOnly
-        />
-        <span className="text-xs font-medium text-slate-500">Próximamente: cuando activemos el sistema de @usuario.</span>
-      </label>
-      {([ ["firstName", "Nombres"], ["lastName", "Apellidos"], ["faculty", "Facultad"], ["career", "Carrera"], ["cycle", "Ciclo"], ] as const).map(([field, label]) => (<label key={field} className="grid gap-1 text-sm font-semibold text-slate-700">{label}<input className="rounded-2xl border border-slate-200 px-4 py-2" value={form[field]} onChange={(e) => setForm((prev) => ({ ...prev, [field]: e.target.value }))} /></label>))}
-      <label className="grid gap-1 text-sm font-semibold text-slate-700">Biografía<textarea className="min-h-28 rounded-2xl border border-slate-200 px-4 py-2" value={form.bio} onChange={(e) => setForm((prev) => ({ ...prev, bio: e.target.value }))} /></label>
-      <button type="submit" disabled={saving || loading} className="mt-2 w-fit rounded-2xl bg-indigo-600 px-5 py-2 font-semibold text-white">{saving ? "Guardando..." : "Guardar cambios"}</button>
-    </form>
-
-    <div className="rounded-2xl border border-slate-200 p-4">
-      <h2 className="text-lg font-bold">Relación social</h2>
-      <p className="text-sm text-slate-600">Ingresa un ID de usuario para seguir o dejar de seguir.</p>
-      <div className="mt-3 flex gap-2"><input className="rounded-xl border border-slate-200 px-3 py-2" value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)} /><button onClick={loadSocialProfile} className="rounded-xl bg-slate-900 px-3 py-2 text-white">Ver perfil</button><button onClick={loadFriends} className="rounded-xl bg-emerald-700 px-3 py-2 text-white">Ver amigos</button></div>
-      {socialLoading ? <p className="mt-2 text-sm">Cargando...</p> : null}
-      {socialProfile ? <div className="mt-3 space-y-3"><div className="flex items-center gap-3"><p className="font-semibold">{socialProfile.fullName}</p>{socialProfile.relationship.isFriend ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">Amistad mutua</span> : <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">Sin amistad mutua</span>}<button onClick={toggleFollow} className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white">{socialProfile.relationship.isFollowing ? "Dejar de seguir" : "Seguir"}</button></div><p className="text-sm text-slate-600">Facultad: {socialProfile.academicInfo.faculty || "No disponible"} · Carrera: {socialProfile.academicInfo.career || "No disponible"} · Ciclo: {socialProfile.academicInfo.cycle || "No disponible"}</p><div><h3 className="font-semibold">Comunidades activas</h3><ul className="mt-2 flex flex-wrap gap-2">{socialProfile.activeCommunities.length ? socialProfile.activeCommunities.map((community) => <li key={community.id} className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">{community.name}</li>) : <li className="text-sm text-slate-600">Sin comunidades activas registradas.</li>}</ul></div><div><h3 className="font-semibold">Publicaciones recientes</h3><ul className="mt-2 space-y-2">{socialProfile.recentPosts.length ? socialProfile.recentPosts.map((post) => <li key={post.id} className="rounded-xl border border-slate-200 p-3"><p className="text-sm font-semibold">{post.title || "Sin título"}</p><p className="text-xs text-slate-500">{new Date(post.createdAt).toLocaleDateString("es-PE")} · {post.community?.name || "Comunidad no especificada"}</p></li>) : <li className="text-sm text-slate-600">No hay publicaciones recientes.</li>}</ul></div><div className="rounded-xl border border-slate-100 bg-slate-50 p-3"><h3 className="font-semibold">Resumen de actividad</h3><p className="mt-1 text-sm text-slate-700">Aportes útiles: {socialProfile.reputation.usefulContributions} · Respuestas dadas: {socialProfile.reputation.answersGiven}</p><p className="mt-1 text-xs text-slate-600">Últimos aportes: {socialProfile.activitySummary.recentContributions.length}</p></div></div> : null}
-      <div className="mt-4 rounded-2xl border border-slate-100 p-3"><h3 className="font-semibold">Amigos</h3>{friendsLoading ? <p className="mt-2 text-sm text-slate-600">Cargando amigos...</p> : null}{!friendsLoading && friends.length === 0 ? <p className="mt-2 text-sm text-slate-600">No hay amigos mutuos para este perfil.</p> : null}<ul className="mt-2 space-y-2">{friends.map((friend) => (<li key={friend.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2"><span className="text-sm font-medium">{friend.fullName}</span>{friend.isFriend ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">Amigos</span> : null}</li>))}</ul></div>
+  return <section className="mx-auto max-w-5xl space-y-5">
+    <div><h1 className="text-3xl font-black text-slate-950">Configuración</h1><p className="mt-1 text-sm text-slate-600">Controla cómo se ve tu perfil y cómo quieres usar CrunEdu.</p></div>
+    <div className="grid gap-5 md:grid-cols-[220px_1fr]">
+      <nav className="h-fit rounded-2xl border border-slate-200 bg-white p-2">{tabs.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => { setTab(id); setMessage(null); }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold ${tab === id ? "bg-indigo-600 text-white" : "text-slate-700 hover:bg-slate-100"}`}><Icon size={17} />{label}</button>)}</nav>
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+        {message ? <p className={`mb-5 rounded-xl p-3 text-sm ${message.type === "error" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{message.text}</p> : null}
+        {tab === "profile" ? <form className="space-y-5" onSubmit={saveProfile}><div><h2 className="text-xl font-black">Información del perfil</h2><p className="text-sm text-slate-500">Estos datos ayudan a otros estudiantes a reconocerte.</p></div><label className="grid gap-1 text-sm font-semibold">Correo<input value={user?.email ?? ""} disabled className="rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-slate-500" /></label><div className="grid gap-4 sm:grid-cols-2">{([ ["firstName", "Nombres"], ["lastName", "Apellidos"], ["faculty", "Facultad"], ["career", "Carrera"], ["cycle", "Ciclo"] ] as const).map(([key, label]) => <label key={key} className="grid gap-1 text-sm font-semibold">{label}<input value={form[key]} onChange={(event) => setForm((value) => ({ ...value, [key]: event.target.value }))} className="rounded-xl border border-slate-200 px-3 py-2 focus:border-indigo-400 focus:outline-none" /></label>)}</div><label className="grid gap-1 text-sm font-semibold">Biografía<textarea maxLength={240} value={form.bio} onChange={(event) => setForm((value) => ({ ...value, bio: event.target.value }))} className="min-h-28 rounded-xl border border-slate-200 px-3 py-2 focus:border-indigo-400 focus:outline-none" /><span className="text-right text-xs font-normal text-slate-400">{form.bio.length}/240</span></label><button disabled={saving || loading} className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-60">{saving ? "Guardando..." : "Guardar cambios"}</button></form> : null}
+        {tab === "notifications" ? <PreferenceSection title="Notificaciones" description="Elige cómo enterarte de la actividad de tu cuenta." rows={[{ key: "emailActivity", title: "Resumen de actividad", description: "Permitir futuros resúmenes por correo.", value: preferences.emailActivity }]} onChange={updatePreference} /> : null}
+        {tab === "privacy" ? <PreferenceSection title="Privacidad y experiencia" description="Estas preferencias se guardan en este dispositivo." rows={[{ key: "publicAcademicInfo", title: "Mostrar información académica", description: "Permitir que otros vean facultad, carrera y ciclo.", value: preferences.publicAcademicInfo }, { key: "compactFeed", title: "Feed compacto", description: "Preparar una vista con menos espacio entre publicaciones.", value: preferences.compactFeed }]} onChange={updatePreference} /> : null}
+      </div>
     </div>
   </section>;
+}
+
+function PreferenceSection({ title, description, rows, onChange }: { title: string; description: string; rows: Array<{ key: PreferenceKey; title: string; description: string; value: boolean }>; onChange: (key: PreferenceKey, value: boolean) => void }) {
+  return <div><h2 className="text-xl font-black">{title}</h2><p className="mt-1 text-sm text-slate-500">{description}</p><div className="mt-5 divide-y divide-slate-100">{rows.map((row) => <label key={row.key} className="flex cursor-pointer items-center justify-between gap-5 py-4"><span><span className="block text-sm font-bold text-slate-900">{row.title}</span><span className="block text-sm text-slate-500">{row.description}</span></span><input type="checkbox" checked={row.value} onChange={(event) => onChange(row.key, event.target.checked)} className="h-5 w-5 accent-indigo-600" /></label>)}</div></div>;
 }

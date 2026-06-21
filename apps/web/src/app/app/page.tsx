@@ -73,6 +73,7 @@ export default function AppPage() {
 
   const filteredPosts = filter === "recientes" ? [...feed.posts].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)) : filter === "siguiendo" ? feed.posts.filter((p) => p.destination.type === "community") : feed.posts;
   const activePost = activePostId ? feed.posts.find((post) => post.id === activePostId) ?? null : null;
+  const trends = Array.from(new Set(feed.posts.flatMap((post) => Array.from(post.content.matchAll(/#([\p{L}\p{N}_-]+)/gu), (match) => match[1].toLowerCase())))).slice(0, 8);
 
   useEffect(() => { const params = new URLSearchParams(window.location.search); const postId = params.get("post"); if (postId) setActivePostId(postId); }, []);
 
@@ -145,7 +146,7 @@ export default function AppPage() {
       </section>
       <aside className="hidden self-start lg:block">
         <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto overscroll-contain pr-1">
-          <RightSidebar communities={communities} trends={[]} draftsCount={draftsCount} onJoin={() => showToast("Función de unirse a comunidad pendiente de conexión.", "info")} onOpenCreate={(type) => { setSelectedType(type); setIsOpen(true); }} />
+          <RightSidebar communities={communities} trends={trends} draftsCount={draftsCount} />
         </div>
       </aside>
     </div>

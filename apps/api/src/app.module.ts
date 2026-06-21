@@ -18,6 +18,7 @@ import { MarketplaceModule } from "./modules/marketplace/marketplace.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SearchModule } from "./modules/search/search.module";
 import { UniversityModule } from "./modules/university/university.module";
+import { NotificationsModule } from "./modules/notifications/notifications.module";
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { UniversityModule } from "./modules/university/university.module";
     SearchModule,
     UniversityModule,
     ReportsModule,
+    NotificationsModule,
     ObservabilityModule,
   ],
   providers: [RateLimitGuard],

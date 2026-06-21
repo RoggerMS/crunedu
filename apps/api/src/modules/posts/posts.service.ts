@@ -261,7 +261,22 @@ export class PostsService {
     this.validateUsefulContent(dto.content, 12, "El comentario es muy corto. Agrega más detalle útil.");
     this.validateExtremeSize(dto.content, this.MAX_COMMENT_LENGTH, "El comentario es demasiado extenso.");
     await this.preventRepeatedCommentContent(userId, postId, dto.content);
+    const post = await this.prisma.post.findUnique({ where: { id: postId }, select: { userId: true, title: true } });
+    if (!post) throw new NotFoundException("Publicación no encontrada.");
     const comment = await this.prisma.comment.create({ data: { postId, userId, content: dto.content.trim() }, select: this.commentSelect });
+    if (post.userId !== userId) {
+      const commenterName = `${comment.user.profile?.firstName ?? ""} ${comment.user.profile?.lastName ?? ""}`.trim() || comment.user.email;
+      await this.prisma.notification.create({
+        data: {
+          userId: post.userId,
+          type: "POST_COMMENT",
+          title: "Nuevo comentario",
+          message: `${commenterName} comentó en ${post.title || "tu publicación"}.`,
+          referenceId: postId,
+          referenceType: "POST",
+        },
+      });
+    }
     this.observability.recordCommentCreated(userId, comment.id, postId);
     return this.mapCommentResponse(comment);
   }

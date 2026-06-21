@@ -11,7 +11,7 @@ function formatCount(value: number) {
   return new Intl.NumberFormat("es-PE", { notation: "compact", maximumFractionDigits: 1 }).format(value || 0);
 }
 
-export function RightSidebar({ communities, trends, draftsCount, onOpenCreate }: { communities: Community[]; trends: string[]; draftsCount: number; onJoin: () => void; onOpenCreate: (type: "publicacion" | "debate") => void }) {
+export function RightSidebar({ communities, trends, draftsCount }: { communities: Community[]; trends: string[]; draftsCount: number }) {
   return <div className="space-y-3">
     <Card className="space-y-3 p-4">
       <div className="flex items-center justify-between gap-2">
@@ -37,7 +37,7 @@ export function RightSidebar({ communities, trends, draftsCount, onOpenCreate }:
         </div>;
       }) : <p className="text-xs text-slate-500">Aún no hay comunidades para mostrar.</p>}
     </Card>
-    <Card className="space-y-2 p-4"><h3 className="text-sm font-black">Temas en tendencia</h3>{trends.length ? <div className="flex flex-wrap gap-1">{trends.map((trend) => <span key={trend} className="rounded-full bg-slate-100 px-2 py-1 text-xs">#{trend}</span>)}</div> : <p className="text-xs text-slate-500">Las tendencias aparecerán cuando haya más publicaciones.</p>}<button onClick={() => onOpenCreate("debate")} className="text-xs font-semibold text-indigo-700">Crear tema</button></Card>
+    <Card className="space-y-2 p-4"><h3 className="text-sm font-black">Temas en tendencia</h3>{trends.length ? <div className="flex flex-wrap gap-1">{trends.map((trend) => <span key={trend} className="rounded-full bg-slate-100 px-2 py-1 text-xs">#{trend}</span>)}</div> : <p className="text-xs text-slate-500">Las tendencias aparecerán cuando haya más publicaciones.</p>}</Card>
     <Card className="space-y-2 p-4"><h3 className="text-sm font-black">Actividad reciente</h3><p className="text-xs text-slate-500">Aún no hay actividad reciente.</p><p className="text-xs text-slate-500">Publica o comenta para activar tu comunidad.</p></Card>
     {draftsCount > 0 ? <Card className="space-y-2 p-4"><h3 className="text-sm font-black">Borradores</h3><p className="text-xs text-slate-600">Tienes {draftsCount} borradores guardados.</p><button className="text-xs font-semibold text-indigo-700">Ver borradores</button></Card> : null}
   </div>;

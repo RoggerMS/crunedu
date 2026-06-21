@@ -1,7 +1,7 @@
 "use client";
 
 import { MAIN_NAVIGATION } from "@crunedu/shared";
-import { Bell, ChevronLeft, ChevronRight, GraduationCap, Plus, Search, UserCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, GraduationCap, Plus, Search, Settings, UserCircle2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { buildLoginHref, isAppAuthRequired } from "@/lib/auth-routes";
 import { useSearch } from "@/hooks/useSearch";
 import { ConversarInternalSidebar } from "@/components/conversar/ConversarInternalSidebar";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { NotificationsPopover } from "@/components/notifications/NotificationsPopover";
 
 function isNavActive(itemHref: string, pathname: string) {
   if (itemHref === "/app") return pathname === "/app";
@@ -151,6 +153,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="mt-auto border-t border-slate-200 pt-3">
             {isAuthenticated ? (
+              <Link
+                href="/app/configuracion-perfil"
+                className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              >
+                <Settings size={16} />
+                Configuración
+              </Link>
+            ) : null}
+            {isAuthenticated ? (
               <button
                 type="button"
                 onClick={handleLogout}
@@ -207,7 +218,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </aside>
 
-      <main className={`lg:pl-64 ${isQuickActionsOpen ? "lg:pr-72" : ""}`}>
+      <main className={`pb-20 lg:pb-0 lg:pl-64 ${isQuickActionsOpen ? "lg:pr-72" : ""}`}>
         <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-5 py-3">
           <div className="flex items-center gap-3">
             <div className="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
@@ -243,13 +254,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               )}
               {isQuickActionsOpen ? "Cerrar panel" : "Abrir panel"}
             </button>
-            <Link
-              href="/app/notificaciones"
-              className="hidden shrink-0 rounded-xl border border-slate-200 bg-white p-2 text-slate-700 hover:bg-slate-50 lg:inline-flex"
-              aria-label="Abrir notificaciones"
-            >
-              <Bell size={18} />
-            </Link>
+            {isAuthenticated ? <NotificationsPopover /> : null}
             {!isAuthenticated ? (
               <Link
                 href={loginHref}
@@ -392,6 +397,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
       ) : null}
+      <MobileBottomNav />
     </div>
   );
 }

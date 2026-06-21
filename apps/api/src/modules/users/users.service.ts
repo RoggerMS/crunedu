@@ -54,6 +54,8 @@ export class UsersService {
           select: {
             firstName: true,
             lastName: true,
+            description: true,
+            avatarUrl: true,
             faculty: { select: { name: true } },
             career: { select: { name: true } },
             cycle: true,
@@ -76,7 +78,7 @@ export class UsersService {
             community: { select: { id: true, name: true } },
           },
         },
-        _count: { select: { posts: true, answers: true } },
+        _count: { select: { posts: true, answers: true, followers: true, following: true } },
       },
     });
 
@@ -87,6 +89,8 @@ export class UsersService {
     return {
       id: user.id,
       fullName: `${user.profile?.firstName ?? ""} ${user.profile?.lastName ?? ""}`.trim() || "Estudiante",
+      bio: user.profile?.description ?? "",
+      avatarUrl: user.profile?.avatarUrl ?? null,
       academicInfo: {
         faculty: user.profile?.faculty?.name ?? null,
         career: user.profile?.career?.name ?? null,
@@ -112,19 +116,45 @@ export class UsersService {
         usefulContributions: user._count.posts,
         answersGiven: user._count.answers,
       },
+      stats: {
+        posts: user._count.posts,
+        followers: user._count.followers,
+        following: user._count.following,
+      },
+      isMine: viewerUserId === targetUserId,
       relationship,
     };
   }
 
   async followUser(currentUserId: number, targetUserId: number) {
-    await this.preventFollowSpam(currentUserId, targetUserId);
     if (currentUserId === targetUserId) throw new BadRequestException("No puedes seguirte a ti mismo.");
 
     await this.ensureUserExists(targetUserId);
+    const existingFollow = await this.prisma.follow.findUnique({
+      where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } },
+    });
+    if (existingFollow) return this.getRelationship(currentUserId, targetUserId);
+
     await this.prisma.follow.upsert({
       where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } },
       create: { followerId: currentUserId, followingId: targetUserId },
       update: {},
+    });
+
+    const follower = await this.prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { profile: { select: { firstName: true, lastName: true } } },
+    });
+    const followerName = `${follower?.profile?.firstName ?? ""} ${follower?.profile?.lastName ?? ""}`.trim() || "Un estudiante";
+    await this.prisma.notification.create({
+      data: {
+        userId: targetUserId,
+        type: "NEW_FOLLOWER",
+        title: "Tienes un nuevo seguidor",
+        message: `${followerName} comenzó a seguirte.`,
+        referenceId: currentUserId,
+        referenceType: "USER",
+      },
     });
 
     this.observability.recordFollow(currentUserId, targetUserId);

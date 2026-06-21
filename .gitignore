@@ -34,3 +34,4 @@ packages/database/prisma/migrations/dev.db
 
 # local uploads
 uploads/
+/workspace-copiar
