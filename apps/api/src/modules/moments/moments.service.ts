@@ -42,6 +42,13 @@ const MAX_COMMENT = 1000;
 const MAX_TAGS = 8;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/webm"]);
+const EXTENSIONS_BY_MIME: Record<string, readonly string[]> = {
+  "image/jpeg": ["jpg", "jpeg"],
+  "image/png": ["png"],
+  "image/webp": ["webp"],
+  "video/mp4": ["mp4"],
+  "video/webm": ["webm"],
+};
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 25 * 1024 * 1024;
 
@@ -320,8 +327,10 @@ export class MomentsService {
     const max = isImage ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
     if ((f.size ?? 0) > max) throw new BadRequestException(isImage ? "La imagen supera el límite de 5MB." : "El video supera el límite de 25MB.");
 
-    const ext = (f.originalname ?? "file").split(".").pop()?.toLowerCase() ?? (isImage ? "jpg" : "mp4");
-    const safeExt = /^[a-z0-9]{1,5}$/.test(ext) ? ext : isImage ? "jpg" : "mp4";
+    const allowedExtensions = EXTENSIONS_BY_MIME[mimeType] ?? [];
+    const ext = (f.originalname ?? "file").split(".").pop()?.toLowerCase() ?? "";
+    if (!allowedExtensions.includes(ext)) throw new BadRequestException("La extensión del archivo no coincide con el formato permitido.");
+    const safeExt = ext === "jpeg" ? "jpg" : ext;
     const filename = `moment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${safeExt}`;
     const storageKey = `moments/${filename}`;
     const targetDir = join(process.cwd(), "tmp", "uploads", "moments");
@@ -333,7 +342,11 @@ export class MomentsService {
   async serveMedia(filename: string): Promise<{ stream: ReturnType<typeof createReadStream>; mimeType: string }> {
     if (!/^[a-zA-Z0-9._-]+$/.test(filename)) throw new BadRequestException("Archivo inválido.");
     const filePath = join(process.cwd(), "tmp", "uploads", "moments", filename);
-    await access(filePath);
+    try {
+      await access(filePath);
+    } catch {
+      throw new NotFoundException("Archivo no encontrado.");
+    }
     let mimeType = "application/octet-stream";
     if (filename.endsWith(".png")) mimeType = "image/png";
     else if (filename.endsWith(".webp")) mimeType = "image/webp";
