@@ -15,6 +15,7 @@ import { ObservabilityModule } from "./modules/observability/observability.modul
 import { CoreModule } from "./modules/core/core.module";
 import { RateLimitGuard } from "./modules/core/rate-limit.guard";
 import { MarketplaceModule } from "./modules/marketplace/marketplace.module";
+import { MomentsModule } from "./modules/moments/moments.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SearchModule } from "./modules/search/search.module";
 import { UniversityModule } from "./modules/university/university.module";
@@ -40,6 +41,7 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
     UniversityModule,
     ReportsModule,
     NotificationsModule,
+    MomentsModule,
     ObservabilityModule,
   ],
   providers: [RateLimitGuard],

@@ -1,5 +1,56 @@
-import Image from "next/image";
 import Link from "next/link";
+import { ImageIcon } from "lucide-react";
 import type { MomentItem } from "./types";
+import { MomentMediaFallback } from "./MomentMediaFallback";
+import { buildMomentMediaUrl } from "@/lib/moments-api";
 
-export function MomentsGalleryView({ moments }: { moments: MomentItem[] }) { return <section><div className="mb-3 flex flex-wrap gap-2">{["Hoy","Esta semana","Campus","Eventos","Humor","Comida","Cultura","Deportes","Perdido/encontrado"].map((f)=><button key={f} className="rounded-full border bg-white px-3 py-1 text-xs">{f}</button>)}</div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{moments.map((m)=><Link href={`/app/momentos/${m.id}`} key={m.id} className="rounded-2xl border bg-white p-2">{m.media[0]?.url?.startsWith("/") ? <Image src={m.media[0].url} alt={m.title} width={300} height={220} className="h-40 w-full rounded-xl object-cover"/> : <div className="grid h-40 w-full place-items-center rounded-xl bg-gradient-to-br from-indigo-200 via-violet-200 to-sky-200 text-xs font-semibold text-slate-700">Momento sin imagen</div>}<p className="mt-2 font-semibold">{m.title}</p><p className="text-xs text-slate-600">{m.location}</p></Link>)}</div></section>; }
+export function MomentsGalleryView({ moments, loading }: { moments: MomentItem[]; loading?: boolean }) {
+  if (loading) {
+    return (
+      <section>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-52 animate-pulse rounded-2xl bg-slate-200" />)}
+        </div>
+      </section>
+    );
+  }
+
+  if (moments.length === 0) {
+    return (
+      <section>
+        <h1 className="text-3xl font-black tracking-tight text-slate-900">Galería</h1>
+        <div className="mt-4 rounded-2xl border border-dashed bg-white p-10 text-center">
+          <ImageIcon className="mx-auto h-8 w-8 text-slate-400" />
+          <p className="mt-2 text-slate-600">Aún no hay momentos con fotos o videos.</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <h1 className="mb-3 text-3xl font-black tracking-tight text-slate-900">Galería</h1>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {moments.map((m) => {
+          const media = m.media[0];
+          const isVideo = media?.type === "video";
+          const mediaSrc = media?.url ? buildMomentMediaUrl(media.url) : null;
+          return (
+            <Link href={`/app/momentos/${m.id}`} key={m.id} className="group overflow-hidden rounded-2xl border bg-white p-2 transition hover:shadow-md">
+              <div className="relative h-44 w-full overflow-hidden rounded-xl">
+                {mediaSrc ? (
+                  <img src={mediaSrc} alt={m.title} className="h-full w-full rounded-xl object-cover" loading="lazy" />
+                ) : (
+                  <MomentMediaFallback momentType={m.type} title={m.title} compact />
+                )}
+                {isVideo ? <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-xs text-white">VIDEO</span> : null}
+              </div>
+              <p className="mt-2 line-clamp-1 font-semibold text-slate-800">{m.title}</p>
+              <p className="text-xs text-slate-600">{m.location ?? "Sin ubicación"}</p>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}

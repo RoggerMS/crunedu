@@ -10,6 +10,7 @@
     "lint": "echo lint pending",
     "test:integration": "ts-node -r tsconfig-paths/register src/tests/integration.smoke.ts",
     "test:regression:mvp": "ts-node -r tsconfig-paths/register src/tests/integration.smoke.ts",
+    "test:moments": "ts-node -r tsconfig-paths/register src/tests/moments.smoke.ts",
     "test:bootstrap": "ts-node -r tsconfig-paths/register src/tests/bootstrap.dependencies.spec.ts",
     "test:contract": "ts-node -r tsconfig-paths/register src/tests/api.contract.spec.ts",
     "quality:gate": "npm run test:bootstrap && npm run test:contract && npm run test:regression:mvp && npm run test:release:e2e",

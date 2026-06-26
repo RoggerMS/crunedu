@@ -3,21 +3,40 @@
 ## Objetivo
 Convertir **Momentos** en un feed simple y útil donde cualquier estudiante pueda compartir contexto universitario rápido, con opción de imagen y punto de entrada a contenido relacionado.
 
-## Alcance implementado en esta tarea
-- Botón colapsable para abrir/cerrar el formulario de publicación.
-- Publicación directa de texto en Momentos.
-- Adjuntar imagen en publicación (vista previa y render en la tarjeta publicada).
-- Lista inicial vacía (se eliminaron momentos de ejemplo hardcodeados).
-- Estado visual de impulso por tarjeta (toggle: `Impulsar momento` ↔ `Impulsado`).
-- Impulso **solo visual** (sin persistencia ni conteo global en backend todavía).
+## Estado: Implementado (backend + frontend persistentes)
 
-## Pendiente siguiente fase
-1. Persistencia backend (`GET /api/momentos`, `POST /api/momentos`) con autor y fecha real.
-2. Reglas de impulso por usuario (una vez por día + desimpulsar), persistidas.
-3. Enlace de origen cuando se comparte desde Inicio, Comunidades, Debates, Preguntas, Apuntes, Trámites o Tienda.
-4. Vista detalle de momento con comentarios/discusión.
-5. Upload real de imagen con almacenamiento y validaciones.
+### Base de datos
+- Modelos: `Moment`, `MomentMedia`, `MomentTag`, `MomentTagAssignment`, `MomentBoost`, `MomentConfirmation`, `SavedMoment`, `MomentComment`.
+- Enum `MomentType` (NOW, ALERT, FOOD, HUMOR, EVENT, CAMPUS, COMMUNITY, LOST_FOUND).
+- Restricciones `@@unique` para un impulso/confirmación/guardado por usuario.
+- Índices en autor, estado, creación, expiración, tipo, ubicación.
+- Relación con `Report` (`momentId`) y `User`.
+- Migración `20260626120000_moments_module`.
+- Seed idempotente con 6 momentos de ejemplo + usuarios demo.
 
-## Notas
-- Esta fase prioriza UX base y validación rápida de flujo.
-- Likes/dislikes y ranking global quedan para integración transversal posterior.
+### Backend (`apps/api/src/modules/moments/`)
+- Endpoints: list, detail, create, update, delete, media upload/serve, boost/unboost, confirm/unconfirm, save/unsave, share, comments (GET/POST/DELETE), news, gallery, saved, trends, topics.
+- `OptionalJwtAuthGuard` en lecturas públicas, `JwtAuthGuard` en escrituras.
+- `RateLimit` en crear, comentar, impulsar y subir medios.
+- Paginación por cursor, `_count` (sin desincronización), transacciones, relevancia en backend, expiración controlada.
+- Validación con class-validator, sanitización de archivos, permisos de autor/moderador/admin.
+
+### Frontend
+- Capa API tipada (`lib/moments-api.ts`) con `apiRequest`.
+- `useMoments` refactorizado: carga real, loading/error/reintento, actualizaciones optimistas con rollback, comentarios, fallback solo en desarrollo.
+- 5 vistas conectadas: Momentos, Noticias, Galería, Guardados, Tendencias.
+- Creación funcional (modal + página `/crear`) con `MomentForm` compartido.
+- Detalle `/app/momentos/[id]` con API real e interacciones.
+- Skeletons, estados vacíos, error con reintento, toasts, prevención de doble envío.
+- Datos estáticos (`moments-data.ts`) conservados como seed/fallback de desarrollo.
+
+## Datos estáticos conservados
+- `apps/web/src/components/moments/moments-data.ts` se mantiene.
+- `fallbackMoments` y `fallbackNews` se usan únicamente en modo desarrollo cuando la API falla, o como datos de referencia.
+
+## Pruebas
+- `apps/api/src/tests/moments.smoke.ts` (script `npm run test:moments -w @crunedu/api`): cubre crear, validar, listar, detalle, permisos, impulso único, desimpulsar, confirmación, guardar, comentar, eliminar comentario, news/gallery/trends/topics, subida inválida, momento inexistente.
+
+## Pendiente / Notas
+- Aplicar migración y seed localmente con Docker (ver pasos en AGENTS.md).
+- Video (MP4/WEBM) habilitado con límite 25MB; el almacenamiento es local en desarrollo, preparado para MinIO.

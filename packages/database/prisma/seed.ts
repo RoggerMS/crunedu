@@ -1,4 +1,4 @@
-import { PrismaClient, ProductType, ProductPriceType, ProductCondition, ProductDeliveryType, Role, UniversityContentType, UniversityContentVisibility, UniversityItemType, UniversityItemModality, UniversityItemPriority, UniversityItemStatus } from "@prisma/client";
+import { PrismaClient, ProductType, ProductPriceType, ProductCondition, ProductDeliveryType, Role, UniversityContentType, UniversityContentVisibility, UniversityItemType, UniversityItemModality, UniversityItemPriority, UniversityItemStatus, MomentType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -854,10 +854,115 @@ async function main() {
     });
   }
 
+  // --- Moments (idempotent by title + author) ---
+  const momentTypeMap: Record<string, MomentType> = {
+    campus: MomentType.CAMPUS,
+    food: MomentType.FOOD,
+    alert: MomentType.ALERT,
+    lost_found: MomentType.LOST_FOUND,
+    event: MomentType.EVENT,
+    community: MomentType.COMMUNITY,
+  };
+
+  const demoUsers: number[] = [admin.id];
+  const demoNames = ["Lucía", "Mateo", "Valeria", "Diego", "Camila"];
+  for (let i = 0; i < demoNames.length; i += 1) {
+    const email = `demo.${demoNames[i].toLowerCase()}@crunedu.local`;
+    const u = await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: {
+        email,
+        passwordHash,
+        role: Role.USER,
+        isVerified: true,
+        profile: { create: { firstName: demoNames[i], lastName: "Cachimbo" } },
+      },
+    });
+    demoUsers.push(u.id);
+  }
+
+  const seedMoments = [
+    { title: "Aquí con la mascota roja", description: "Está saludando a todos en la puerta principal. ¡Qué buena energía hoy!", type: "campus", location: "Puerta principal", tags: ["Campus", "Mascota", "Entrada"], boosts: 6, confirmations: 12, comments: 2 },
+    { title: "Cola en comedor", description: "Se está llenando rápido antes del mediodía.", type: "food", location: "Comedor", tags: ["Comedor", "Aviso"], boosts: 5, confirmations: 6, comments: 3 },
+    { title: "Sistema de matrícula lento", description: "Varias pantallas con carga infinita.", type: "alert", location: "Portal virtual", tags: ["Matrícula", "Sistema"], boosts: 6, confirmations: 6, comments: 4 },
+    { title: "Mochila encontrada", description: "Está en vigilancia, color azul.", type: "lost_found", location: "Pabellón B", tags: ["PerdidoEncontrado"], boosts: 4, confirmations: 5, comments: 1 },
+    { title: "Concierto en el auditorio", description: "Arranca en 30 minutos.", type: "event", location: "Auditorio", tags: ["Cultura", "Evento"], boosts: 6, confirmations: 6, comments: 3 },
+    { title: "Feria en el patio central", description: "Stands activos y promociones.", type: "community", location: "Patio central", tags: ["Campus", "Feria"], boosts: 5, confirmations: 5, comments: 2 },
+  ];
+
+  const sampleComments = [
+    "Gracias por avisar, justo iba a ir.",
+    "Confirmo, pasó lo mismo hoy en la mañana.",
+    "¿Sigue igual ahora o ya se normalizó?",
+    "Buen dato, lo comparto con mi grupo.",
+  ];
+
+  for (const item of seedMoments) {
+    const existing = await prisma.moment.findFirst({
+      where: { title: item.title, userId: admin.id },
+      select: { id: true },
+    });
+
+    const expiresAt = new Date(Date.now() + 24 * 3600_000);
+
+    if (existing) {
+      await prisma.moment.update({
+        where: { id: existing.id },
+        data: { expiresAt, status: "PUBLISHED", deletedAt: null, type: momentTypeMap[item.type] },
+      });
+      continue;
+    }
+
+    const created = await prisma.moment.create({
+      data: {
+        userId: admin.id,
+        title: item.title,
+        description: item.description,
+        type: momentTypeMap[item.type],
+        location: item.location,
+        expiresAt,
+        status: "PUBLISHED",
+        viewCount: 200 + Math.floor(Math.random() * 120),
+        shareCount: Math.floor(Math.random() * 8),
+      },
+    });
+
+    const seedTagSlug = "seed";
+    const seedTag = await prisma.momentTag.upsert({
+      where: { slug: seedTagSlug },
+      update: {},
+      create: { name: "seed", slug: seedTagSlug },
+    });
+    await prisma.momentTagAssignment.create({ data: { momentId: created.id, tagId: seedTag.id } }).catch(() => undefined);
+
+    for (const tagName of item.tags) {
+      const slug = tagName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/(^-|-$)/g, "").toLowerCase();
+      const tag = await prisma.momentTag.upsert({ where: { slug }, update: {}, create: { name: tagName, slug } });
+      await prisma.momentTagAssignment.create({ data: { momentId: created.id, tagId: tag.id } }).catch(() => undefined);
+    }
+
+    const boosters = demoUsers.slice(0, Math.min(item.boosts, demoUsers.length));
+    for (const uid of boosters) {
+      await prisma.momentBoost.create({ data: { momentId: created.id, userId: uid } }).catch(() => undefined);
+    }
+    const confirmers = demoUsers.slice(0, Math.min(item.confirmations, demoUsers.length));
+    for (const uid of confirmers) {
+      await prisma.momentConfirmation.create({ data: { momentId: created.id, userId: uid } }).catch(() => undefined);
+    }
+    for (let c = 0; c < item.comments; c += 1) {
+      const commenter = demoUsers[(c + 1) % demoUsers.length];
+      await prisma.momentComment.create({
+        data: { momentId: created.id, userId: commenter, content: sampleComments[c % sampleComments.length] },
+      }).catch(() => undefined);
+    }
+  }
+
   console.log("Seed completed.");
   console.log("Admin email: admin@crunedu.local");
   console.log("Admin password: CrunEdu123!");
   console.log("Store: 10 categories, 4 safe points, 12 products created.");
+  console.log("Moments: 6 sample moments created.");
 }
 
 main()

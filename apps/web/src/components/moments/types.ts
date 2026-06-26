@@ -9,6 +9,9 @@ export type MomentItem = {
   stats: { boosts: number; confirmations: number; comments: number; shares: number; views: number };
   viewerState: { boosted: boolean; passed: boolean; saved: boolean; confirmed: boolean };
   status: MomentStatus;
+  isMine?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 };
 
 export type MomentNewsSummary = {
@@ -16,4 +19,8 @@ export type MomentNewsSummary = {
   stats: { boosts: number; confirmations: number; comments: number; photos: number }; coverImageUrl?: string;
 };
 
-export type MomentComment = { id: string; momentId: string; author: string; content: string; createdAt: string };
+export type MomentComment = { id: string; momentId: string; author: string; authorAvatarUrl?: string; content: string; createdAt: string; isMine?: boolean };
+
+export type MomentTrend = { position: number; tag: string; moments: number; boosts: number; growth: number };
+
+export type MomentTopic = { tag: string; count: number };
