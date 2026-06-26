@@ -108,7 +108,7 @@ CREATE INDEX "moments_created_at_idx" ON "moments"("created_at");
 CREATE INDEX "moments_expires_at_idx" ON "moments"("expires_at");
 CREATE INDEX "moments_type_idx" ON "moments"("type");
 CREATE INDEX "moments_location_idx" ON "moments"("location");
-CREATE INDEX "moments_status_created_at_id_idx" ON "moments"("status", "created_at"(DESC), "id"(DESC));
+CREATE INDEX "moments_status_created_at_id_idx" ON "moments"("status", "created_at" DESC, "id" DESC);
 CREATE INDEX "moments_status_expires_at_idx" ON "moments"("status", "expires_at");
 
 CREATE INDEX "moment_media_moment_id_idx" ON "moment_media"("moment_id");
