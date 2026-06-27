@@ -1,15 +1,10 @@
-import { Flame, MessageSquare, ShieldCheck } from "lucide-react";
+import { Flame, MessageSquare, Heart } from "lucide-react";
+import Link from "next/link";
 import type { MomentNewsSummary } from "./types";
 import { MomentNewsCard } from "./MomentNewsCard";
 
-export function MomentsNewsView({
-  news,
-  onOpenMoments,
-}: {
-  news: MomentNewsSummary[];
-  onOpenMoments: (relatedId: string) => void;
-}) {
-  const mostBoosted = [...news].sort((a, b) => b.stats.boosts - a.stats.boosts).slice(0, 3);
+export function MomentsNewsView({ news }: { news: MomentNewsSummary[] }) {
+  const mostLiked = [...news].sort((a, b) => b.stats.likes - a.stats.likes).slice(0, 3);
   const alerts = news.filter((n) => n.tags.some((t) => /aviso|alerta|sistema/i.test(t)));
 
   return (
@@ -24,17 +19,26 @@ export function MomentsNewsView({
           </div>
         ) : (
           <div className="space-y-3">
-            {news.map((n) => <MomentNewsCard key={n.id} item={n} onOpenMoments={() => onOpenMoments(n.relatedMomentIds[0] ?? "")} />)}
+            {news.map((n) => (
+              <Link key={n.id} href={`/app/momentos/noticias/${n.id}`} className="block">
+                <MomentNewsCard item={n} />
+              </Link>
+            ))}
           </div>
         )}
       </div>
 
       <aside className="space-y-3">
         <div className="rounded-2xl border bg-white p-4">
-          <h3 className="font-bold text-slate-900">Lo más impulsado</h3>
-          {mostBoosted.length === 0 ? <p className="mt-1 text-sm text-slate-600">Sin datos aún.</p> : (
+          <h3 className="font-bold text-slate-900">Lo más gustado</h3>
+          {mostLiked.length === 0 ? <p className="mt-1 text-sm text-slate-600">Sin datos aún.</p> : (
             <ul className="mt-2 space-y-1.5 text-sm">
-              {mostBoosted.map((n) => <li key={n.id} className="flex items-center justify-between gap-2"><span className="truncate">{n.title}</span><span className="inline-flex items-center gap-1 text-slate-500"><Flame className="h-3.5 w-3.5" />{n.stats.boosts}</span></li>)}
+              {mostLiked.map((n) => (
+                <li key={n.id} className="flex items-center justify-between gap-2">
+                  <Link href={`/app/momentos/noticias/${n.id}`} className="truncate hover:text-indigo-600">{n.title}</Link>
+                  <span className="inline-flex items-center gap-1 text-slate-500"><Flame className="h-3.5 w-3.5" />{n.stats.likes}</span>
+                </li>
+              ))}
             </ul>
           )}
         </div>
@@ -42,13 +46,14 @@ export function MomentsNewsView({
           <h3 className="font-bold text-slate-900">Alertas y avisos</h3>
           {alerts.length === 0 ? <p className="mt-1 text-sm text-slate-600">No hay alertas activas.</p> : (
             <ul className="mt-2 space-y-1.5 text-sm">
-              {alerts.map((n) => <li key={n.id} className="flex items-center justify-between gap-2"><span className="truncate">{n.title}</span><span className="inline-flex items-center gap-1 text-amber-600"><ShieldCheck className="h-3.5 w-3.5" />{n.stats.confirmations}</span></li>)}
+              {alerts.map((n) => <li key={n.id} className="flex items-center justify-between gap-2"><Link href={`/app/momentos/noticias/${n.id}`} className="truncate hover:text-indigo-600">{n.title}</Link><span className="text-amber-600">{n.stats.confirmations}</span></li>)}
             </ul>
           )}
         </div>
         <div className="rounded-2xl border bg-white p-4">
           <h3 className="font-bold text-slate-900">Resumen</h3>
           <p className="mt-1 text-sm text-slate-600"><MessageSquare className="mr-1 inline h-3.5 w-3.5" />{news.reduce((a, n) => a + n.stats.comments, 0)} comentarios en noticias</p>
+          <p className="mt-0.5 text-sm text-slate-600"><Heart className="mr-1 inline h-3.5 w-3.5" />{news.reduce((a, n) => a + n.stats.likes, 0)} Me gusta acumulados</p>
         </div>
       </aside>
     </section>

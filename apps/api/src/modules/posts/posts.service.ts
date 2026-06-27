@@ -22,12 +22,15 @@ type PostWithRelations = {
   id: number;
   title: string;
   content: string;
+  inFeed: boolean;
+  viewCount: number;
+  shareCount: number;
   createdAt: Date;
   user: { id: number; email: string; profile: { firstName: string | null; lastName: string | null } | null };
   community: { id: number; name: string; slug: string } | null;
   document: { id: number; title: string; fileType: string; sizeBytes: number; course: string } | null;
   comments: Array<{ createdAt: Date }>;
-  _count: { comments: number } | null;
+  _count: { comments: number; reactions: number; savedBy: number } | null;
   images: Array<{ id:number; imageUrl:string; mimeType:string; sizeBytes:number; position:number }>;
 };
 
@@ -44,6 +47,9 @@ export class PostsService {
     id: true,
     title: true,
     content: true,
+    inFeed: true,
+    viewCount: true,
+    shareCount: true,
     createdAt: true,
     user: {
       select: {
@@ -85,14 +91,29 @@ export class PostsService {
     _count: {
       select: {
         comments: true,
+        reactions: true,
+        savedBy: true,
       },
     },
   } as const;
 
   private readonly commentSelect = { id: true, content: true, createdAt: true, user: { select: { id: true, email: true, profile: { select: { firstName: true, lastName: true } } } } } as const;
 
-  private mapPostResponse(post: PostWithRelations, userId?: number): PostResponseDto {
-    return { id: post.id, title: post.title, content: post.content, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, document: post.document, commentsCount: post._count?.comments ?? 0, images: post.images, isMine: Boolean(userId && post.user.id === userId) };
+  private mapPostResponse(post: PostWithRelations, userId?: number, viewer?: { liked: boolean; saved: boolean } | null): PostResponseDto {
+    return { id: post.id, title: post.title, content: post.content, inFeed: post.inFeed, viewCount: post.viewCount, shareCount: post.shareCount, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, document: post.document, commentsCount: post._count?.comments ?? 0, likesCount: post._count?.reactions ?? 0, savesCount: post._count?.savedBy ?? 0, images: post.images, isMine: Boolean(userId && post.user.id === userId), liked: viewer?.liked ?? false, saved: viewer?.saved ?? false };
+  }
+
+  private async fetchPostViewerStates(postIds: number[], userId?: number): Promise<Map<number, { liked: boolean; saved: boolean }>> {
+    const map = new Map<number, { liked: boolean; saved: boolean }>();
+    if (!userId || postIds.length === 0) return map;
+    for (const id of postIds) map.set(id, { liked: false, saved: false });
+    const [likes, saves] = await Promise.all([
+      this.prisma.reaction.findMany({ where: { userId, postId: { in: postIds } }, select: { postId: true } }),
+      this.prisma.savedPost.findMany({ where: { userId, postId: { in: postIds } }, select: { postId: true } }),
+    ]);
+    for (const l of likes) map.get(l.postId)!.liked = true;
+    for (const s of saves) map.get(s.postId)!.saved = true;
+    return map;
   }
 
   private mapCommentResponse(comment: any): PostCommentResponseDto {
@@ -112,7 +133,7 @@ export class PostsService {
     }
 
     const posts = await this.prisma.post.findMany({
-      where: { status: "PUBLISHED" },
+      where: { status: "PUBLISHED", inFeed: true },
       select: this.postSelect,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
@@ -120,12 +141,13 @@ export class PostsService {
     });
 
     const rankedPosts = mode === "relevant" ? await this.rankRelevant(posts, userId) : posts;
-    const paginated = rankedPosts.slice(0, safeLimit);
+    const sliced = rankedPosts.slice(0, safeLimit);
     const nextCursor = rankedPosts.length > safeLimit ? rankedPosts[safeLimit].id : null;
 
     this.registerFeedEvent("impression", userId, { mode });
 
-    const response = { items: paginated.map((post: PostWithRelations) => this.mapPostResponse(post, userId)), nextCursor, mode };
+    const viewerStates = await this.fetchPostViewerStates(sliced.map((p: PostWithRelations) => p.id), userId);
+    const response = { items: sliced.map((post: PostWithRelations) => this.mapPostResponse(post, userId, viewerStates.get(post.id) ?? null)), nextCursor, mode };
     if (cacheKey) this.cache.set(cacheKey, response, 20_000);
     return response;
   }
@@ -246,12 +268,64 @@ export class PostsService {
     const post = await this.prisma.post.findFirst({ where: { id, status: "PUBLISHED" }, select: this.postSelect });
     if (!post) throw new NotFoundException("Publicación no encontrada.");
     this.registerFeedEvent("click", userId, { postId: id });
-    return this.mapPostResponse(post, userId);
+    const viewerStates = await this.fetchPostViewerStates([id], userId);
+    return this.mapPostResponse(post, userId, viewerStates.get(id) ?? null);
   }
 
   async update(id: number, dto: UpdatePostDto, userId: number): Promise<PostResponseDto> { const existingPost = await this.prisma.post.findUnique({ where: { id }, select: { id: true, userId: true } }); if (!existingPost) throw new NotFoundException("Publicación no encontrada."); if (existingPost.userId !== userId) throw new ForbiddenException("No tienes permisos para editar esta publicación."); if (dto.communityId) { const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true } }); if (!community) throw new BadRequestException("La comunidad seleccionada no existe."); } if (dto.content !== undefined) this.validateExtremeSize(dto.content, this.MAX_POST_LENGTH, "La publicación es demasiado extensa para el MVP."); const updatedPost = await this.prisma.post.update({ where: { id }, data: { ...(dto.title !== undefined ? { title: dto.title.trim() } : {}), ...(dto.content !== undefined ? { content: dto.content.trim() } : {}), ...(dto.communityId !== undefined ? { communityId: dto.communityId } : {}) }, select: this.postSelect }); this.cache.invalidate("hot:feed:initial"); return this.mapPostResponse(updatedPost, userId); }
 
   async remove(id: number, userId: number, role: string): Promise<{ message: string }> { const existingPost = await this.prisma.post.findUnique({ where: { id }, select: { id: true, userId: true } }); if (!existingPost) throw new NotFoundException("Publicación no encontrada."); const isAuthor = existingPost.userId === userId; const isAdmin = role === "ADMIN"; if (!isAuthor && !isAdmin) throw new ForbiddenException("No tienes permisos para eliminar esta publicación."); await this.prisma.post.update({ where: { id }, data: { status: "DELETED" } }); this.cache.invalidate("hot:feed:initial"); return { message: "Publicación eliminada correctamente." }; }
+
+  async like(id: number, userId: number): Promise<{ liked: boolean; count: number }> {
+    await this.ensurePublishedPost(id);
+    const existing = await this.prisma.reaction.findUnique({ where: { postId_userId: { postId: id, userId } } });
+    if (existing) return { liked: true, count: await this.prisma.reaction.count({ where: { postId: id } }) };
+    try {
+      await this.prisma.reaction.create({ data: { postId: id, userId, type: "LIKE" } });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) return { liked: true, count: await this.prisma.reaction.count({ where: { postId: id } }) };
+      throw error;
+    }
+    this.cache.invalidate("hot:feed:initial");
+    return { liked: true, count: await this.prisma.reaction.count({ where: { postId: id } }) };
+  }
+
+  async unlike(id: number, userId: number): Promise<{ liked: boolean; count: number }> {
+    await this.ensurePublishedPost(id);
+    await this.prisma.reaction.deleteMany({ where: { postId: id, userId } });
+    this.cache.invalidate("hot:feed:initial");
+    return { liked: false, count: await this.prisma.reaction.count({ where: { postId: id } }) };
+  }
+
+  async savePost(id: number, userId: number): Promise<{ saved: boolean }> {
+    await this.ensurePublishedPost(id);
+    try {
+      await this.prisma.savedPost.create({ data: { postId: id, userId } });
+    } catch (error) {
+      if (this.isUniqueViolation(error)) return { saved: true };
+      throw error;
+    }
+    return { saved: true };
+  }
+
+  async unsavePost(id: number, userId: number): Promise<{ saved: boolean }> {
+    await this.ensurePublishedPost(id);
+    await this.prisma.savedPost.deleteMany({ where: { postId: id, userId } });
+    return { saved: false };
+  }
+
+  async sharePost(id: number): Promise<{ shares: number }> {
+    await this.ensurePublishedPost(id);
+    const updated = await this.prisma.post.update({ where: { id }, data: { shareCount: { increment: 1 } }, select: { shareCount: true } });
+    return { shares: Math.max(0, updated.shareCount) };
+  }
+
+  private isUniqueViolation(error: unknown): boolean {
+    if (error && typeof error === "object" && "code" in error) {
+      return (error as { code: string }).code === "P2002";
+    }
+    return false;
+  }
 
   async getComments(postId: number): Promise<PostCommentResponseDto[]> { await this.ensurePublishedPost(postId); const comments = await this.prisma.comment.findMany({ where: { postId, status: "PUBLISHED" }, orderBy: { createdAt: "asc" }, select: this.commentSelect }); return comments.map((comment: (typeof comments)[number]) => this.mapCommentResponse(comment)); }
 

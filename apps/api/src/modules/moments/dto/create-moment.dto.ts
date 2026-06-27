@@ -1,8 +1,10 @@
 import { Type } from "class-transformer";
-import { IsArray, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
+import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
 
 export const MOMENT_TYPES = ["NOW", "ALERT", "FOOD", "HUMOR", "EVENT", "CAMPUS", "COMMUNITY", "LOST_FOUND"] as const;
 export type MomentTypeValue = (typeof MOMENT_TYPES)[number];
+
+export const MOMENT_DURATIONS = [1, 6, 12, 24, 72, 168] as const;
 
 export class CreateMomentMediaDto {
   @IsString()
@@ -56,8 +58,17 @@ export class CreateMomentDto {
   durationHours?: number;
 
   @IsOptional()
+  @IsBoolean()
+  isPermanent?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  shareToFeed?: boolean;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateMomentMediaDto)
   media?: CreateMomentMediaDto[];
 }
+

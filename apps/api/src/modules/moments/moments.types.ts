@@ -14,6 +14,16 @@ export type MomentAuthorRow = {
   profile: { firstName: string | null; lastName: string | null; avatarUrl: string | null } | null;
 };
 
+export type MomentPostRow = {
+  id: number;
+  content: string;
+  viewCount: number;
+  shareCount: number;
+  inFeed: boolean;
+  images: MomentMediaRow[];
+  _count: { reactions: number; comments: number; savedBy: number };
+};
+
 export type MomentRow = {
   id: number;
   title: string;
@@ -21,37 +31,42 @@ export type MomentRow = {
   type: MomentType;
   location: string | null;
   status: string;
-  expiresAt: Date;
+  isPermanent: boolean;
+  expiresAt: Date | null;
   shareCount: number;
   viewCount: number;
   deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   userId: number;
+  postId: number | null;
   user: MomentAuthorRow;
-  media: MomentMediaRow[];
+  post: MomentPostRow | null;
   tags: { tag: { name: string; slug: string } }[];
-  _count: { boosts: number; confirmations: number; comments: number; savedBy: number };
+  _count: { confirmations: number };
 };
 
 export type MomentViewerState = {
-  boosted: boolean;
+  liked: boolean;
   saved: boolean;
   confirmed: boolean;
 };
 
 export type MomentResponseDto = {
   id: string;
+  postId: string | null;
   title: string;
   description: string | null;
   type: string;
   location: string | null;
   createdAt: string;
-  expiresAt: string;
+  expiresAt: string | null;
+  isPermanent: boolean;
+  inFeed: boolean;
   tags: string[];
   media: { id: string; type: "image" | "video"; url: string; alt: string | null }[];
   author: { id: string; name: string; avatarUrl: string | null };
-  stats: { boosts: number; confirmations: number; comments: number; shares: number; views: number };
+  stats: { likes: number; confirmations: number; comments: number; shares: number; views: number };
   viewerState: MomentViewerState;
   status: "active" | "expiring" | "expired";
   isMine: boolean;
@@ -85,15 +100,20 @@ export type MomentNewsSummaryDto = {
   status: "active" | "in_progress" | "resolved";
   relatedMomentIds: string[];
   updatedAt: string;
-  stats: { boosts: number; confirmations: number; comments: number; photos: number };
+  createdAt: string;
+  stats: { likes: number; confirmations: number; comments: number; photos: number };
   coverImageUrl: string | null;
+};
+
+export type MomentNewsDetailDto = MomentNewsSummaryDto & {
+  relatedMoments: MomentResponseDto[];
 };
 
 export type MomentTrendDto = {
   position: number;
   tag: string;
   moments: number;
-  boosts: number;
+  likes: number;
   growth: number;
 };
 
@@ -115,7 +135,8 @@ function mediaType(mimeType: string): "image" | "video" {
   return mimeType.startsWith("video/") ? "video" : "image";
 }
 
-export function computeMomentStatus(expiresAt: Date, now: number): "active" | "expiring" | "expired" {
+export function computeMomentStatus(expiresAt: Date | null, isPermanent: boolean, now: number): "active" | "expiring" | "expired" {
+  if (isPermanent || expiresAt === null) return "active";
   const expiresMs = expiresAt.getTime();
   if (expiresMs <= now) return "expired";
   if (expiresMs - now <= EXPIRING_WINDOW_MS) return "expiring";
@@ -124,22 +145,27 @@ export function computeMomentStatus(expiresAt: Date, now: number): "active" | "e
 
 export function mapMoment(
   row: MomentRow,
-  viewer?: { userId: number; boosted: boolean; saved: boolean; confirmed: boolean } | null,
+  viewer?: { userId: number; liked: boolean; saved: boolean; confirmed: boolean } | null,
 ): MomentResponseDto {
   const now = Date.now();
   const isMine = viewer != null && row.userId === viewer.userId;
   const canEdit = isMine;
   const canDelete = isMine;
+  const post = row.post;
+  const media = post?.images ?? [];
   return {
     id: String(row.id),
+    postId: row.postId != null ? String(row.postId) : null,
     title: row.title,
     description: row.description,
     type: row.type.toLowerCase(),
     location: row.location,
     createdAt: row.createdAt.toISOString(),
-    expiresAt: row.expiresAt.toISOString(),
+    expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
+    isPermanent: row.isPermanent,
+    inFeed: post?.inFeed ?? false,
     tags: row.tags.map((t) => t.tag.name),
-    media: row.media.map((m) => ({
+    media: media.map((m) => ({
       id: String(m.id),
       type: mediaType(m.mimeType),
       url: m.imageUrl,
@@ -151,18 +177,18 @@ export function mapMoment(
       avatarUrl: row.user.profile?.avatarUrl ?? null,
     },
     stats: {
-      boosts: row._count.boosts,
+      likes: post?._count.reactions ?? 0,
       confirmations: row._count.confirmations,
-      comments: row._count.comments,
-      shares: Math.max(0, row.shareCount),
-      views: Math.max(0, row.viewCount),
+      comments: post?._count.comments ?? 0,
+      shares: Math.max(0, post?.shareCount ?? row.shareCount),
+      views: Math.max(0, post?.viewCount ?? row.viewCount),
     },
     viewerState: {
-      boosted: viewer?.boosted ?? false,
+      liked: viewer?.liked ?? false,
       saved: viewer?.saved ?? false,
       confirmed: viewer?.confirmed ?? false,
     },
-    status: computeMomentStatus(row.expiresAt, now),
+    status: computeMomentStatus(row.expiresAt, row.isPermanent, now),
     isMine,
     canEdit,
     canDelete,

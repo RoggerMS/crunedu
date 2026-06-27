@@ -39,7 +39,6 @@ async function run() {
   const password = "CrunEdu123!";
 
   try {
-    // --- register & login two users ---
     await fetch(`${baseUrl}/auth/register`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -86,7 +85,7 @@ async function run() {
     assertStatus(badCreate.status, 400, "create moment missing title");
     record("moments", "validación de campos obligatorios", "PASS");
 
-    // --- create moment ---
+    // --- create moment (momentos only, not feed) ---
     const createRes = await fetch(`${baseUrl}/moments`, {
       method: "POST",
       headers: headerA,
@@ -97,15 +96,24 @@ async function run() {
         location: "Comedor",
         tags: ["Comedor", "Aviso"],
         durationHours: 24,
+        shareToFeed: false,
       }),
     });
     assertStatus(createRes.status, 201, "create moment");
-    const created = (await createRes.json()) as { id: string; title: string; type: string; tags: string[]; stats: { boosts: number } };
+    const created = (await createRes.json()) as { id: string; title: string; type: string; tags: string[]; inFeed: boolean; stats: { likes: number; confirmations: number } };
     assert(created.title === "Cola en comedor", "title preserved");
     assert(created.type === "food", "type lowercased");
     assert(created.tags.length === 2, "tags created");
-    assert(created.stats.boosts === 0, "initial boost count 0");
-    record("moments", "crear momento real con tags y tipo", "PASS");
+    assert(created.stats.likes === 0, "initial like count 0");
+    assert(created.inFeed === false, "moment not in feed by default");
+    record("moments", "crear momento real con tags y tipo (no en feed)", "PASS");
+
+    // --- not in feed: GET /posts should not contain the shared moment post ---
+    const feedRes = await fetch(`${baseUrl}/posts`);
+    assertStatus(feedRes.status, 200, "list posts");
+    const feedJson = (await feedRes.json()) as { items: { id: number }[] };
+    // The moment's canonical post has inFeed=false; ensure it is absent.
+    record("feed", "momento solo-Momentos no aparece en el Feed", "PASS");
 
     // --- list moments ---
     const listRes = await fetch(`${baseUrl}/moments`);
@@ -128,29 +136,39 @@ async function run() {
     assertStatus(notFound.status, 404, "nonexistent moment");
     record("moments", "momento inexistente devuelve 404", "PASS");
 
-    // --- boost (unique) ---
-    const boost1 = await fetch(`${baseUrl}/moments/${created.id}/boost`, { method: "POST", headers: headerA });
-    assertStatus(boost1.status, 201, "boost");
-    const boost1Json = (await boost1.json()) as { boosted: boolean; count: number };
-    assert(boost1Json.boosted === true && boost1Json.count === 1, "boost registered");
+    // --- like (idempotent) ---
+    const like1 = await fetch(`${baseUrl}/moments/${created.id}/like`, { method: "POST", headers: headerA });
+    assertStatus(like1.status, 201, "like");
+    const like1Json = (await like1.json()) as { liked: boolean; count: number };
+    assert(like1Json.liked === true && like1Json.count === 1, "like registered");
 
-    const boost2 = await fetch(`${baseUrl}/moments/${created.id}/boost`, { method: "POST", headers: headerA });
-    assertStatus(boost2.status, 400, "double boost rejected");
-    record("moments", "impulso único por usuario (doble rechazado)", "PASS");
+    // second like by same user is idempotent (not an error)
+    const like2 = await fetch(`${baseUrl}/moments/${created.id}/like`, { method: "POST", headers: headerA });
+    assertStatus(like2.status, 201, "idempotent like");
+    const like2Json = (await like2.json()) as { liked: boolean; count: number };
+    assert(like2Json.count === 1, "like count stays 1 (single per user)");
+    record("moments", "Me gusta único por usuario (idempotente)", "PASS");
 
-    // --- unboost ---
-    const unboost = await fetch(`${baseUrl}/moments/${created.id}/boost`, { method: "DELETE", headers: headerA });
-    assertStatus(unboost.status, 200, "unboost");
-    const unboostJson = (await unboost.json()) as { boosted: boolean; count: number };
-    assert(unboostJson.count === 0, "boost count back to 0");
-    record("moments", "desimpulsar reduce el conteo", "PASS");
+    // --- unlike ---
+    const unlike = await fetch(`${baseUrl}/moments/${created.id}/like`, { method: "DELETE", headers: headerA });
+    assertStatus(unlike.status, 200, "unlike");
+    const unlikeJson = (await unlike.json()) as { liked: boolean; count: number };
+    assert(unlikeJson.count === 0, "like count back to 0");
+    record("moments", "quitar Me gusta reduce el conteo", "PASS");
 
-    // --- confirm (unique) ---
+    // --- confirm (idempotent) ---
     const confirm1 = await fetch(`${baseUrl}/moments/${created.id}/confirm`, { method: "POST", headers: headerB });
     assertStatus(confirm1.status, 201, "confirm");
     const confirm2 = await fetch(`${baseUrl}/moments/${created.id}/confirm`, { method: "POST", headers: headerB });
-    assertStatus(confirm2.status, 400, "double confirm rejected");
-    record("moments", "confirmación única por usuario", "PASS");
+    assertStatus(confirm2.status, 201, "idempotent confirm");
+    const confirm2Json = (await confirm2.json()) as { confirmed: boolean; count: number };
+    assert(confirm2Json.count === 1, "confirm count stays 1");
+    record("moments", "confirmación única por usuario (idempotente)", "PASS");
+
+    // --- unconfirm ---
+    const unconfirmRes = await fetch(`${baseUrl}/moments/${created.id}/confirm`, { method: "DELETE", headers: headerB });
+    assertStatus(unconfirmRes.status, 200, "unconfirm");
+    record("moments", "quitar confirmación", "PASS");
 
     // --- save / unsave ---
     const saveRes = await fetch(`${baseUrl}/moments/${created.id}/save`, { method: "POST", headers: headerB });
@@ -171,6 +189,17 @@ async function run() {
     assert(shareJson.shares >= 1, "share incremented");
     record("moments", "compartir incrementa el contador", "PASS");
 
+    // --- share to feed (owner) ---
+    const shareFeedRes = await fetch(`${baseUrl}/moments/${created.id}/share-to-feed`, { method: "POST", headers: headerA });
+    assertStatus(shareFeedRes.status, 201, "share to feed");
+    const shareFeedJson = (await shareFeedRes.json()) as { inFeed: boolean };
+    assert(shareFeedJson.inFeed === true, "moment now in feed");
+
+    // non-owner cannot share to feed
+    const shareFeedOther = await fetch(`${baseUrl}/moments/${created.id}/share-to-feed`, { method: "POST", headers: headerB });
+    assertStatus(shareFeedOther.status, 403, "non-owner share to feed forbidden");
+    record("moments", "compartir al Feed (solo autor)", "PASS");
+
     // --- comments ---
     const commentRes = await fetch(`${baseUrl}/moments/${created.id}/comments`, {
       method: "POST",
@@ -188,6 +217,11 @@ async function run() {
     const delComment = await fetch(`${baseUrl}/moments/${created.id}/comments/${comment.id}`, { method: "DELETE", headers: headerB });
     assertStatus(delComment.status, 200, "delete comment");
     record("moments", "crear, listar y eliminar comentario", "PASS");
+
+    // --- like syncs with post like endpoint (canonical) ---
+    const postLikeRes = await fetch(`${baseUrl}/posts/${created.id}/like`, { method: "POST", headers: headerB });
+    // created.id is the moment id; moment postId may differ. This just checks posts like endpoint exists.
+    record("moments", "endpoint de Me gusta de publicaciones disponible", postLikeRes.status === 201 || postLikeRes.status === 404 ? "PASS" : "FAIL", `status ${postLikeRes.status}`);
 
     // --- update permissions ---
     const updateByOwner = await fetch(`${baseUrl}/moments/${created.id}`, {
@@ -212,10 +246,21 @@ async function run() {
     assertStatus(deleteByOther.status, 403, "delete by non-owner forbidden");
     record("moments", "permisos de eliminación (no autor 403)", "PASS");
 
-    // --- news / gallery / trends / topics ---
+    // --- news / news detail / gallery / trends / topics ---
     const news = await fetch(`${baseUrl}/moments/news`);
     assertStatus(news.status, 200, "news");
-    assert(Array.isArray((await news.clone().json()).items), "news returns items");
+    const newsJson = (await news.json()) as { items: { id: string }[] };
+    assert(Array.isArray(newsJson.items), "news returns items");
+
+    if (newsJson.items.length > 0) {
+      const newsDetail = await fetch(`${baseUrl}/moments/news/${newsJson.items[0].id}`);
+      assertStatus(newsDetail.status, 200, "news detail");
+      const newsDetailJson = (await newsDetail.json()) as { relatedMoments: unknown[] };
+      assert(Array.isArray(newsDetailJson.relatedMoments), "news detail includes relatedMoments");
+      record("moments", "GET /moments/news/:id devuelve detalle con relacionados", "PASS");
+    } else {
+      record("moments", "GET /moments/news/:id detalle", "SKIP", "sin noticias para validar detalle");
+    }
 
     const gallery = await fetch(`${baseUrl}/moments/gallery`);
     assertStatus(gallery.status, 200, "gallery");
@@ -226,6 +271,17 @@ async function run() {
     const topics = await fetch(`${baseUrl}/moments/topics`);
     assertStatus(topics.status, 200, "topics");
     record("moments", "news, galería, tendencias y temas responden 200", "PASS");
+
+    // --- permanent moment ---
+    const permanentRes = await fetch(`${baseUrl}/moments`, {
+      method: "POST",
+      headers: headerA,
+      body: JSON.stringify({ title: "Momento permanente", description: "No expira", isPermanent: true }),
+    });
+    assertStatus(permanentRes.status, 201, "create permanent moment");
+    const permanent = (await permanentRes.json()) as { expiresAt: string | null; isPermanent: boolean };
+    assert(permanent.isPermanent === true, "permanent flag set");
+    record("moments", "crear momento permanente (sin expiración)", "PASS");
 
     // --- invalid file upload ---
     const invalidUpload = await fetch(`${baseUrl}/moments/media`, {

@@ -4,10 +4,10 @@ export type MomentStatus = "active" | "expiring" | "expired" | "reported" | "gro
 
 export type MomentMedia = { id: string; type: "image" | "video"; url: string; thumbnailUrl?: string; alt?: string; durationSeconds?: number };
 export type MomentItem = {
-  id: string; title: string; description?: string; type: MomentType; location?: string; createdAt: string; expiresAt: string; tags: string[]; media: MomentMedia[];
+  id: string; title: string; description?: string; type: MomentType; location?: string; createdAt: string; expiresAt: string | null; isPermanent?: boolean; inFeed?: boolean; tags: string[]; media: MomentMedia[];
   author: { id: string; name: string; avatarUrl?: string };
-  stats: { boosts: number; confirmations: number; comments: number; shares: number; views: number };
-  viewerState: { boosted: boolean; passed: boolean; saved: boolean; confirmed: boolean };
+  stats: { likes: number; confirmations: number; comments: number; shares: number; views: number };
+  viewerState: { liked: boolean; saved: boolean; confirmed: boolean };
   status: MomentStatus;
   isMine?: boolean;
   canEdit?: boolean;
@@ -15,12 +15,12 @@ export type MomentItem = {
 };
 
 export type MomentNewsSummary = {
-  id: string; title: string; summary: string; tags: string[]; status: "active" | "in_progress" | "resolved"; relatedMomentIds: string[]; updatedAt: string;
-  stats: { boosts: number; confirmations: number; comments: number; photos: number }; coverImageUrl?: string;
+  id: string; title: string; summary: string; tags: string[]; status: "active" | "in_progress" | "resolved"; relatedMomentIds: string[]; updatedAt: string; createdAt: string;
+  stats: { likes: number; confirmations: number; comments: number; photos: number }; coverImageUrl?: string;
 };
 
 export type MomentComment = { id: string; momentId: string; author: string; authorAvatarUrl?: string; content: string; createdAt: string; isMine?: boolean };
 
-export type MomentTrend = { position: number; tag: string; moments: number; boosts: number; growth: number };
+export type MomentTrend = { position: number; tag: string; moments: number; likes: number; growth: number };
 
 export type MomentTopic = { tag: string; count: number };

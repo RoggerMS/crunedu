@@ -39,6 +39,12 @@ export class MomentsController {
     return this.service.getNews(request.user?.sub);
   }
 
+  @Get("news/:id")
+  @UseGuards(OptionalJwtAuthGuard)
+  newsDetail(@Param("id") id: string, @Req() request: AuthenticatedRequest) {
+    return this.service.getNewsDetail(id, request.user?.sub);
+  }
+
   @Get("gallery")
   @UseGuards(OptionalJwtAuthGuard)
   gallery(@Query() query: GetGalleryQueryDto, @Req() request: AuthenticatedRequest) {
@@ -111,17 +117,17 @@ export class MomentsController {
   }
 
   // --- Interactions ---
-  @Post(":id/boost")
+  @Post(":id/like")
   @UseGuards(JwtAuthGuard)
   @RateLimit({ windowMs: 60_000, maxPerIp: 30, maxPerUser: 20, message: "Demasiadas acciones. Espera un minuto." })
-  boost(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
-    return this.service.boost(id, request.user!.sub);
+  like(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
+    return this.service.like(id, request.user!.sub);
   }
 
-  @Delete(":id/boost")
+  @Delete(":id/like")
   @UseGuards(JwtAuthGuard)
-  removeBoost(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
-    return this.service.unboost(id, request.user!.sub);
+  unlike(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
+    return this.service.unlike(id, request.user!.sub);
   }
 
   @Post(":id/confirm")
@@ -152,6 +158,19 @@ export class MomentsController {
   @Post(":id/share")
   share(@Param("id", ParseIntPipe) id: number) {
     return this.service.share(id);
+  }
+
+  // --- Feed <-> Moments sharing ---
+  @Post(":id/share-to-feed")
+  @UseGuards(JwtAuthGuard)
+  shareToFeed(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
+    return this.service.shareToFeed(id, request.user!.sub, request.user!.role);
+  }
+
+  @Delete(":id/share-to-feed")
+  @UseGuards(JwtAuthGuard)
+  removeFromFeed(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
+    return this.service.removeFromFeed(id, request.user!.sub, request.user!.role);
   }
 
   // --- Comments ---

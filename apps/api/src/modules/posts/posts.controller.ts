@@ -77,4 +77,24 @@ export class PostsController {
   @Delete(":id")
   @UseGuards(JwtAuthGuard)
   remove(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) { return this.service.remove(id, request.user.sub, request.user.role); }
+
+  @Post(":id/like")
+  @UseGuards(JwtAuthGuard)
+  @RateLimit({ windowMs: 60_000, maxPerIp: 30, maxPerUser: 20, message: "Demasiadas acciones. Espera un minuto." })
+  like(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) { return this.service.like(id, request.user.sub); }
+
+  @Delete(":id/like")
+  @UseGuards(JwtAuthGuard)
+  unlike(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) { return this.service.unlike(id, request.user.sub); }
+
+  @Post(":id/save")
+  @UseGuards(JwtAuthGuard)
+  save(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) { return this.service.savePost(id, request.user.sub); }
+
+  @Delete(":id/save")
+  @UseGuards(JwtAuthGuard)
+  unsave(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) { return this.service.unsavePost(id, request.user.sub); }
+
+  @Post(":id/share")
+  share(@Param("id", ParseIntPipe) id: number) { return this.service.sharePost(id); }
 }

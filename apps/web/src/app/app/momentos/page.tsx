@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CreateMomentModal } from "@/components/moments/CreateMomentModal";
 import { MomentCommentsDrawer } from "@/components/moments/MomentCommentsDrawer";
 import { MomentHistoryStrip } from "@/components/moments/MomentHistoryStrip";
@@ -39,10 +39,44 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
+function ViewPreferenceModal({ onChoose }: { onChoose: (mode: "single" | "explore") => void }) {
+  return (
+    <div className="fixed inset-0 z-40 grid place-items-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6">
+        <h2 className="text-xl font-black text-slate-900">¿Cómo prefieres explorar Momentos?</h2>
+        <p className="mt-1 text-sm text-slate-600">Puedes cambiarlo cuando quieras desde la cabecera.</p>
+        <div className="mt-4 space-y-3">
+          <button onClick={() => onChoose("single")} className="flex w-full items-start gap-3 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-100 text-indigo-700">1</span>
+            <span>
+              <span className="block font-semibold text-slate-800">Ver uno por uno</span>
+              <span className="block text-xs text-slate-500">Explora una publicación a la vez y navega con las flechas.</span>
+            </span>
+          </button>
+          <button onClick={() => onChoose("explore")} className="flex w-full items-start gap-3 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-700">2</span>
+            <span>
+              <span className="block font-semibold text-slate-800">Explorar en tarjetas</span>
+              <span className="block text-xs text-slate-500">Mira varias publicaciones, noticias, fotografías y videos antes de elegir cuál abrir.</span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MomentsPage() {
   const moments = useMoments();
   const [showCreate, setShowCreate] = useState(false);
   const [showComments, setShowComments] = useState(false);
+
+  // Explore mode defaults to the news view.
+  useEffect(() => {
+    if (moments.preferenceAsked && moments.viewMode === "explore" && moments.activeView === "moments") {
+      moments.setActiveView("news");
+    }
+  }, [moments.preferenceAsked, moments.viewMode]);
 
   function openComments() {
     if (moments.currentMoment) {
@@ -51,9 +85,24 @@ export default function MomentsPage() {
     }
   }
 
+  // Keyboard navigation (left/right) only in single view, not while typing or modal open.
+  useEffect(() => {
+    if (moments.viewMode !== "single" || moments.activeView !== "moments") return;
+    function onKey(e: KeyboardEvent) {
+      if (showCreate || showComments) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || target?.isContentEditable) return;
+      if (e.key === "ArrowLeft") { e.preventDefault(); moments.previousMoment(); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); moments.nextMoment(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [moments, showCreate, showComments]);
+
   return (
     <MomentsPortalLayout>
-      <MomentsHeader activeView={moments.activeView} setActiveView={moments.setActiveView} query={moments.query} setQuery={moments.setQuery} />
+      <MomentsHeader activeView={moments.activeView} setActiveView={moments.setActiveView} query={moments.query} setQuery={moments.setQuery} viewMode={moments.viewMode} onChangeViewMode={moments.setViewMode} />
       <section className="mx-auto max-w-[1680px] space-y-4 px-4 py-5 sm:px-6 lg:px-8">
         {moments.toast ? <p className="mb-1 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{moments.toast}</p> : null}
 
@@ -66,14 +115,14 @@ export default function MomentsPage() {
                 moment={moments.currentMoment}
                 previousMoment={moments.previousMoment}
                 nextMoment={moments.nextMoment}
-                onBoost={() => moments.currentMoment && (moments.currentMoment.viewerState.boosted ? moments.unboostMoment(moments.currentMoment.id) : moments.boostMoment(moments.currentMoment.id))}
-                onPass={() => moments.currentMoment && moments.passMoment(moments.currentMoment.id)}
+                onLike={() => moments.currentMoment && moments.likeMoment(moments.currentMoment.id)}
                 onConfirm={() => moments.currentMoment && moments.confirmMoment(moments.currentMoment.id)}
                 onComment={openComments}
                 onSave={() => moments.currentMoment && moments.saveMoment(moments.currentMoment.id)}
                 onShare={() => moments.currentMoment && moments.shareMoment(moments.currentMoment.id)}
               />
               <MomentHistoryStrip moments={moments.filteredMoments.slice(0, 8)} currentMomentId={moments.currentMoment?.id} selectFromHistory={moments.selectFromHistory} />
+              <p className="hidden text-center text-xs text-slate-400 lg:block">Usa las flechas ← → del teclado para navegar</p>
             </>
           ) : (
             <div className="rounded-2xl border border-dashed bg-white p-10 text-center">
@@ -88,10 +137,7 @@ export default function MomentsPage() {
         {moments.activeView === "news" ? (
           moments.newsLoading ? <MomentsSkeleton /> :
           moments.newsError ? <ErrorState message={moments.newsError} onRetry={moments.retry} /> :
-          <MomentsNewsView
-            news={moments.newsSummaries}
-            onOpenMoments={(id) => { moments.setActiveView("moments"); moments.selectFromHistory(id); }}
-          />
+          <MomentsNewsView news={moments.newsSummaries} />
         ) : null}
 
         {moments.activeView === "gallery" ? (
@@ -103,7 +149,7 @@ export default function MomentsPage() {
         {moments.activeView === "saved" ? (
           moments.savedLoading ? <MomentsSkeleton /> :
           moments.savedError ? <ErrorState message={moments.savedError} onRetry={moments.retry} /> :
-          <MomentsSavedView moments={moments.savedMoments} onRemove={moments.saveMoment} />
+          <MomentsSavedView moments={moments.savedMoments} onRemove={moments.saveMoment} onShare={moments.shareMoment} />
         ) : null}
 
         {moments.activeView === "trends" ? (
@@ -140,6 +186,8 @@ export default function MomentsPage() {
           onUpload={moments.uploadMedia}
         />
       ) : null}
+
+      {!moments.preferenceAsked ? <ViewPreferenceModal onChoose={moments.setViewMode} /> : null}
     </MomentsPortalLayout>
   );
 }

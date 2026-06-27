@@ -23,6 +23,8 @@ export default function CreateMomentPage() {
         type: payload.type,
         tags: payload.tags,
         durationHours: payload.durationHours,
+        isPermanent: payload.isPermanent,
+        shareToFeed: payload.shareToFeed,
         media: payload.media,
       });
       router.push(`/app/momentos/${created.id}`);

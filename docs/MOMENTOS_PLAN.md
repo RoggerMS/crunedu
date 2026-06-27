@@ -3,40 +3,53 @@
 ## Objetivo
 Convertir **Momentos** en un feed simple y útil donde cualquier estudiante pueda compartir contexto universitario rápido, con opción de imagen y punto de entrada a contenido relacionado.
 
-## Estado: Implementado (backend + frontend persistentes)
+## Estado: Arquitectura canónica implementada (Feed + Momentos unificados)
 
-### Base de datos
-- Modelos: `Moment`, `MomentMedia`, `MomentTag`, `MomentTagAssignment`, `MomentBoost`, `MomentConfirmation`, `SavedMoment`, `MomentComment`.
-- Enum `MomentType` (NOW, ALERT, FOOD, HUMOR, EVENT, CAMPUS, COMMUNITY, LOST_FOUND).
-- Restricciones `@@unique` para un impulso/confirmación/guardado por usuario.
-- Índices en autor, estado, creación, expiración, tipo, ubicación.
-- Relación con `Report` (`momentId`) y `User`.
-- Migración `20260626120000_moments_module`.
-- Seed idempotente con 6 momentos de ejemplo + usuarios demo.
+### Publicación canónica
+- `Post` es la publicación canónica (contenido, medios, Me gusta, comentarios, guardados, compartidos, vistas).
+- `Moment` es una **ubicación** (placement) en Momentos que referencia un `Post` vía `postId`.
+- Interacciones compartidas: Me gusta (`Reaction`), comentarios (`Comment`), guardados (`SavedPost`), medios (`PostImage`) viven en el `Post`.
+- `MomentConfirmation` es específica de la ubicación en Momentos (no aparece en el Feed).
+- Un momento puede existir solo en Momentos (`inFeed=false`), solo en Feed, o en ambos (`inFeed=true`).
 
-### Backend (`apps/api/src/modules/moments/`)
-- Endpoints: list, detail, create, update, delete, media upload/serve, boost/unboost, confirm/unconfirm, save/unsave, share, comments (GET/POST/DELETE), news, gallery, saved, trends, topics.
-- `OptionalJwtAuthGuard` en lecturas públicas, `JwtAuthGuard` en escrituras.
-- `RateLimit` en crear, comentar, impulsar y subir medios.
-- Paginación por cursor, `_count` (sin desincronización), transacciones, relevancia en backend, expiración controlada.
-- Validación con class-validator, sanitización de archivos, permisos de autor/moderador/admin.
+### Impulsar → Me gusta
+- `MomentBoost` quedó deprecado; los impulsos existentes se migraron a `Reaction` (type `LIKE`).
+- Endpoints: `POST/DELETE /api/moments/:id/like` y `POST/DELETE /api/posts/:id/like`.
+- Un solo Me gusta por usuario y publicación, sincronizado entre Feed y Momentos.
 
-### Frontend
-- Capa API tipada (`lib/moments-api.ts`) con `apiRequest`.
-- `useMoments` refactorizado: carga real, loading/error/reintento, actualizaciones optimistas con rollback, comentarios, fallback solo en desarrollo.
-- 5 vistas conectadas: Momentos, Noticias, Galería, Guardados, Tendencias.
-- Creación funcional (modal + página `/crear`) con `MomentForm` compartido.
-- Detalle `/app/momentos/[id]` con API real e interacciones.
-- Skeletons, estados vacíos, error con reintento, toasts, prevención de doble envío.
-- Datos estáticos (`moments-data.ts`) conservados como seed/fallback de desarrollo.
+### Confirmar
+- Permanece solo en Momentos y detalle. Check simple (no escudo). Idempotente (pulsar de nuevo retira).
 
-## Datos estáticos conservados
-- `apps/web/src/components/moments/moments-data.ts` se mantiene.
-- `fallbackMoments` y `fallbackNews` se usan únicamente en modo desarrollo cuando la API falla, o como datos de referencia.
+### Expiración y permanencia
+- `expiresAt` nullable + `isPermanent` boolean.
+- Opciones: 1h, 6h, 12h, 24h, 3 días, 7 días, Siempre.
+- Momentos expirados desaparecen del descubrimiento público pero se conservan en guardados y archivo del autor.
+
+### Noticias
+- `GET /api/moments/news` (listado) y `GET /api/moments/news/:id` (detalle con momentos relacionados).
+- Ruta frontend `/app/momentos/noticias/[id]`.
+
+### Preferencia de visualización
+- Selector inicial: "Ver uno por uno" vs "Explorar en tarjetas".
+- Persistencia en `localStorage` (`crunedu_moments_view_mode`). No reaparece en cada visita.
+
+### Navegación
+- Flechas ← → del teclado en vista uno por uno (no activa al escribir o con modal abierto).
+- Botones táctiles anterior/siguiente conservados.
+
+### Fallback
+- Eliminado el fallback automático por `NODE_ENV`. Ahora se controla con `NEXT_PUBLIC_MOMENTS_USE_FALLBACK` (default false).
+
+### Datos estáticos conservados
+- `moments-data.ts` se mantiene como datos de prueba; solo se usa con `NEXT_PUBLIC_MOMENTS_USE_FALLBACK=true`.
+
+## Migraciones
+- `20260626120000_moments_module` (schema momentos original)
+- `20260627000000_canonical_post_moment_link` (Post canónico + link Moment→Post + backfill boosts→likes)
 
 ## Pruebas
-- `apps/api/src/tests/moments.smoke.ts` (script `npm run test:moments -w @crunedu/api`): cubre crear, validar, listar, detalle, permisos, impulso único, desimpulsar, confirmación, guardar, comentar, eliminar comentario, news/gallery/trends/topics, subida inválida, momento inexistente.
+- `apps/api/src/tests/moments.smoke.ts` (script `npm run test:moments -w @crunedu/api`): cubre crear, validar, listar, detalle, Me gusta idempotente, quitar like, confirmar idempotente, guardar, comentar, compartir, compartir-al-Feed (solo autor), permanent, news detail, permisos, subida inválida.
 
 ## Pendiente / Notas
-- Aplicar migración y seed localmente con Docker (ver pasos en AGENTS.md).
-- Video (MP4/WEBM) habilitado con límite 25MB; el almacenamiento es local en desarrollo, preparado para MinIO.
+- Aplicar migraciones y seed localmente con Docker.
+- QA runtime con Docker (este entorno no tiene PostgreSQL disponible).

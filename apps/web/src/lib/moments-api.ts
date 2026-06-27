@@ -9,17 +9,20 @@ export type MomentMediaApi = { id: string; type: MomentMediaType; url: string; a
 
 export type MomentItemApi = {
   id: string;
+  postId: string | null;
   title: string;
   description: string | null;
   type: MomentTypeApi;
   location: string | null;
   createdAt: string;
-  expiresAt: string;
+  expiresAt: string | null;
+  isPermanent: boolean;
+  inFeed: boolean;
   tags: string[];
   media: MomentMediaApi[];
   author: { id: string; name: string; avatarUrl: string | null };
-  stats: { boosts: number; confirmations: number; comments: number; shares: number; views: number };
-  viewerState: { boosted: boolean; saved: boolean; confirmed: boolean };
+  stats: { likes: number; confirmations: number; comments: number; shares: number; views: number };
+  viewerState: { liked: boolean; saved: boolean; confirmed: boolean };
   status: MomentStatusApi;
   isMine: boolean;
   canEdit: boolean;
@@ -47,15 +50,20 @@ export type MomentNewsSummaryApi = {
   status: "active" | "in_progress" | "resolved";
   relatedMomentIds: string[];
   updatedAt: string;
-  stats: { boosts: number; confirmations: number; comments: number; photos: number };
+  createdAt: string;
+  stats: { likes: number; confirmations: number; comments: number; photos: number };
   coverImageUrl: string | null;
+};
+
+export type MomentNewsDetailApi = MomentNewsSummaryApi & {
+  relatedMoments: MomentItemApi[];
 };
 
 export type MomentTrendApi = {
   position: number;
   tag: string;
   moments: number;
-  boosts: number;
+  likes: number;
   growth: number;
 };
 
@@ -77,6 +85,8 @@ export type CreateMomentPayload = {
   location?: string;
   tags?: string[];
   durationHours?: number;
+  isPermanent?: boolean;
+  shareToFeed?: boolean;
   media?: CreateMomentMediaPayload[];
 };
 
@@ -141,12 +151,12 @@ export function uploadMomentMedia(file: File): Promise<UploadedMomentMedia> {
   return apiRequest<UploadedMomentMedia>("/moments/media", { method: "POST", body: formData });
 }
 
-export function boostMoment(id: string | number): Promise<{ boosted: boolean; count: number }> {
-  return apiRequest(`/moments/${id}/boost`, { method: "POST" });
+export function likeMoment(id: string | number): Promise<{ liked: boolean; count: number }> {
+  return apiRequest(`/moments/${id}/like`, { method: "POST" });
 }
 
-export function unboostMoment(id: string | number): Promise<{ boosted: boolean; count: number }> {
-  return apiRequest(`/moments/${id}/boost`, { method: "DELETE" });
+export function unlikeMoment(id: string | number): Promise<{ liked: boolean; count: number }> {
+  return apiRequest(`/moments/${id}/like`, { method: "DELETE" });
 }
 
 export function confirmMoment(id: string | number): Promise<{ confirmed: boolean; count: number }> {
@@ -169,6 +179,14 @@ export function shareMoment(id: string | number): Promise<{ shares: number }> {
   return apiRequest(`/moments/${id}/share`, { method: "POST" });
 }
 
+export function shareMomentToFeed(id: string | number): Promise<{ inFeed: boolean }> {
+  return apiRequest(`/moments/${id}/share-to-feed`, { method: "POST" });
+}
+
+export function removeMomentFromFeed(id: string | number): Promise<{ inFeed: boolean }> {
+  return apiRequest(`/moments/${id}/share-to-feed`, { method: "DELETE" });
+}
+
 export function getMomentComments(id: string | number): Promise<MomentCommentApi[]> {
   return apiRequest<MomentCommentApi[]>(`/moments/${id}/comments`);
 }
@@ -187,6 +205,10 @@ export function deleteMomentComment(momentId: string | number, commentId: string
 
 export function getMomentNews(): Promise<{ items: MomentNewsSummaryApi[] }> {
   return apiRequest<{ items: MomentNewsSummaryApi[] }>("/moments/news");
+}
+
+export function getMomentNewsDetail(id: string): Promise<MomentNewsDetailApi> {
+  return apiRequest<MomentNewsDetailApi>(`/moments/news/${id}`);
 }
 
 export function getMomentGallery(params?: {

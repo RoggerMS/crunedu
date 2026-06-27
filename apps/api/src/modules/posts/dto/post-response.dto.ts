@@ -24,6 +24,13 @@ export class PostResponseDto {
     course: string;
   } | null;
   commentsCount: number;
+  likesCount: number;
+  savesCount: number;
+  inFeed: boolean;
+  viewCount: number;
+  shareCount: number;
   images: PostImageResponseDto[];
   isMine?: boolean;
+  liked?: boolean;
+  saved?: boolean;
 }

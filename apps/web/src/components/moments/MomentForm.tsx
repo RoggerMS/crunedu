@@ -11,7 +11,9 @@ export type MomentFormPayload = {
   location?: string;
   type: MomentType;
   tags: string[];
-  durationHours: number;
+  durationHours?: number;
+  isPermanent?: boolean;
+  shareToFeed?: boolean;
   media?: { imageUrl: string; storageKey: string; mimeType: string; sizeBytes: number }[];
 };
 
@@ -24,6 +26,15 @@ const TYPE_OPTIONS: { value: MomentType; label: string }[] = [
   { value: "community", label: "Comunidad" },
   { value: "lost_found", label: "Perdido/Encontrado" },
   { value: "humor", label: "Humor" },
+];
+
+const DURATION_OPTIONS: { hours: number; label: string }[] = [
+  { hours: 1, label: "1 hora" },
+  { hours: 6, label: "6 horas" },
+  { hours: 12, label: "12 horas" },
+  { hours: 24, label: "24 horas" },
+  { hours: 72, label: "3 días" },
+  { hours: 168, label: "7 días" },
 ];
 
 export function MomentForm({
@@ -45,6 +56,8 @@ export function MomentForm({
   const [type, setType] = useState<MomentType>("now");
   const [tags, setTags] = useState("");
   const [durationHours, setDurationHours] = useState(24);
+  const [isPermanent, setIsPermanent] = useState(false);
+  const [shareToFeed, setShareToFeed] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploaded, setUploaded] = useState<UploadedMomentMedia | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -87,7 +100,9 @@ export function MomentForm({
         location: location.trim() || undefined,
         type,
         tags: tagList,
-        durationHours,
+        durationHours: isPermanent ? undefined : durationHours,
+        isPermanent,
+        shareToFeed,
         media: uploaded ? [uploaded] : undefined,
       });
       onDone();
@@ -124,14 +139,24 @@ export function MomentForm({
       </div>
       <div>
         <label className="text-xs font-semibold text-slate-600">Duración</label>
-        <div className="mt-1 flex gap-2">
-          {[24, 72, 168].map((h) => (
-            <button key={h} type="button" onClick={() => setDurationHours(h)} className={`rounded-xl border px-3 py-1.5 text-sm ${durationHours === h ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-300"}`}>
-              {h === 24 ? "24 horas" : h === 72 ? "3 días" : "7 días"}
+        <div className="mt-1 flex flex-wrap gap-2">
+          {DURATION_OPTIONS.map((d) => (
+            <button key={d.hours} type="button" onClick={() => { setDurationHours(d.hours); setIsPermanent(false); }} className={`rounded-xl border px-3 py-1.5 text-sm ${!isPermanent && durationHours === d.hours ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-300"}`}>
+              {d.label}
             </button>
           ))}
+          <button type="button" onClick={() => setIsPermanent(true)} className={`rounded-xl border px-3 py-1.5 text-sm ${isPermanent ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-300"}`}>
+            Siempre
+          </button>
         </div>
       </div>
+      <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+        <input type="checkbox" checked={shareToFeed} onChange={(e) => setShareToFeed(e.target.checked)} className="mt-0.5" />
+        <span>
+          <span className="font-semibold text-slate-700">Compartir también en mi Feed</span>
+          <span className="block text-xs text-slate-500">Tus seguidores también podrán ver esta publicación en su Feed.</span>
+        </span>
+      </label>
       <div>
         <label className="text-xs font-semibold text-slate-600">Imagen o video (opcional)</label>
         <input className="mt-1 block w-full text-sm file:mr-3 file:rounded-xl file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-indigo-700" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" onChange={(e) => handleFile(e.target.files?.[0])} />

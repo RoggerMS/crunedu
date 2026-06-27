@@ -92,24 +92,24 @@ export const apiFeedRepository: FeedRepository = {
     cachedPosts = cachedPosts.filter((post) => post.id !== postId);
   },
   async likePost(postId) {
-    // TODO: Conectar con POST /api/posts/:id/like cuando el endpoint esté disponible
+    const res = await apiRequest<{ liked: boolean; count: number }>(`/posts/${postId}/like`, { method: "POST" });
     const post = findCachedPost(postId);
-    return replaceCachedPost({ ...post, stats: { ...post.stats, likes: post.stats.likes + 1 }, viewerState: { ...post.viewerState, liked: true } });
+    return replaceCachedPost({ ...post, stats: { ...post.stats, likes: res.count }, viewerState: { ...post.viewerState, liked: true } });
   },
   async unlikePost(postId) {
-    // TODO: Conectar con POST /api/posts/:id/like (toggle) cuando el endpoint esté disponible
+    const res = await apiRequest<{ liked: boolean; count: number }>(`/posts/${postId}/like`, { method: "DELETE" });
     const post = findCachedPost(postId);
-    return replaceCachedPost({ ...post, stats: { ...post.stats, likes: Math.max(0, post.stats.likes - 1) }, viewerState: { ...post.viewerState, liked: false } });
+    return replaceCachedPost({ ...post, stats: { ...post.stats, likes: res.count }, viewerState: { ...post.viewerState, liked: false } });
   },
   async savePost(postId) {
-    // TODO: Conectar con POST /api/posts/:id/save cuando el endpoint esté disponible
+    await apiRequest<{ saved: boolean }>(`/posts/${postId}/save`, { method: "POST" });
     const post = findCachedPost(postId);
-    return replaceCachedPost({ ...post, stats: { ...post.stats, saves: post.stats.saves + 1 }, viewerState: { ...post.viewerState, saved: true } });
+    return replaceCachedPost({ ...post, viewerState: { ...post.viewerState, saved: true } });
   },
   async unsavePost(postId) {
-    // TODO: Conectar con DELETE /api/posts/:id/save cuando el endpoint esté disponible
+    await apiRequest<{ saved: boolean }>(`/posts/${postId}/save`, { method: "DELETE" });
     const post = findCachedPost(postId);
-    return replaceCachedPost({ ...post, stats: { ...post.stats, saves: Math.max(0, post.stats.saves - 1) }, viewerState: { ...post.viewerState, saved: false } });
+    return replaceCachedPost({ ...post, viewerState: { ...post.viewerState, saved: false } });
   },
   async listComments(postId) {
     const comments = await apiRequest<ApiPostComment[]>(`/posts/${postId}/comments`);
@@ -139,8 +139,8 @@ export const apiFeedRepository: FeedRepository = {
     persistHiddenPostId(postId);
   },
   async sharePost(postId) {
-    // TODO: Conectar con POST /api/posts/:id/share cuando el endpoint esté disponible
+    const res = await apiRequest<{ shares: number }>(`/posts/${postId}/share`, { method: "POST" });
     const post = findCachedPost(postId);
-    return replaceCachedPost({ ...post, stats: { ...post.stats, shares: post.stats.shares + 1 } });
+    return replaceCachedPost({ ...post, stats: { ...post.stats, shares: res.shares } });
   },
 };

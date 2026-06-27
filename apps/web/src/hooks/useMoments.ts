@@ -11,7 +11,7 @@ import type {
   MomentView,
 } from "@/components/moments/types";
 import {
-  boostMoment as apiBoostMoment,
+  likeMoment as apiLikeMoment,
   confirmMoment as apiConfirmMoment,
   createMoment as apiCreateMoment,
   createMomentComment as apiCreateMomentComment,
@@ -26,8 +26,10 @@ import {
   getSavedMoments,
   saveMoment as apiSaveMoment,
   shareMoment as apiShareMoment,
-  unboostMoment as apiUnboostMoment,
+  shareMomentToFeed as apiShareMomentToFeed,
+  removeMomentFromFeed as apiRemoveMomentFromFeed,
   unconfirmMoment as apiUnconfirmMoment,
+  unlikeMoment as apiUnlikeMoment,
   unsaveMoment as apiUnsaveMoment,
   updateMoment as apiUpdateMoment,
   uploadMomentMedia as apiUploadMomentMedia,
@@ -38,7 +40,11 @@ import {
 import { mapApiError } from "@/lib/http-client";
 
 const PREF_KEY = "crunedu_moments_default_view";
-const IS_DEV = process.env.NODE_ENV === "development";
+const VIEW_MODE_KEY = "crunedu_moments_view_mode";
+const USE_FALLBACK = process.env.NEXT_PUBLIC_MOMENTS_USE_FALLBACK === "true";
+
+export type MomentsSort = "recent" | "relevant";
+export type MomentsViewMode = "single" | "explore";
 
 function mapApiMoment(item: MomentItemApi): MomentItem {
   return {
@@ -49,11 +55,13 @@ function mapApiMoment(item: MomentItemApi): MomentItem {
     location: item.location ?? undefined,
     createdAt: item.createdAt,
     expiresAt: item.expiresAt,
+    isPermanent: item.isPermanent,
+    inFeed: item.inFeed,
     tags: item.tags,
     media: item.media.map((m) => ({ id: m.id, type: m.type, url: m.url, alt: m.alt ?? undefined })),
     author: { id: item.author.id, name: item.author.name, avatarUrl: item.author.avatarUrl ?? undefined },
     stats: item.stats,
-    viewerState: { boosted: item.viewerState.boosted, passed: false, saved: item.viewerState.saved, confirmed: item.viewerState.confirmed },
+    viewerState: { liked: item.viewerState.liked, saved: item.viewerState.saved, confirmed: item.viewerState.confirmed },
     status: item.status as MomentItem["status"],
     isMine: item.isMine,
     canEdit: item.canEdit,
@@ -70,6 +78,7 @@ function mapApiNews(item: MomentNewsSummaryApi): MomentNewsSummary {
     status: item.status,
     relatedMomentIds: item.relatedMomentIds,
     updatedAt: item.updatedAt,
+    createdAt: item.createdAt,
     stats: item.stats,
     coverImageUrl: item.coverImageUrl ?? undefined,
   };
@@ -87,7 +96,28 @@ function mapApiComment(item: MomentCommentApi): MomentComment {
   };
 }
 
-export type MomentsSort = "recent" | "relevant";
+function useViewMode() {
+  const [viewMode, setViewModeState] = useState<MomentsViewMode>("single");
+  const [preferenceAsked, setPreferenceAsked] = useState(false);
+
+  useEffect(() => {
+    const stored = (typeof window !== "undefined" ? window.localStorage.getItem(VIEW_MODE_KEY) : null) as MomentsViewMode | null;
+    if (stored === "single" || stored === "explore") {
+      setViewModeState(stored);
+      setPreferenceAsked(true);
+    } else {
+      setPreferenceAsked(false);
+    }
+  }, []);
+
+  const setViewMode = useCallback((mode: MomentsViewMode) => {
+    setViewModeState(mode);
+    setPreferenceAsked(true);
+    if (typeof window !== "undefined") window.localStorage.setItem(VIEW_MODE_KEY, mode);
+  }, []);
+
+  return { viewMode, setViewMode, preferenceAsked };
+}
 
 export function useMoments() {
   const [moments, setMoments] = useState<MomentItem[]>([]);
@@ -118,7 +148,6 @@ export function useMoments() {
 
   const [activeView, setActiveViewState] = useState<MomentView>("moments");
   const [currentMomentIndex, setCurrentMomentIndex] = useState(0);
-  const [history, setHistory] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<MomentsSort>("recent");
   const [toast, setToast] = useState<string | null>(null);
@@ -128,16 +157,18 @@ export function useMoments() {
   const momentsRef = useRef<MomentItem[]>([]);
   useEffect(() => { momentsRef.current = moments; }, [moments]);
 
-  useEffect(() => {
-    const savedPreference = window.localStorage.getItem(PREF_KEY) as MomentView | null;
-    if (savedPreference) setActiveViewState(savedPreference);
-  }, []);
+  const { viewMode, setViewMode, preferenceAsked } = useViewMode();
 
   const showToast = useCallback((message: string | null) => {
     setToast(message);
     if (message) {
       window.setTimeout(() => setToast((current) => (current === message ? null : current)), 3200);
     }
+  }, []);
+
+  useEffect(() => {
+    const savedPreference = window.localStorage.getItem(PREF_KEY) as MomentView | null;
+    if (savedPreference) setActiveViewState(savedPreference);
   }, []);
 
   // --- Fetch main moments feed ---
@@ -151,18 +182,16 @@ export function useMoments() {
       setMoments(response.items.map(mapApiMoment));
     } catch (err) {
       if (reqId !== reqIdRef.current) return;
-      const message = mapApiError(err, "No se pudieron cargar los momentos.");
-      if (IS_DEV) {
+      if (USE_FALLBACK) {
         setMoments(fallbackMoments);
-        showToast("Mostrando momentos de prueba (modo desarrollo).");
         setError(null);
       } else {
-        setError(message);
+        setError(mapApiError(err, "No se pudieron cargar los momentos."));
       }
     } finally {
       if (reqId === reqIdRef.current) setLoading(false);
     }
-  }, [query, sort, showToast]);
+  }, [query, sort]);
 
   useEffect(() => {
     void fetchMoments();
@@ -175,20 +204,10 @@ export function useMoments() {
       setNewsLoading(true);
       setNewsError(null);
       getMomentNews()
-        .then((res) => {
-          setNewsSummaries(res.items.map(mapApiNews));
-          if (res.items.length === 0 && IS_DEV) {
-            setNewsSummaries(fallbackNews);
-          }
-        })
+        .then((res) => setNewsSummaries(res.items.map(mapApiNews)))
         .catch((err) => {
-          const message = mapApiError(err, "No se pudieron cargar las noticias.");
-          if (IS_DEV) {
-            setNewsSummaries(fallbackNews);
-            showToast("Mostrando noticias de prueba (modo desarrollo).");
-          } else {
-            setNewsError(message);
-          }
+          if (USE_FALLBACK) setNewsSummaries(fallbackNews);
+          else setNewsError(mapApiError(err, "No se pudieron cargar las noticias."));
         })
         .finally(() => setNewsLoading(false));
     }
@@ -198,9 +217,8 @@ export function useMoments() {
       getMomentGallery({ limit: 24 })
         .then((res) => setGalleryMoments(res.items.map(mapApiMoment)))
         .catch((err) => {
-          const message = mapApiError(err, "No se pudo cargar la galería.");
-          if (IS_DEV) setGalleryMoments(fallbackMoments.filter((m) => m.media.length > 0));
-          else setGalleryError(message);
+          if (USE_FALLBACK) setGalleryMoments(fallbackMoments.filter((m) => m.media.length > 0));
+          else setGalleryError(mapApiError(err, "No se pudo cargar la galería."));
         })
         .finally(() => setGalleryLoading(false));
     }
@@ -210,9 +228,7 @@ export function useMoments() {
       getSavedMoments({ limit: 30 })
         .then((res) => setSavedMoments(res.items.map(mapApiMoment)))
         .catch((err) => {
-          const message = mapApiError(err, "No se pudieron cargar tus guardados.");
-          if (IS_DEV) setSavedMoments(fallbackMoments.filter((m) => m.viewerState.saved));
-          else setSavedError(message);
+          if (!USE_FALLBACK) setSavedError(mapApiError(err, "No se pudieron cargar tus guardados."));
         })
         .finally(() => setSavedLoading(false));
     }
@@ -225,26 +241,21 @@ export function useMoments() {
           setTopics(topicsRes.items);
         })
         .catch((err) => {
-          const message = mapApiError(err, "No se pudieron cargar las tendencias.");
-          if (IS_DEV) {
-            setTrends([
-              { position: 1, tag: "Comedor", moments: 2, boosts: 20, growth: 12 },
-              { position: 2, tag: "Matrícula", moments: 1, boosts: 32, growth: 8 },
-              { position: 3, tag: "Cultura", moments: 1, boosts: 44, growth: 5 },
-            ]);
-            showToast("Mostrando tendencias de prueba (modo desarrollo).");
-          } else {
-            setTrendsError(message);
-          }
+          if (!USE_FALLBACK) setTrendsError(mapApiError(err, "No se pudieron cargar las tendencias."));
         })
         .finally(() => setTrendsLoading(false));
     }
-  }, [activeView, showToast]);
+  }, [activeView]);
 
   const filteredMoments = useMemo(() => {
     const q = query.trim().toLowerCase();
     return moments
-      .filter((m) => (activeView === "saved" ? m.viewerState.saved : new Date(m.expiresAt) > new Date() || m.viewerState.saved))
+      .filter((m) => {
+        if (activeView === "saved") return m.viewerState.saved;
+        if (m.isPermanent) return true;
+        if (m.expiresAt) return new Date(m.expiresAt) > new Date() || m.viewerState.saved;
+        return true;
+      })
       .filter((m) => (q ? `${m.title} ${m.location ?? ""} ${m.tags.join(" ")}`.toLowerCase().includes(q) : true))
       .sort((a, b) => score(b) - score(a));
   }, [moments, activeView, query]);
@@ -270,60 +281,41 @@ export function useMoments() {
     };
   }
 
-  const boostMoment = useCallback(async (id: string) => {
+  const likeMomentAction = useCallback(async (id: string) => {
+    const target = momentsRef.current.find((m) => m.id === id);
+    const wasLiked = target?.viewerState.liked ?? false;
     const rollback = withOptimistic(
       id,
-      (m) => ({ ...m, stats: { ...m.stats, boosts: m.stats.boosts + (m.viewerState.boosted ? 0 : 1) }, viewerState: { ...m.viewerState, boosted: true } }),
+      (m) => ({ ...m, stats: { ...m.stats, likes: m.stats.likes + (wasLiked ? -1 : 1) }, viewerState: { ...m.viewerState, liked: !wasLiked } }),
       (m) => m,
     );
     try {
-      const res = await apiBoostMoment(id);
-      mutateMoment(id, (m) => ({ ...m, stats: { ...m.stats, boosts: res.count }, viewerState: { ...m.viewerState, boosted: res.boosted } }));
-      showToast("Momento impulsado.");
+      const res = wasLiked ? await apiUnlikeMoment(id) : await apiLikeMoment(id);
+      mutateMoment(id, (m) => ({ ...m, stats: { ...m.stats, likes: res.count }, viewerState: { ...m.viewerState, liked: res.liked } }));
     } catch (err) {
       rollback();
-      showToast(mapApiError(err, "No se pudo impulsar el momento."));
+      showToast(mapApiError(err, "No se pudo actualizar el Me gusta."));
     }
   }, [showToast]);
 
-  const unboostMoment = useCallback(async (id: string) => {
+  const confirmMomentAction = useCallback(async (id: string) => {
+    const target = momentsRef.current.find((m) => m.id === id);
+    const wasConfirmed = target?.viewerState.confirmed ?? false;
     const rollback = withOptimistic(
       id,
-      (m) => ({ ...m, stats: { ...m.stats, boosts: Math.max(0, m.stats.boosts - 1) }, viewerState: { ...m.viewerState, boosted: false } }),
+      (m) => ({ ...m, stats: { ...m.stats, confirmations: m.stats.confirmations + (wasConfirmed ? -1 : 1) }, viewerState: { ...m.viewerState, confirmed: !wasConfirmed } }),
       (m) => m,
     );
     try {
-      const res = await apiUnboostMoment(id);
-      mutateMoment(id, (m) => ({ ...m, stats: { ...m.stats, boosts: res.count }, viewerState: { ...m.viewerState, boosted: res.boosted } }));
-    } catch (err) {
-      rollback();
-      showToast(mapApiError(err, "No se pudo actualizar el impulso."));
-    }
-  }, [showToast]);
-
-  const confirmMoment = useCallback(async (id: string) => {
-    const rollback = withOptimistic(
-      id,
-      (m) => ({ ...m, stats: { ...m.stats, confirmations: m.stats.confirmations + (m.viewerState.confirmed ? 0 : 1) }, viewerState: { ...m.viewerState, confirmed: true } }),
-      (m) => m,
-    );
-    try {
-      const res = await apiConfirmMoment(id);
+      const res = wasConfirmed ? await apiUnconfirmMoment(id) : await apiConfirmMoment(id);
       mutateMoment(id, (m) => ({ ...m, stats: { ...m.stats, confirmations: res.count }, viewerState: { ...m.viewerState, confirmed: res.confirmed } }));
-      showToast("Momento confirmado.");
     } catch (err) {
       rollback();
-      showToast(mapApiError(err, "No se pudo confirmar el momento."));
+      showToast(mapApiError(err, "No se pudo actualizar la confirmación."));
     }
   }, [showToast]);
 
-  const passMoment = useCallback((id: string) => {
-    mutateMoment(id, (m) => ({ ...m, viewerState: { ...m.viewerState, passed: true } }));
-    setHistory((h) => [...new Set([id, ...h])].slice(0, 24));
-    setCurrentMomentIndex((v) => (filteredMoments.length ? (v + 1) % filteredMoments.length : 0));
-  }, [filteredMoments.length]);
-
-  const saveMoment = useCallback(async (id: string) => {
+  const saveMomentAction = useCallback(async (id: string) => {
     const target = moments.find((m) => m.id === id);
     const next = !target?.viewerState.saved;
     const rollback = withOptimistic(
@@ -334,7 +326,6 @@ export function useMoments() {
     try {
       if (next) await apiSaveMoment(id);
       else await apiUnsaveMoment(id);
-      showToast(next ? "Momento guardado." : "Momento quitado de guardados.");
       if (activeView === "saved" && !next) {
         setSavedMoments((all) => all.filter((m) => m.id !== id));
       }
@@ -344,18 +335,41 @@ export function useMoments() {
     }
   }, [moments, activeView, showToast]);
 
-  const shareMoment = useCallback(async (id: string) => {
+  const shareMomentAction = useCallback(async (id: string) => {
     const link = `${window.location.origin}/app/momentos/${id}`;
     try {
       await apiShareMoment(id);
       mutateMoment(id, (m) => ({ ...m, stats: { ...m.stats, shares: m.stats.shares + 1 } }));
     } catch {
-      // share count registration is best-effort
+      // best-effort
     }
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      await navigator.clipboard.writeText(link).catch(() => undefined);
+    if (typeof navigator !== "undefined") {
+      if (navigator.share) {
+        try { await navigator.share({ title: "Momento en CrunEdu", url: link }); return; } catch { /* fall through to clipboard */ }
+      }
+      if (navigator.clipboard) await navigator.clipboard.writeText(link).catch(() => undefined);
     }
     showToast("Enlace copiado.");
+  }, [showToast]);
+
+  const shareToFeedAction = useCallback(async (id: string) => {
+    try {
+      await apiShareMomentToFeed(id);
+      mutateMoment(id, (m) => ({ ...m, inFeed: true }));
+      showToast("Ahora también aparece en tu Feed.");
+    } catch (err) {
+      showToast(mapApiError(err, "No se pudo compartir en el Feed."));
+    }
+  }, [showToast]);
+
+  const removeFromFeedAction = useCallback(async (id: string) => {
+    try {
+      await apiRemoveMomentFromFeed(id);
+      mutateMoment(id, (m) => ({ ...m, inFeed: false }));
+      showToast("Se quitó del Feed.");
+    } catch (err) {
+      showToast(mapApiError(err, "No se pudo quitar del Feed."));
+    }
   }, [showToast]);
 
   const openComments = useCallback(async (momentId: string) => {
@@ -398,7 +412,6 @@ export function useMoments() {
     mutateMoment(momentId, (m) => ({ ...m, stats: { ...m.stats, comments: Math.max(0, m.stats.comments - 1) } }));
     try {
       await apiDeleteMomentComment(momentId, commentId);
-      showToast("Comentario eliminado.");
     } catch (err) {
       setComments(snapshot);
       mutateMoment(momentId, (m) => ({ ...m, stats: { ...m.stats, comments: m.stats.comments + 1 } }));
@@ -412,7 +425,9 @@ export function useMoments() {
     location?: string;
     type: MomentItem["type"];
     tags: string[];
-    durationHours: number;
+    durationHours?: number;
+    isPermanent?: boolean;
+    shareToFeed?: boolean;
     media?: { imageUrl: string; storageKey: string; mimeType: string; sizeBytes: number }[];
   }) => {
     setSubmitting(true);
@@ -423,7 +438,9 @@ export function useMoments() {
         location: input.location,
         type: input.type,
         tags: input.tags,
-        durationHours: input.durationHours,
+        durationHours: input.isPermanent ? undefined : input.durationHours,
+        isPermanent: input.isPermanent,
+        shareToFeed: input.shareToFeed,
         media: input.media,
       });
       const mapped = mapApiMoment(created);
@@ -440,7 +457,7 @@ export function useMoments() {
     }
   }, [showToast]);
 
-  const editMoment = useCallback(async (id: string, payload: Partial<{ title: string; description?: string; location?: string; type: MomentItem["type"]; tags: string[]; durationHours: number }>) => {
+  const editMoment = useCallback(async (id: string, payload: Partial<{ title: string; description?: string; location?: string; type: MomentItem["type"]; tags: string[]; durationHours: number; isPermanent: boolean }>) => {
     setSubmitting(true);
     try {
       const updated = await apiUpdateMoment(id, payload);
@@ -514,7 +531,6 @@ export function useMoments() {
     commentsLoading,
     activeView,
     setActiveView,
-    history,
     query,
     setQuery,
     sort,
@@ -522,12 +538,15 @@ export function useMoments() {
     toast,
     setToast: showToast,
     submitting,
-    boostMoment,
-    unboostMoment,
-    passMoment,
-    confirmMoment,
-    saveMoment,
-    shareMoment,
+    viewMode,
+    setViewMode,
+    preferenceAsked,
+    likeMoment: likeMomentAction,
+    confirmMoment: confirmMomentAction,
+    saveMoment: saveMomentAction,
+    shareMoment: shareMomentAction,
+    shareToFeed: shareToFeedAction,
+    removeFromFeed: removeFromFeedAction,
     openComments,
     commentMoment,
     deleteComment,
@@ -544,5 +563,5 @@ export function useMoments() {
 
 function score(moment: MomentItem) {
   const hours = (Date.now() - new Date(moment.createdAt).getTime()) / 3600_000;
-  return moment.stats.boosts * 3 + moment.stats.confirmations * 4 + moment.stats.comments * 2 - hours * 5;
+  return moment.stats.likes * 3 + moment.stats.confirmations * 4 + moment.stats.comments * 2 - hours * 5;
 }

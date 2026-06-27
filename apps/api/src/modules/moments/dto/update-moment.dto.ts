@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsArray, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
+import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
 import { MOMENT_TYPES, MomentTypeValue } from "./create-moment.dto";
 
 export class UpdateMomentDto {
@@ -35,4 +35,9 @@ export class UpdateMomentDto {
   @Min(1)
   @Max(168)
   durationHours?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isPermanent?: boolean;
 }
+

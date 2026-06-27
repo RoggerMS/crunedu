@@ -1,4 +1,4 @@
-import { Rocket } from "lucide-react";
+import { Heart } from "lucide-react";
 import { MomentMediaFallback } from "./MomentMediaFallback";
 import { buildMomentMediaUrl } from "@/lib/moments-api";
 import type { MomentItem } from "./types";
@@ -11,7 +11,7 @@ export function MomentHistoryCard({ moment, onClick, active }: { moment: MomentI
         {mediaSrc ? <img src={mediaSrc} alt={moment.title} className="h-16 w-16 rounded-xl object-cover" /> : <MomentMediaFallback momentType={moment.type} title={moment.title} compact />}
       </div>
       <div className="min-w-0 flex-1"><p className="line-clamp-2 text-sm font-semibold text-slate-800">{moment.title}</p></div>
-      {moment.viewerState.boosted ? <span className="rounded-full bg-indigo-100 p-1 text-indigo-600" title="Impulsado"><Rocket className="h-3.5 w-3.5" /></span> : null}
+      {moment.viewerState.liked ? <span className="rounded-full bg-rose-50 p-1 text-rose-500" title="Te gusta"><Heart className="h-3.5 w-3.5 fill-rose-500" /></span> : null}
     </button>
   );
 }

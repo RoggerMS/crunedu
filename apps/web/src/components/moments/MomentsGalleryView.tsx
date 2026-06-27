@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ImageIcon } from "lucide-react";
+import { Heart, ImageIcon } from "lucide-react";
 import type { MomentItem } from "./types";
 import { MomentMediaFallback } from "./MomentMediaFallback";
 import { buildMomentMediaUrl } from "@/lib/moments-api";
@@ -36,7 +36,7 @@ export function MomentsGalleryView({ moments, loading }: { moments: MomentItem[]
           const isVideo = media?.type === "video";
           const mediaSrc = media?.url ? buildMomentMediaUrl(media.url) : null;
           return (
-            <Link href={`/app/momentos/${m.id}`} key={m.id} className="group overflow-hidden rounded-2xl border bg-white p-2 transition hover:shadow-md">
+            <Link href={`/app/momentos/${m.id}?from=gallery`} key={m.id} className="group overflow-hidden rounded-2xl border bg-white p-2 transition hover:shadow-md">
               <div className="relative h-44 w-full overflow-hidden rounded-xl">
                 {mediaSrc ? (
                   <img src={mediaSrc} alt={m.title} className="h-full w-full rounded-xl object-cover" loading="lazy" />
@@ -46,7 +46,10 @@ export function MomentsGalleryView({ moments, loading }: { moments: MomentItem[]
                 {isVideo ? <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-xs text-white">VIDEO</span> : null}
               </div>
               <p className="mt-2 line-clamp-1 font-semibold text-slate-800">{m.title}</p>
-              <p className="text-xs text-slate-600">{m.location ?? "Sin ubicación"}</p>
+              <div className="flex items-center justify-between text-xs text-slate-600">
+                <span>{m.location ?? "Sin ubicación"}</span>
+                <span className="inline-flex items-center gap-1"><Heart className="h-3 w-3" />{m.stats.likes}</span>
+              </div>
             </Link>
           );
         })}

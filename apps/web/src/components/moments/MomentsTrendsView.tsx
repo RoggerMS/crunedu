@@ -10,8 +10,8 @@ export function MomentsTrendsView({
   topics: MomentTopic[];
   onView: (tag: string) => void;
 }) {
-  const totalMoments = trends.reduce((a, t) => a + t.moments, 0);
-  const totalBoosts = trends.reduce((a, t) => a + t.boosts, 0);
+    const totalMoments = trends.reduce((a, t) => a + t.moments, 0);
+    const totalLikes = trends.reduce((a, t) => a + t.likes, 0);
 
   if (trends.length === 0) {
     return (
@@ -31,7 +31,7 @@ export function MomentsTrendsView({
         <h1 className="text-3xl font-black tracking-tight text-slate-900">Tendencias</h1>
         <div className="mt-2 flex flex-wrap gap-3 text-sm text-slate-600">
           <span className="rounded-xl bg-white px-3 py-1.5 font-medium shadow-sm">{totalMoments} momentos</span>
-          <span className="rounded-xl bg-white px-3 py-1.5 font-medium shadow-sm">{totalBoosts} impulsos</span>
+          <span className="rounded-xl bg-white px-3 py-1.5 font-medium shadow-sm">{totalLikes} Me gusta</span>
         </div>
       </div>
 
@@ -41,7 +41,7 @@ export function MomentsTrendsView({
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-50 font-black text-indigo-700">{t.position}</span>
             <div className="min-w-0 flex-1">
               <h3 className="flex items-center gap-1 font-bold text-slate-900"><Hash className="h-4 w-4 text-slate-400" />{t.tag}</h3>
-              <p className="text-sm text-slate-600">{t.moments} momentos · {t.boosts} impulsos</p>
+              <p className="text-sm text-slate-600">{t.moments} momentos · {t.likes} Me gusta</p>
               {t.growth > 0 ? <p className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-emerald-600"><TrendingUp className="h-3 w-3" />+{t.growth}%</p> : null}
             </div>
             <button onClick={() => onView(t.tag)} className="shrink-0 rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Explorar</button>

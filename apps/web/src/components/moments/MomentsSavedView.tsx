@@ -5,6 +5,8 @@ import { MomentMediaFallback } from "./MomentMediaFallback";
 import { buildMomentMediaUrl } from "@/lib/moments-api";
 
 function isExpired(m: MomentItem) {
+  if (m.isPermanent) return false;
+  if (!m.expiresAt) return false;
   return new Date(m.expiresAt).getTime() <= Date.now();
 }
 
@@ -41,7 +43,7 @@ export function MomentsSavedView({
             </div>
             <div className="min-w-0 flex-1">
               <p className="line-clamp-1 font-semibold text-slate-800">{m.title}</p>
-              <p className="text-xs text-slate-600">{m.location ?? "Sin ubicación"} · {m.stats.boosts} impulsos</p>
+              <p className="text-xs text-slate-600">{m.location ?? "Sin ubicación"} · {m.stats.likes} Me gusta</p>
               <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${expired ? "bg-slate-100 text-slate-600" : "bg-emerald-50 text-emerald-700"}`}>
                 {expired ? "Expirado" : "Activo"}
               </span>

@@ -408,6 +408,9 @@ model Post {
   title       String        @default("")
   content     String
   status      ContentStatus @default(PUBLISHED)
+  inFeed      Boolean       @default(true) @map("in_feed")
+  viewCount   Int           @default(0) @map("view_count")
+  shareCount  Int           @default(0) @map("share_count")
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
@@ -420,6 +423,7 @@ model Post {
   reports   Report[]
   tags      PostTag[]
   images    PostImage[]
+  moments   Moment[]
 
   @@index([userId])
   @@index([communityId])
@@ -428,6 +432,8 @@ model Post {
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([communityId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([documentId])
+  @@index([inFeed])
+  @@index([status, inFeed, createdAt(sort: Desc), id(sort: Desc)])
   @@map("posts")
 }
 
@@ -1206,21 +1212,24 @@ model UniversityReminder {
 
 // --- 11. MOMENTOS ---
 model Moment {
-  id          Int           @id @default(autoincrement())
-  userId      Int           @map("user_id")
-  title       String
-  description String?
-  type        MomentType    @default(NOW)
-  location    String?
-  status      ContentStatus @default(PUBLISHED)
-  expiresAt   DateTime      @map("expires_at")
-  shareCount  Int           @default(0) @map("share_count")
-  viewCount   Int           @default(0) @map("view_count")
-  deletedAt   DateTime?     @map("deleted_at")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  id           Int           @id @default(autoincrement())
+  userId       Int           @map("user_id")
+  postId       Int?          @map("post_id")
+  title        String
+  description  String?
+  type         MomentType    @default(NOW)
+  location     String?
+  status       ContentStatus @default(PUBLISHED)
+  isPermanent  Boolean       @default(false) @map("is_permanent")
+  expiresAt    DateTime?     @map("expires_at")
+  shareCount   Int           @default(0) @map("share_count")
+  viewCount    Int           @default(0) @map("view_count")
+  deletedAt    DateTime?     @map("deleted_at")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
 
   user          User                 @relation(fields: [userId], references: [id])
+  post          Post?                @relation(fields: [postId], references: [id], onDelete: Cascade)
   media         MomentMedia[]
   tags          MomentTagAssignment[]
   boosts        MomentBoost[]
@@ -1230,6 +1239,7 @@ model Moment {
   reports       Report[]
 
   @@index([userId])
+  @@index([postId])
   @@index([status])
   @@index([createdAt])
   @@index([expiresAt])
@@ -1237,6 +1247,7 @@ model Moment {
   @@index([location])
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([status, expiresAt])
+  @@index([isPermanent])
   @@map("moments")
 }
 

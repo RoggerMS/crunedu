@@ -883,12 +883,12 @@ async function main() {
   }
 
   const seedMoments = [
-    { title: "Aquí con la mascota roja", description: "Está saludando a todos en la puerta principal. ¡Qué buena energía hoy!", type: "campus", location: "Puerta principal", tags: ["Campus", "Mascota", "Entrada"], boosts: 6, confirmations: 12, comments: 2 },
-    { title: "Cola en comedor", description: "Se está llenando rápido antes del mediodía.", type: "food", location: "Comedor", tags: ["Comedor", "Aviso"], boosts: 5, confirmations: 6, comments: 3 },
-    { title: "Sistema de matrícula lento", description: "Varias pantallas con carga infinita.", type: "alert", location: "Portal virtual", tags: ["Matrícula", "Sistema"], boosts: 6, confirmations: 6, comments: 4 },
-    { title: "Mochila encontrada", description: "Está en vigilancia, color azul.", type: "lost_found", location: "Pabellón B", tags: ["PerdidoEncontrado"], boosts: 4, confirmations: 5, comments: 1 },
-    { title: "Concierto en el auditorio", description: "Arranca en 30 minutos.", type: "event", location: "Auditorio", tags: ["Cultura", "Evento"], boosts: 6, confirmations: 6, comments: 3 },
-    { title: "Feria en el patio central", description: "Stands activos y promociones.", type: "community", location: "Patio central", tags: ["Campus", "Feria"], boosts: 5, confirmations: 5, comments: 2 },
+    { title: "Aquí con la mascota roja", description: "Está saludando a todos en la puerta principal. ¡Qué buena energía hoy!", type: "campus", location: "Puerta principal", tags: ["Campus", "Mascota", "Entrada"], likes: 6, confirmations: 5, comments: 2, shareToFeed: false },
+    { title: "Cola en comedor", description: "Se está llenando rápido antes del mediodía.", type: "food", location: "Comedor", tags: ["Comedor", "Aviso"], likes: 5, confirmations: 4, comments: 3, shareToFeed: true },
+    { title: "Sistema de matrícula lento", description: "Varias pantallas con carga infinita.", type: "alert", location: "Portal virtual", tags: ["Matrícula", "Sistema"], likes: 6, confirmations: 4, comments: 4, shareToFeed: false },
+    { title: "Mochila encontrada", description: "Está en vigilancia, color azul.", type: "lost_found", location: "Pabellón B", tags: ["PerdidoEncontrado"], likes: 4, confirmations: 3, comments: 1, shareToFeed: false },
+    { title: "Concierto en el auditorio", description: "Arranca en 30 minutos.", type: "event", location: "Auditorio", tags: ["Cultura", "Evento"], likes: 6, confirmations: 4, comments: 3, shareToFeed: true },
+    { title: "Feria en el patio central", description: "Stands activos y promociones.", type: "community", location: "Patio central", tags: ["Campus", "Feria"], likes: 5, confirmations: 3, comments: 2, shareToFeed: false },
   ];
 
   const sampleComments = [
@@ -901,7 +901,7 @@ async function main() {
   for (const item of seedMoments) {
     const existing = await prisma.moment.findFirst({
       where: { title: item.title, userId: admin.id },
-      select: { id: true },
+      select: { id: true, postId: true },
     });
 
     const expiresAt = new Date(Date.now() + 24 * 3600_000);
@@ -909,22 +909,39 @@ async function main() {
     if (existing) {
       await prisma.moment.update({
         where: { id: existing.id },
-        data: { expiresAt, status: "PUBLISHED", deletedAt: null, type: momentTypeMap[item.type] },
+        data: { expiresAt, status: "PUBLISHED", deletedAt: null, type: momentTypeMap[item.type], isPermanent: false },
       });
+      if (existing.postId) {
+        await prisma.post.update({ where: { id: existing.postId }, data: { status: "PUBLISHED", inFeed: item.shareToFeed } });
+      }
       continue;
     }
+
+    // Create canonical Post, then the Moment placement referencing it.
+    const post = await prisma.post.create({
+      data: {
+        userId: admin.id,
+        title: item.title,
+        content: item.description,
+        inFeed: item.shareToFeed,
+        viewCount: 200 + Math.floor(Math.random() * 120),
+        shareCount: Math.floor(Math.random() * 8),
+      },
+    });
 
     const created = await prisma.moment.create({
       data: {
         userId: admin.id,
+        postId: post.id,
         title: item.title,
         description: item.description,
         type: momentTypeMap[item.type],
         location: item.location,
         expiresAt,
+        isPermanent: false,
         status: "PUBLISHED",
-        viewCount: 200 + Math.floor(Math.random() * 120),
-        shareCount: Math.floor(Math.random() * 8),
+        viewCount: post.viewCount,
+        shareCount: post.shareCount,
       },
     });
 
@@ -942,18 +959,21 @@ async function main() {
       await prisma.momentTagAssignment.create({ data: { momentId: created.id, tagId: tag.id } }).catch(() => undefined);
     }
 
-    const boosters = demoUsers.slice(0, Math.min(item.boosts, demoUsers.length));
-    for (const uid of boosters) {
-      await prisma.momentBoost.create({ data: { momentId: created.id, userId: uid } }).catch(() => undefined);
+    // Likes live on the canonical Post (Reaction type LIKE).
+    const likers = demoUsers.slice(0, Math.min(item.likes, demoUsers.length));
+    for (const uid of likers) {
+      await prisma.reaction.create({ data: { postId: post.id, userId: uid, type: "LIKE" } }).catch(() => undefined);
     }
+    // Confirmations are placement-specific (Moment only).
     const confirmers = demoUsers.slice(0, Math.min(item.confirmations, demoUsers.length));
     for (const uid of confirmers) {
       await prisma.momentConfirmation.create({ data: { momentId: created.id, userId: uid } }).catch(() => undefined);
     }
+    // Comments live on the canonical Post.
     for (let c = 0; c < item.comments; c += 1) {
       const commenter = demoUsers[(c + 1) % demoUsers.length];
-      await prisma.momentComment.create({
-        data: { momentId: created.id, userId: commenter, content: sampleComments[c % sampleComments.length] },
+      await prisma.comment.create({
+        data: { postId: post.id, userId: commenter, content: sampleComments[c % sampleComments.length] },
       }).catch(() => undefined);
     }
   }

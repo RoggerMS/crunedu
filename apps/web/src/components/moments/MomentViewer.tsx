@@ -6,8 +6,7 @@ export function MomentViewer(props: {
   moment: MomentItem;
   previousMoment: () => void;
   nextMoment: () => void;
-  onBoost: () => void;
-  onPass: () => void;
+  onLike: () => void;
   onConfirm: () => void;
   onComment: () => void;
   onSave: () => void;
@@ -18,8 +17,7 @@ export function MomentViewer(props: {
       <MomentMediaPanel moment={props.moment} previousMoment={props.previousMoment} nextMoment={props.nextMoment} />
       <MomentInfoPanel
         moment={props.moment}
-        onBoost={props.onBoost}
-        onPass={props.onPass}
+        onLike={props.onLike}
         onConfirm={props.onConfirm}
         onComment={props.onComment}
         onSave={props.onSave}

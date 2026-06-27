@@ -91,13 +91,20 @@ export interface FeedPost {
   id: number;
   title: string;
   content: string;
+  inFeed?: boolean;
+  viewCount?: number;
+  shareCount?: number;
   createdAt: string;
   author: FeedAuthor;
   community: FeedCommunity | null;
   document: FeedPostDocument | null;
   commentsCount: number;
+  likesCount?: number;
+  savesCount?: number;
   images: FeedPostImage[];
   isMine?: boolean;
+  liked?: boolean;
+  saved?: boolean;
 }
 
 

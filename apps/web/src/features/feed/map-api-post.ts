@@ -71,14 +71,14 @@ export function mapApiPostToFeedPost(apiPost: ApiFeedPost): FeedPost {
       : undefined,
     createdAt: toIsoString(apiPost.createdAt),
     stats: {
-      likes: 0,
+      likes: apiPost.likesCount ?? 0,
       comments: apiPost.commentsCount ?? 0,
-      saves: 0,
-      shares: 0,
+      saves: apiPost.savesCount ?? 0,
+      shares: apiPost.shareCount ?? 0,
     },
     viewerState: {
-      liked: false,
-      saved: false,
+      liked: Boolean(apiPost.liked),
+      saved: Boolean(apiPost.saved),
       isMine: Boolean(apiPost.isMine),
     },
   };
