@@ -39,6 +39,7 @@ export function CreatePostModal(props: CreatePostModalProps) {
   const [visibility, setVisibility] = useState<"todos" | "comunidad">("todos");
   const [attachedFiles, setAttachedFiles] = useState<LocalAttachmentFile[]>([]);
   const [attachedImages, setAttachedImages] = useState<Array<{ id: string; mediaId: string; previewUrl?: string }>>([]);
+  const [shareToMoment, setShareToMoment] = useState(false);
 
   useEffect(() => setType(props.initialType), [props.initialType, props.open]);
 
@@ -50,7 +51,8 @@ export function CreatePostModal(props: CreatePostModalProps) {
   }, [isCommunityMode, props.communities]);
 
   const hasContent = Boolean(content.trim().length > 0 || attachedImages.length > 0);
-  const canSubmit = props.isAuthenticated && type === "publicacion" && hasContent;
+  const isMomentMode = !isCommunityMode && type === "momento";
+  const canSubmit = props.isAuthenticated && (type === "publicacion" || isMomentMode) && hasContent && (!isMomentMode || title.trim().length >= 3);
 
   const clearAttachedImages = () => {
     attachedImages.forEach((image) => {
@@ -66,6 +68,7 @@ export function CreatePostModal(props: CreatePostModalProps) {
     setContent("");
     setCommunityId("");
     setVisibility("todos");
+    setShareToMoment(false);
     clearAttachedImages();
   };
 
@@ -98,8 +101,13 @@ export function CreatePostModal(props: CreatePostModalProps) {
       return;
     }
 
+    if (isMomentMode && title.trim().length < 3) {
+      props.onToast("Agrega un título de al menos 3 caracteres para publicar en Momentos.", "info");
+      return;
+    }
+
     const payload: CreatePostSubmitPayload = {
-      type: "publicacion",
+      type: isMomentMode ? "momento" : "publicacion",
       title,
       content,
       visibility,
@@ -107,6 +115,7 @@ export function CreatePostModal(props: CreatePostModalProps) {
       tags: [],
       attachedFiles,
       attachedImages,
+      shareToMoment: isMomentMode || shareToMoment,
     };
 
     try {
@@ -137,7 +146,7 @@ export function CreatePostModal(props: CreatePostModalProps) {
       key={id}
       type="button"
       onClick={() => {
-        if (id === "publicacion") {
+        if (id === "publicacion" || id === "momento") {
           setType(id as PostType);
           return;
         }
@@ -148,7 +157,7 @@ export function CreatePostModal(props: CreatePostModalProps) {
         }
         props.onToast(blockedMessages[id as Exclude<PostType, "publicacion">], "info");
       }}
-      className={`rounded-xl border px-2 py-2 text-left ${type === id ? "border-indigo-500 bg-indigo-50" : "border-slate-200"} ${id !== "publicacion" ? "opacity-70" : ""}`}
+      className={`rounded-xl border px-2 py-2 text-left ${type === id ? "border-indigo-500 bg-indigo-50" : "border-slate-200"} ${id !== "publicacion" && id !== "momento" ? "opacity-70" : ""}`}
     >
       <Icon size={14} />
       <p className="text-xs font-semibold">{label}</p>
@@ -185,11 +194,21 @@ export function CreatePostModal(props: CreatePostModalProps) {
         )}
 
         <div className="mt-4 space-y-3">
+          {isMomentMode ? (
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={140}
+              placeholder="Título del momento"
+              className="w-full rounded-xl border px-3 py-2 text-sm"
+            />
+          ) : null}
+
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={6}
-            placeholder="¿Qué quieres compartir?"
+            placeholder={isMomentMode ? "Descripción del momento" : "¿Qué quieres compartir?"}
             className="w-full rounded-xl border px-3 py-2 text-sm"
           />
 
@@ -240,6 +259,16 @@ export function CreatePostModal(props: CreatePostModalProps) {
             <option value="comunidad">Solo en comunidad</option>
           </select>
           )}
+
+          {!isCommunityMode && !isMomentMode ? (
+            <label className="flex items-start gap-2 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2 text-sm text-indigo-900">
+              <input type="checkbox" checked={shareToMoment} onChange={(e) => setShareToMoment(e.target.checked)} className="mt-0.5" />
+              <span>
+                <span className="font-semibold">Publicar también en Momentos</span>
+                <span className="block text-xs text-indigo-700">Se creará un momento con el mismo contenido y las imágenes adjuntas.</span>
+              </span>
+            </label>
+          ) : null}
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
@@ -252,7 +281,7 @@ export function CreatePostModal(props: CreatePostModalProps) {
             className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300"
             onClick={submit}
           >
-            {props.isAuthenticated ? "Publicar" : "Inicia sesión para publicar"}
+            {props.isAuthenticated ? (isMomentMode ? "Publicar momento" : "Publicar") : "Inicia sesión para publicar"}
           </button>
         </div>
       </div>

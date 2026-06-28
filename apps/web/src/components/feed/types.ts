@@ -83,6 +83,7 @@ export interface CreatePostSubmitPayload {
   tags: string[];
   attachedFiles: LocalAttachmentFile[];
   attachedImages: Array<{ id: string; mediaId: string; previewUrl?: string; uploaded?: CreatePostImagePayload }>;
+  shareToMoment?: boolean;
 }
 
 export interface FeedPostCard extends Omit<FeedPost, "id"> {
