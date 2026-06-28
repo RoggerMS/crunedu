@@ -51,6 +51,18 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 25 * 1024 * 1024;
 const LIKE_TYPE = "LIKE";
 
+function visibleMomentWhere(now = new Date()): Prisma.MomentWhereInput {
+  return {
+    status: "PUBLISHED",
+    deletedAt: null,
+    OR: [
+      { isPermanent: true },
+      { expiresAt: null },
+      { expiresAt: { gt: now } },
+    ],
+  };
+}
+
 const momentSelect = {
   id: true,
   title: true,
@@ -83,7 +95,13 @@ const momentSelect = {
       shareCount: true,
       inFeed: true,
       images: {
-        select: { id: true, imageUrl: true, mimeType: true, sizeBytes: true, position: true },
+        select: {
+          id: true,
+          imageUrl: true,
+          mimeType: true,
+          sizeBytes: true,
+          position: true,
+        },
         orderBy: { position: "asc" as const },
       },
       _count: {
@@ -114,7 +132,13 @@ const commentSelect = {
   },
 } satisfies Prisma.CommentSelect;
 
-type ViewerStateRow = { momentId: number; userId: number; liked: boolean; saved: boolean; confirmed: boolean };
+type ViewerStateRow = {
+  momentId: number;
+  userId: number;
+  liked: boolean;
+  saved: boolean;
+  confirmed: boolean;
+};
 
 @Injectable()
 export class MomentsService {
@@ -128,37 +152,54 @@ export class MomentsService {
   private readonly likeRateLimit = new Map<number, number[]>();
   private readonly mediaRateLimit = new Map<number, number[]>();
 
-  private checkRateLimit(bucket: Map<number, number[]>, userId: number, maxEvents: number, windowMs: number, message: string): void {
+  private checkRateLimit(
+    bucket: Map<number, number[]>,
+    userId: number,
+    maxEvents: number,
+    windowMs: number,
+    message: string,
+  ): void {
     const now = Date.now();
     const windowStart = now - windowMs;
-    const timestamps = (bucket.get(userId) ?? []).filter((ts) => ts >= windowStart);
-    if (timestamps.length >= maxEvents) throw new HttpException(message, HttpStatus.TOO_MANY_REQUESTS);
+    const timestamps = (bucket.get(userId) ?? []).filter(
+      (ts) => ts >= windowStart,
+    );
+    if (timestamps.length >= maxEvents)
+      throw new HttpException(message, HttpStatus.TOO_MANY_REQUESTS);
     timestamps.push(now);
     bucket.set(userId, timestamps);
   }
 
   // --- LIST ---
-  async list(query: GetMomentsQueryDto, viewerUserId?: number): Promise<{ items: MomentResponseDto[]; nextCursor: number | null }> {
-    const limit = Math.min(query.limit ?? PAGINATION_LIMITS.momentsFeed.default, PAGINATION_LIMITS.momentsFeed.max);
+  async list(
+    query: GetMomentsQueryDto,
+    viewerUserId?: number,
+  ): Promise<{ items: MomentResponseDto[]; nextCursor: number | null }> {
+    const limit = Math.min(
+      query.limit ?? PAGINATION_LIMITS.momentsFeed.default,
+      PAGINATION_LIMITS.momentsFeed.max,
+    );
     const sort = query.sort ?? "recent";
     const now = new Date();
 
-    const where: Prisma.MomentWhereInput = {
-      status: "PUBLISHED",
-      deletedAt: null,
-      OR: [{ isPermanent: true }, { expiresAt: { gt: now } }],
-    };
+    const where: Prisma.MomentWhereInput = visibleMomentWhere(now);
     if (query.q) {
       const search = query.q.trim();
-      where.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-        { location: { contains: search, mode: "insensitive" } },
+      where.AND = [
+        {
+          OR: [
+            { title: { contains: search, mode: "insensitive" } },
+            { description: { contains: search, mode: "insensitive" } },
+            { location: { contains: search, mode: "insensitive" } },
+          ],
+        },
       ];
     }
     if (query.type) where.type = query.type;
-    if (query.location) where.location = { contains: query.location, mode: "insensitive" };
-    if (query.tag) where.tags = { some: { tag: { slug: slugifyTag(query.tag) } } };
+    if (query.location)
+      where.location = { contains: query.location, mode: "insensitive" };
+    if (query.tag)
+      where.tags = { some: { tag: { slug: slugifyTag(query.tag) } } };
     if (query.withMedia) where.post = { images: { some: {} } };
 
     const take = sort === "relevant" ? 100 : limit + 1;
@@ -173,28 +214,47 @@ export class MomentsService {
     let ordered = rows;
     if (sort === "relevant") {
       const nowMs = Date.now();
-      ordered = [...rows].sort((a, b) => this.relevanceScore(b as unknown as MomentRow, nowMs) - this.relevanceScore(a as unknown as MomentRow, nowMs));
+      ordered = [...rows].sort(
+        (a, b) =>
+          this.relevanceScore(b as unknown as MomentRow, nowMs) -
+          this.relevanceScore(a as unknown as MomentRow, nowMs),
+      );
     }
 
     const sliced = ordered.slice(0, limit);
-    const nextCursor = ordered.length > limit ? sliced[sliced.length - 1]?.id ?? null : null;
+    const nextCursor =
+      ordered.length > limit ? (sliced[sliced.length - 1]?.id ?? null) : null;
 
-    const viewerStates = await this.fetchViewerStates(sliced.map((r) => r.id), viewerUserId);
-    const items = sliced.map((row) => mapMoment(row as unknown as MomentRow, viewerStates.get(row.id) ?? null));
+    const viewerStates = await this.fetchViewerStates(
+      sliced.map((r) => r.id),
+      viewerUserId,
+    );
+    const items = sliced.map((row) =>
+      mapMoment(row as unknown as MomentRow, viewerStates.get(row.id) ?? null),
+    );
 
     return { items, nextCursor };
   }
 
   // --- DETAIL ---
-  async findOne(id: number, viewerUserId?: number): Promise<MomentResponseDto & { recentComments: MomentCommentResponseDto[] }> {
+  async findOne(
+    id: number,
+    viewerUserId?: number,
+  ): Promise<
+    MomentResponseDto & { recentComments: MomentCommentResponseDto[] }
+  > {
     const moment = await this.prisma.moment.findFirst({
-      where: { id, status: "PUBLISHED", deletedAt: null },
+      where: { id, ...visibleMomentWhere() },
       select: momentSelect,
     });
-    if (!moment) throw new NotFoundException("Momento no encontrado o ya no disponible.");
+    if (!moment)
+      throw new NotFoundException("Momento no encontrado o ya no disponible.");
 
     const viewer = await this.fetchViewerStates([id], viewerUserId);
-    const mapped = mapMoment(moment as unknown as MomentRow, viewer.get(id) ?? null);
+    const mapped = mapMoment(
+      moment as unknown as MomentRow,
+      viewer.get(id) ?? null,
+    );
 
     let recentComments: MomentCommentResponseDto[] = [];
     if (moment.postId) {
@@ -205,12 +265,18 @@ export class MomentsService {
         select: commentSelect,
       });
       recentComments = comments.map((c) => {
-        const mappedComment = mapComment(c as unknown as MomentCommentRow, viewerUserId);
+        const mappedComment = mapComment(
+          c as unknown as MomentCommentRow,
+          viewerUserId,
+        );
         return { ...mappedComment, momentId: String(id) };
       });
 
       this.prisma.post
-        .update({ where: { id: moment.postId }, data: { viewCount: { increment: 1 } } })
+        .update({
+          where: { id: moment.postId },
+          data: { viewCount: { increment: 1 } },
+        })
         .catch(() => undefined);
     }
 
@@ -222,8 +288,17 @@ export class MomentsService {
   }
 
   // --- CREATE ---
-  async create(dto: CreateMomentDto, userId: number): Promise<MomentResponseDto> {
-    this.checkRateLimit(this.createRateLimit, userId, 5, 60_000, "Estás publicando demasiado rápido. Espera un minuto.");
+  async create(
+    dto: CreateMomentDto,
+    userId: number,
+  ): Promise<MomentResponseDto> {
+    this.checkRateLimit(
+      this.createRateLimit,
+      userId,
+      5,
+      60_000,
+      "Estás publicando demasiado rápido. Espera un minuto.",
+    );
 
     const isPermanent = dto.isPermanent ?? false;
     let expiresAt: Date | null = null;
@@ -294,45 +369,88 @@ export class MomentsService {
 
     this.cache.invalidate("hot:moments");
     this.cache.invalidate("hot:feed:initial");
-    return mapMoment(moment as unknown as MomentRow, { userId, liked: false, saved: false, confirmed: false });
+    return mapMoment(moment as unknown as MomentRow, {
+      userId,
+      liked: false,
+      saved: false,
+      confirmed: false,
+    });
   }
 
   // --- UPDATE ---
-  async update(id: number, dto: UpdateMomentDto, userId: number, role: string): Promise<MomentResponseDto> {
-    const existing = await this.prisma.moment.findUnique({ where: { id }, select: { id: true, userId: true, deletedAt: true, postId: true, title: true } });
-    if (!existing || existing.deletedAt) throw new NotFoundException("Momento no encontrado.");
+  async update(
+    id: number,
+    dto: UpdateMomentDto,
+    userId: number,
+    role: string,
+  ): Promise<MomentResponseDto> {
+    const existing = await this.prisma.moment.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        userId: true,
+        deletedAt: true,
+        postId: true,
+        title: true,
+      },
+    });
+    if (!existing || existing.deletedAt)
+      throw new NotFoundException("Momento no encontrado.");
     const isAuthor = existing.userId === userId;
     const isStaff = role === "ADMIN" || role === "MODERATOR";
-    if (!isAuthor && !isStaff) throw new ForbiddenException("No tienes permisos para editar este momento.");
+    if (!isAuthor && !isStaff)
+      throw new ForbiddenException(
+        "No tienes permisos para editar este momento.",
+      );
 
     const momentData: Prisma.MomentUpdateInput = {};
     if (dto.title !== undefined) momentData.title = dto.title.trim();
-    if (dto.description !== undefined) momentData.description = dto.description?.trim() ?? null;
+    if (dto.description !== undefined)
+      momentData.description = dto.description?.trim() ?? null;
     if (dto.type !== undefined) momentData.type = dto.type;
-    if (dto.location !== undefined) momentData.location = dto.location?.trim() || null;
+    if (dto.location !== undefined)
+      momentData.location = dto.location?.trim() || null;
     if (dto.isPermanent !== undefined) {
       momentData.isPermanent = dto.isPermanent;
       if (dto.isPermanent) momentData.expiresAt = null;
     }
     if (dto.durationHours !== undefined && !dto.isPermanent) {
-      momentData.expiresAt = new Date(Date.now() + dto.durationHours * 3600_000);
+      momentData.expiresAt = new Date(
+        Date.now() + dto.durationHours * 3600_000,
+      );
       momentData.isPermanent = false;
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (existing.postId && dto.description !== undefined) {
         const content = dto.description?.trim() ?? "";
-        await tx.post.update({ where: { id: existing.postId }, data: { content: content || existing.title } });
+        await tx.post.update({
+          where: { id: existing.postId },
+          data: { content: content || existing.title },
+        });
       }
-      const result = await tx.moment.update({ where: { id }, data: momentData, select: momentSelect });
+      const result = await tx.moment.update({
+        where: { id },
+        data: momentData,
+        select: momentSelect,
+      });
 
       if (dto.tags !== undefined) {
         await tx.momentTagAssignment.deleteMany({ where: { momentId: id } });
-        const tagNames = dto.tags.map((t) => t.trim()).filter((t) => t.length > 0).slice(0, MAX_TAGS);
+        const tagNames = dto.tags
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0)
+          .slice(0, MAX_TAGS);
         for (const name of tagNames) {
           const slug = slugifyTag(name);
-          const tag = await tx.momentTag.upsert({ where: { slug }, update: {}, create: { name, slug } });
-          await tx.momentTagAssignment.create({ data: { momentId: id, tagId: tag.id } });
+          const tag = await tx.momentTag.upsert({
+            where: { slug },
+            update: {},
+            create: { name, slug },
+          });
+          await tx.momentTagAssignment.create({
+            data: { momentId: id, tagId: tag.id },
+          });
         }
       }
 
@@ -345,17 +463,34 @@ export class MomentsService {
   }
 
   // --- DELETE (soft) ---
-  async remove(id: number, userId: number, role: string): Promise<{ message: string }> {
-    const existing = await this.prisma.moment.findUnique({ where: { id }, select: { id: true, userId: true, deletedAt: true, postId: true } });
-    if (!existing || existing.deletedAt) throw new NotFoundException("Momento no encontrado.");
+  async remove(
+    id: number,
+    userId: number,
+    role: string,
+  ): Promise<{ message: string }> {
+    const existing = await this.prisma.moment.findUnique({
+      where: { id },
+      select: { id: true, userId: true, deletedAt: true, postId: true },
+    });
+    if (!existing || existing.deletedAt)
+      throw new NotFoundException("Momento no encontrado.");
     const isAuthor = existing.userId === userId;
     const isStaff = role === "ADMIN" || role === "MODERATOR";
-    if (!isAuthor && !isStaff) throw new ForbiddenException("No tienes permisos para eliminar este momento.");
+    if (!isAuthor && !isStaff)
+      throw new ForbiddenException(
+        "No tienes permisos para eliminar este momento.",
+      );
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.moment.update({ where: { id }, data: { status: "DELETED", deletedAt: new Date() } });
+      await tx.moment.update({
+        where: { id },
+        data: { status: "DELETED", deletedAt: new Date() },
+      });
       if (existing.postId) {
-        await tx.post.update({ where: { id: existing.postId }, data: { status: "DELETED" } });
+        await tx.post.update({
+          where: { id: existing.postId },
+          data: { status: "DELETED" },
+        });
       }
     });
     this.cache.invalidate("hot:moments");
@@ -364,31 +499,74 @@ export class MomentsService {
   }
 
   // --- MEDIA UPLOAD ---
-  async uploadMedia(file: unknown, userId: number): Promise<{ imageUrl: string; storageKey: string; mimeType: string; sizeBytes: number }> {
-    this.checkRateLimit(this.mediaRateLimit, userId, 10, 60_000, "Demasiadas subidas. Espera un minuto.");
-    const f = file as { mimetype?: string; size?: number; originalname?: string; buffer?: Buffer };
-    if (!f || !f.buffer) throw new BadRequestException("Debes adjuntar un archivo.");
+  async uploadMedia(
+    file: unknown,
+    userId: number,
+  ): Promise<{
+    imageUrl: string;
+    storageKey: string;
+    mimeType: string;
+    sizeBytes: number;
+  }> {
+    this.checkRateLimit(
+      this.mediaRateLimit,
+      userId,
+      10,
+      60_000,
+      "Demasiadas subidas. Espera un minuto.",
+    );
+    const f = file as {
+      mimetype?: string;
+      size?: number;
+      originalname?: string;
+      buffer?: Buffer;
+    };
+    if (!f || !f.buffer)
+      throw new BadRequestException("Debes adjuntar un archivo.");
     const mimeType = f.mimetype ?? "";
     const isImage = ALLOWED_IMAGE_TYPES.has(mimeType);
     const isVideo = ALLOWED_VIDEO_TYPES.has(mimeType);
-    if (!isImage && !isVideo) throw new BadRequestException("Formato no permitido. Solo JPG, PNG, WEBP, MP4 o WEBM.");
+    if (!isImage && !isVideo)
+      throw new BadRequestException(
+        "Formato no permitido. Solo JPG, PNG, WEBP, MP4 o WEBM.",
+      );
     const max = isImage ? MAX_IMAGE_SIZE : MAX_VIDEO_SIZE;
-    if ((f.size ?? 0) > max) throw new BadRequestException(isImage ? "La imagen supera el límite de 5MB." : "El video supera el límite de 25MB.");
+    if ((f.size ?? 0) > max)
+      throw new BadRequestException(
+        isImage
+          ? "La imagen supera el límite de 5MB."
+          : "El video supera el límite de 25MB.",
+      );
 
     const allowedExtensions = EXTENSIONS_BY_MIME[mimeType] ?? [];
-    const ext = (f.originalname ?? "file").split(".").pop()?.toLowerCase() ?? "";
-    if (!allowedExtensions.includes(ext)) throw new BadRequestException("La extensión del archivo no coincide con el formato permitido.");
+    const ext =
+      (f.originalname ?? "file").split(".").pop()?.toLowerCase() ?? "";
+    if (!allowedExtensions.includes(ext))
+      throw new BadRequestException(
+        "La extensión del archivo no coincide con el formato permitido.",
+      );
     const safeExt = ext === "jpeg" ? "jpg" : ext;
     const filename = `moment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${safeExt}`;
     const storageKey = `moments/${filename}`;
     const targetDir = join(process.cwd(), "tmp", "uploads", "moments");
     await mkdir(targetDir, { recursive: true });
     await writeFile(join(targetDir, filename), f.buffer);
-    return { imageUrl: `/api/moments/media/${filename}`, storageKey, mimeType, sizeBytes: f.size ?? 0 };
+    return {
+      imageUrl: `/api/moments/media/${filename}`,
+      storageKey,
+      mimeType,
+      sizeBytes: f.size ?? 0,
+    };
   }
 
-  async serveMedia(filename: string): Promise<{ stream: ReturnType<typeof createReadStream>; mimeType: string }> {
-    if (!/^[a-zA-Z0-9._-]+$/.test(filename)) throw new BadRequestException("Archivo inválido.");
+  async serveMedia(
+    filename: string,
+  ): Promise<{
+    stream: ReturnType<typeof createReadStream>;
+    mimeType: string;
+  }> {
+    if (!/^[a-zA-Z0-9._-]+$/.test(filename))
+      throw new BadRequestException("Archivo inválido.");
     const filePath = join(process.cwd(), "tmp", "uploads", "moments", filename);
     try {
       await access(filePath);
@@ -398,33 +576,53 @@ export class MomentsService {
     let mimeType = "application/octet-stream";
     if (filename.endsWith(".png")) mimeType = "image/png";
     else if (filename.endsWith(".webp")) mimeType = "image/webp";
-    else if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) mimeType = "image/jpeg";
+    else if (filename.endsWith(".jpg") || filename.endsWith(".jpeg"))
+      mimeType = "image/jpeg";
     else if (filename.endsWith(".mp4")) mimeType = "video/mp4";
     else if (filename.endsWith(".webm")) mimeType = "video/webm";
     return { stream: createReadStream(filePath), mimeType };
   }
 
   // --- LIKE (canonical: operates on Post's Reaction) ---
-  async like(id: number, userId: number): Promise<{ liked: boolean; count: number }> {
-    this.checkRateLimit(this.likeRateLimit, userId, 30, 60_000, "Demasiadas acciones. Espera un minuto.");
+  async like(
+    id: number,
+    userId: number,
+  ): Promise<{ liked: boolean; count: number }> {
+    this.checkRateLimit(
+      this.likeRateLimit,
+      userId,
+      30,
+      60_000,
+      "Demasiadas acciones. Espera un minuto.",
+    );
     const moment = await this.ensureVisibleMoment(id);
-    if (!moment.postId) throw new NotFoundException("Momento no encontrado o ya no disponible.");
+    if (!moment.postId)
+      throw new NotFoundException("Momento no encontrado o ya no disponible.");
     const postId = moment.postId;
-    const existing = await this.prisma.reaction.findUnique({ where: { postId_userId: { postId, userId } } });
+    const existing = await this.prisma.reaction.findUnique({
+      where: { postId_userId: { postId, userId } },
+    });
     if (existing) return { liked: true, count: await this.likeCount(postId) };
     try {
-      await this.prisma.reaction.create({ data: { postId, userId, type: LIKE_TYPE } });
+      await this.prisma.reaction.create({
+        data: { postId, userId, type: LIKE_TYPE },
+      });
     } catch (error) {
-      if (this.isUniqueViolation(error)) return { liked: true, count: await this.likeCount(postId) };
+      if (this.isUniqueViolation(error))
+        return { liked: true, count: await this.likeCount(postId) };
       throw error;
     }
     this.cache.invalidate("hot:moments");
     return { liked: true, count: await this.likeCount(postId) };
   }
 
-  async unlike(id: number, userId: number): Promise<{ liked: boolean; count: number }> {
+  async unlike(
+    id: number,
+    userId: number,
+  ): Promise<{ liked: boolean; count: number }> {
     const moment = await this.ensureVisibleMoment(id);
-    if (!moment.postId) throw new NotFoundException("Momento no encontrado o ya no disponible.");
+    if (!moment.postId)
+      throw new NotFoundException("Momento no encontrado o ya no disponible.");
     const postId = moment.postId;
     await this.prisma.reaction.deleteMany({ where: { postId, userId } });
     this.cache.invalidate("hot:moments");
@@ -436,27 +634,52 @@ export class MomentsService {
   }
 
   // --- CONFIRM (placement-specific) ---
-  async confirm(id: number, userId: number): Promise<{ confirmed: boolean; count: number }> {
-    this.checkRateLimit(this.likeRateLimit, userId, 30, 60_000, "Demasiadas acciones. Espera un minuto.");
+  async confirm(
+    id: number,
+    userId: number,
+  ): Promise<{ confirmed: boolean; count: number }> {
+    this.checkRateLimit(
+      this.likeRateLimit,
+      userId,
+      30,
+      60_000,
+      "Demasiadas acciones. Espera un minuto.",
+    );
     await this.ensureVisibleMoment(id);
     try {
-      await this.prisma.momentConfirmation.create({ data: { momentId: id, userId } });
+      await this.prisma.momentConfirmation.create({
+        data: { momentId: id, userId },
+      });
     } catch (error) {
       if (this.isUniqueViolation(error)) {
         // idempotent: already confirmed
-        return { confirmed: true, count: await this.prisma.momentConfirmation.count({ where: { momentId: id } }) };
+        return {
+          confirmed: true,
+          count: await this.prisma.momentConfirmation.count({
+            where: { momentId: id },
+          }),
+        };
       }
       throw error;
     }
-    const count = await this.prisma.momentConfirmation.count({ where: { momentId: id } });
+    const count = await this.prisma.momentConfirmation.count({
+      where: { momentId: id },
+    });
     this.cache.invalidate("hot:moments");
     return { confirmed: true, count };
   }
 
-  async unconfirm(id: number, userId: number): Promise<{ confirmed: boolean; count: number }> {
+  async unconfirm(
+    id: number,
+    userId: number,
+  ): Promise<{ confirmed: boolean; count: number }> {
     await this.ensureVisibleMoment(id);
-    await this.prisma.momentConfirmation.deleteMany({ where: { momentId: id, userId } });
-    const count = await this.prisma.momentConfirmation.count({ where: { momentId: id } });
+    await this.prisma.momentConfirmation.deleteMany({
+      where: { momentId: id, userId },
+    });
+    const count = await this.prisma.momentConfirmation.count({
+      where: { momentId: id },
+    });
     this.cache.invalidate("hot:moments");
     return { confirmed: false, count };
   }
@@ -464,9 +687,12 @@ export class MomentsService {
   // --- SAVE (canonical: operates on SavedPost) ---
   async save(id: number, userId: number): Promise<{ saved: boolean }> {
     const moment = await this.ensureVisibleMoment(id);
-    if (!moment.postId) throw new NotFoundException("Momento no encontrado o ya no disponible.");
+    if (!moment.postId)
+      throw new NotFoundException("Momento no encontrado o ya no disponible.");
     try {
-      await this.prisma.savedPost.create({ data: { postId: moment.postId, userId } });
+      await this.prisma.savedPost.create({
+        data: { postId: moment.postId, userId },
+      });
     } catch (error) {
       if (this.isUniqueViolation(error)) return { saved: true };
       throw error;
@@ -476,21 +702,32 @@ export class MomentsService {
 
   async unsave(id: number, userId: number): Promise<{ saved: boolean }> {
     const moment = await this.ensureVisibleMoment(id);
-    if (!moment.postId) throw new NotFoundException("Momento no encontrado o ya no disponible.");
-    await this.prisma.savedPost.deleteMany({ where: { postId: moment.postId, userId } });
+    if (!moment.postId)
+      throw new NotFoundException("Momento no encontrado o ya no disponible.");
+    await this.prisma.savedPost.deleteMany({
+      where: { postId: moment.postId, userId },
+    });
     return { saved: false };
   }
 
   // --- SHARE ---
   async share(id: number): Promise<{ shares: number }> {
     const moment = await this.ensureVisibleMoment(id);
-    if (!moment.postId) throw new NotFoundException("Momento no encontrado o ya no disponible.");
-    const updated = await this.prisma.post.update({ where: { id: moment.postId }, data: { shareCount: { increment: 1 } }, select: { shareCount: true } });
+    if (!moment.postId)
+      throw new NotFoundException("Momento no encontrado o ya no disponible.");
+    const updated = await this.prisma.post.update({
+      where: { id: moment.postId },
+      data: { shareCount: { increment: 1 } },
+      select: { shareCount: true },
+    });
     return { shares: Math.max(0, updated.shareCount) };
   }
 
   // --- COMMENTS (canonical: Post's Comment) ---
-  async getComments(momentId: number, viewerUserId?: number): Promise<MomentCommentResponseDto[]> {
+  async getComments(
+    momentId: number,
+    viewerUserId?: number,
+  ): Promise<MomentCommentResponseDto[]> {
     const moment = await this.ensureVisibleMoment(momentId);
     if (!moment.postId) return [];
     const comments = await this.prisma.comment.findMany({
@@ -504,12 +741,26 @@ export class MomentsService {
     });
   }
 
-  async createComment(momentId: number, dto: CreateMomentCommentDto, userId: number): Promise<MomentCommentResponseDto> {
+  async createComment(
+    momentId: number,
+    dto: CreateMomentCommentDto,
+    userId: number,
+  ): Promise<MomentCommentResponseDto> {
     const moment = await this.ensureVisibleMoment(momentId);
-    if (!moment.postId) throw new NotFoundException("Momento no encontrado o ya no disponible.");
-    this.checkRateLimit(this.commentRateLimit, userId, 8, 60_000, "Estás comentando demasiado rápido. Espera un minuto.");
+    if (!moment.postId)
+      throw new NotFoundException("Momento no encontrado o ya no disponible.");
+    this.checkRateLimit(
+      this.commentRateLimit,
+      userId,
+      8,
+      60_000,
+      "Estás comentando demasiado rápido. Espera un minuto.",
+    );
     const content = dto.content.trim();
-    if (content.length < 2 || content.length > MAX_COMMENT) throw new BadRequestException("El comentario debe tener entre 2 y 1000 caracteres.");
+    if (content.length < 2 || content.length > MAX_COMMENT)
+      throw new BadRequestException(
+        "El comentario debe tener entre 2 y 1000 caracteres.",
+      );
 
     const comment = await this.prisma.comment.create({
       data: { postId: moment.postId, userId, content },
@@ -520,52 +771,105 @@ export class MomentsService {
     return { ...mapped, momentId: String(momentId) };
   }
 
-  async deleteComment(momentId: number, commentId: number, userId: number, role: string): Promise<{ message: string }> {
+  async deleteComment(
+    momentId: number,
+    commentId: number,
+    userId: number,
+    role: string,
+  ): Promise<{ message: string }> {
     const moment = await this.ensureVisibleMoment(momentId);
-    if (!moment.postId) throw new NotFoundException("Momento no encontrado o ya no disponible.");
-    const comment = await this.prisma.comment.findUnique({ where: { id: commentId }, select: { id: true, postId: true, userId: true } });
-    if (!comment || comment.postId !== moment.postId) throw new NotFoundException("Comentario no encontrado.");
+    if (!moment.postId)
+      throw new NotFoundException("Momento no encontrado o ya no disponible.");
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+      select: { id: true, postId: true, userId: true },
+    });
+    if (!comment || comment.postId !== moment.postId)
+      throw new NotFoundException("Comentario no encontrado.");
     const isAuthor = comment.userId === userId;
     const isStaff = role === "ADMIN" || role === "MODERATOR";
-    if (!isAuthor && !isStaff) throw new ForbiddenException("No tienes permisos para eliminar este comentario.");
-    await this.prisma.comment.update({ where: { id: commentId }, data: { status: "DELETED" } });
+    if (!isAuthor && !isStaff)
+      throw new ForbiddenException(
+        "No tienes permisos para eliminar este comentario.",
+      );
+    await this.prisma.comment.update({
+      where: { id: commentId },
+      data: { status: "DELETED" },
+    });
     this.cache.invalidate("hot:moments");
     return { message: "Comentario eliminado." };
   }
 
   // --- SHARE BETWEEN FEED AND MOMENTS ---
-  async shareToFeed(id: number, userId: number, role: string): Promise<{ inFeed: boolean }> {
-    const moment = await this.prisma.moment.findUnique({ where: { id }, select: { id: true, userId: true, deletedAt: true, postId: true } });
-    if (!moment || moment.deletedAt) throw new NotFoundException("Momento no encontrado.");
-    if (moment.userId !== userId && role !== "ADMIN" && role !== "MODERATOR") throw new ForbiddenException("No tienes permisos.");
-    if (!moment.postId) throw new BadRequestException("Este momento no tiene una publicación asociada.");
-    await this.prisma.post.update({ where: { id: moment.postId }, data: { inFeed: true } });
+  async shareToFeed(
+    id: number,
+    userId: number,
+    role: string,
+  ): Promise<{ inFeed: boolean }> {
+    const moment = await this.prisma.moment.findUnique({
+      where: { id },
+      select: { id: true, userId: true, deletedAt: true, postId: true },
+    });
+    if (!moment || moment.deletedAt)
+      throw new NotFoundException("Momento no encontrado.");
+    if (moment.userId !== userId && role !== "ADMIN" && role !== "MODERATOR")
+      throw new ForbiddenException("No tienes permisos.");
+    if (!moment.postId)
+      throw new BadRequestException(
+        "Este momento no tiene una publicación asociada.",
+      );
+    await this.prisma.post.update({
+      where: { id: moment.postId },
+      data: { inFeed: true },
+    });
     this.cache.invalidate("hot:feed:initial");
     return { inFeed: true };
   }
 
-  async removeFromFeed(id: number, userId: number, role: string): Promise<{ inFeed: boolean }> {
-    const moment = await this.prisma.moment.findUnique({ where: { id }, select: { id: true, userId: true, deletedAt: true, postId: true } });
-    if (!moment || moment.deletedAt) throw new NotFoundException("Momento no encontrado.");
-    if (moment.userId !== userId && role !== "ADMIN" && role !== "MODERATOR") throw new ForbiddenException("No tienes permisos.");
-    if (!moment.postId) throw new BadRequestException("Este momento no tiene una publicación asociada.");
-    await this.prisma.post.update({ where: { id: moment.postId }, data: { inFeed: false } });
+  async removeFromFeed(
+    id: number,
+    userId: number,
+    role: string,
+  ): Promise<{ inFeed: boolean }> {
+    const moment = await this.prisma.moment.findUnique({
+      where: { id },
+      select: { id: true, userId: true, deletedAt: true, postId: true },
+    });
+    if (!moment || moment.deletedAt)
+      throw new NotFoundException("Momento no encontrado.");
+    if (moment.userId !== userId && role !== "ADMIN" && role !== "MODERATOR")
+      throw new ForbiddenException("No tienes permisos.");
+    if (!moment.postId)
+      throw new BadRequestException(
+        "Este momento no tiene una publicación asociada.",
+      );
+    await this.prisma.post.update({
+      where: { id: moment.postId },
+      data: { inFeed: false },
+    });
     this.cache.invalidate("hot:feed:initial");
     return { inFeed: false };
   }
 
   // --- NEWS ---
-  async getNews(viewerUserId?: number): Promise<{ items: MomentNewsSummaryDto[] }> {
+  async getNews(
+    viewerUserId?: number,
+  ): Promise<{ items: MomentNewsSummaryDto[] }> {
     const since = new Date(Date.now() - 7 * 24 * 3600_000);
     const moments = await this.prisma.moment.findMany({
-      where: { status: "PUBLISHED", deletedAt: null, createdAt: { gte: since } },
+      where: { ...visibleMomentWhere(), createdAt: { gte: since } },
       select: momentSelect,
       orderBy: [{ createdAt: "desc" }],
       take: 60,
     });
 
-    const viewerStates = await this.fetchViewerStates(moments.map((m) => m.id), viewerUserId);
-    const mapped = moments.map((m) => mapMoment(m as unknown as MomentRow, viewerStates.get(m.id) ?? null));
+    const viewerStates = await this.fetchViewerStates(
+      moments.map((m) => m.id),
+      viewerUserId,
+    );
+    const mapped = moments.map((m) =>
+      mapMoment(m as unknown as MomentRow, viewerStates.get(m.id) ?? null),
+    );
 
     const groups = new Map<string, MomentNewsSummaryDto>();
     for (const moment of mapped) {
@@ -583,7 +887,12 @@ export class MomentsService {
           relatedMomentIds: [moment.id],
           updatedAt: moment.createdAt,
           createdAt: moment.createdAt,
-          stats: { likes: moment.stats.likes, confirmations: moment.stats.confirmations, comments: moment.stats.comments, photos: photoCount },
+          stats: {
+            likes: moment.stats.likes,
+            confirmations: moment.stats.confirmations,
+            comments: moment.stats.comments,
+            photos: photoCount,
+          },
           coverImageUrl: moment.media[0]?.url ?? null,
         });
       } else {
@@ -596,51 +905,81 @@ export class MomentsService {
           existing.updatedAt = moment.createdAt;
           existing.summary = moment.title;
         }
-        if (moment.createdAt < existing.createdAt) existing.createdAt = moment.createdAt;
-        if (!existing.coverImageUrl && moment.media[0]?.url) existing.coverImageUrl = moment.media[0].url;
-        for (const tag of moment.tags) if (!existing.tags.includes(tag)) existing.tags.push(tag);
+        if (moment.createdAt < existing.createdAt)
+          existing.createdAt = moment.createdAt;
+        if (!existing.coverImageUrl && moment.media[0]?.url)
+          existing.coverImageUrl = moment.media[0].url;
+        for (const tag of moment.tags)
+          if (!existing.tags.includes(tag)) existing.tags.push(tag);
       }
     }
 
     const items = Array.from(groups.values())
-      .sort((a, b) => b.stats.likes + b.stats.confirmations * 2 - (a.stats.likes + a.stats.confirmations * 2))
+      .sort(
+        (a, b) =>
+          b.stats.likes +
+          b.stats.confirmations * 2 -
+          (a.stats.likes + a.stats.confirmations * 2),
+      )
       .slice(0, 12);
 
     return { items };
   }
 
-  async getNewsDetail(id: string, viewerUserId?: number): Promise<MomentNewsDetailDto> {
+  async getNewsDetail(
+    id: string,
+    viewerUserId?: number,
+  ): Promise<MomentNewsDetailDto> {
     const news = await this.getNews(viewerUserId);
     const summary = news.items.find((n) => n.id === id);
     if (!summary) throw new NotFoundException("Noticia no encontrada.");
 
     const related = await this.prisma.moment.findMany({
-      where: { id: { in: summary.relatedMomentIds.map((x) => Number(x)).filter((n) => !Number.isNaN(n)) }, status: "PUBLISHED", deletedAt: null },
+      where: {
+        id: {
+          in: summary.relatedMomentIds
+            .map((x) => Number(x))
+            .filter((n) => !Number.isNaN(n)),
+        },
+        ...visibleMomentWhere(),
+      },
       select: momentSelect,
     });
-    const viewerStates = await this.fetchViewerStates(related.map((m) => m.id), viewerUserId);
-    const relatedMoments = related.map((m) => mapMoment(m as unknown as MomentRow, viewerStates.get(m.id) ?? null));
+    const viewerStates = await this.fetchViewerStates(
+      related.map((m) => m.id),
+      viewerUserId,
+    );
+    const relatedMoments = related.map((m) =>
+      mapMoment(m as unknown as MomentRow, viewerStates.get(m.id) ?? null),
+    );
 
     return { ...summary, relatedMoments };
   }
 
   // --- GALLERY ---
-  async getGallery(query: GetGalleryQueryDto, viewerUserId?: number): Promise<{ items: MomentResponseDto[]; nextCursor: number | null }> {
+  async getGallery(
+    query: GetGalleryQueryDto,
+    viewerUserId?: number,
+  ): Promise<{ items: MomentResponseDto[]; nextCursor: number | null }> {
     const limit = Math.min(query.limit ?? 12, 40);
     const where: Prisma.MomentWhereInput = {
-      status: "PUBLISHED",
-      deletedAt: null,
+      ...visibleMomentWhere(),
       post: { images: { some: {} } },
     };
     if (query.q) {
       const search = query.q.trim();
-      where.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { location: { contains: search, mode: "insensitive" } },
+      where.AND = [
+        {
+          OR: [
+            { title: { contains: search, mode: "insensitive" } },
+            { location: { contains: search, mode: "insensitive" } },
+          ],
+        },
       ];
     }
     if (query.type) where.type = query.type;
-    if (query.location) where.location = { contains: query.location, mode: "insensitive" };
+    if (query.location)
+      where.location = { contains: query.location, mode: "insensitive" };
 
     const rows = await this.prisma.moment.findMany({
       where,
@@ -650,14 +989,26 @@ export class MomentsService {
       take: limit + 1,
     });
 
-    const nextCursor = rows.length > limit ? rows[limit - 1]?.id ?? null : null;
+    const nextCursor =
+      rows.length > limit ? (rows[limit - 1]?.id ?? null) : null;
     const sliced = rows.slice(0, limit);
-    const viewerStates = await this.fetchViewerStates(sliced.map((r) => r.id), viewerUserId);
-    return { items: sliced.map((r) => mapMoment(r as unknown as MomentRow, viewerStates.get(r.id) ?? null)), nextCursor };
+    const viewerStates = await this.fetchViewerStates(
+      sliced.map((r) => r.id),
+      viewerUserId,
+    );
+    return {
+      items: sliced.map((r) =>
+        mapMoment(r as unknown as MomentRow, viewerStates.get(r.id) ?? null),
+      ),
+      nextCursor,
+    };
   }
 
   // --- SAVED ---
-  async getSaved(query: GetSavedMomentsQueryDto, userId: number): Promise<{ items: MomentResponseDto[]; nextCursor: number | null }> {
+  async getSaved(
+    query: GetSavedMomentsQueryDto,
+    userId: number,
+  ): Promise<{ items: MomentResponseDto[]; nextCursor: number | null }> {
     const limit = Math.min(query.limit ?? 12, 40);
     const status = query.status ?? "all";
     const now = new Date();
@@ -670,51 +1021,85 @@ export class MomentsService {
       select: { id: true, postId: true, createdAt: true },
     });
 
-    const nextCursor = savedPosts.length > limit ? savedPosts[limit - 1]?.id ?? null : null;
+    const nextCursor =
+      savedPosts.length > limit ? (savedPosts[limit - 1]?.id ?? null) : null;
 
     const postIds = savedPosts.slice(0, limit).map((s) => s.postId);
     if (postIds.length === 0) return { items: [], nextCursor };
 
     const moments = await this.prisma.moment.findMany({
-      where: { postId: { in: postIds }, status: "PUBLISHED", deletedAt: null },
+      where: { postId: { in: postIds }, ...visibleMomentWhere() },
       select: momentSelect,
     });
 
     let entries = moments;
     if (query.q) {
       const search = query.q.trim().toLowerCase();
-      entries = entries.filter((s) => `${s.title} ${s.location ?? ""}`.toLowerCase().includes(search));
+      entries = entries.filter((s) =>
+        `${s.title} ${s.location ?? ""}`.toLowerCase().includes(search),
+      );
     }
-    if (status === "active") entries = entries.filter((s) => s.isPermanent || (s.expiresAt && s.expiresAt > now));
-    if (status === "expired") entries = entries.filter((s) => !s.isPermanent && s.expiresAt && s.expiresAt <= now);
-    if (status === "with_photo") entries = entries.filter((s) => (s.post?.images.length ?? 0) > 0);
+    if (status === "active")
+      entries = entries.filter(
+        (s) => s.isPermanent || (s.expiresAt && s.expiresAt > now),
+      );
+    if (status === "expired")
+      entries = entries.filter(
+        (s) => !s.isPermanent && s.expiresAt && s.expiresAt <= now,
+      );
+    if (status === "with_photo")
+      entries = entries.filter((s) => (s.post?.images.length ?? 0) > 0);
 
-    const viewerStates = await this.fetchViewerStates(entries.map((s) => s.id), userId);
+    const viewerStates = await this.fetchViewerStates(
+      entries.map((s) => s.id),
+      userId,
+    );
     const items = entries.map((m) => {
-      const mapped = mapMoment(m as unknown as MomentRow, viewerStates.get(m.id) ?? null);
+      const mapped = mapMoment(
+        m as unknown as MomentRow,
+        viewerStates.get(m.id) ?? null,
+      );
       return { ...mapped, viewerState: { ...mapped.viewerState, saved: true } };
     });
     return { items, nextCursor };
   }
 
   // --- TRENDS ---
-  async getTrends(query: GetTrendsQueryDto): Promise<{ items: MomentTrendDto[]; period: string }> {
+  async getTrends(
+    query: GetTrendsQueryDto,
+  ): Promise<{ items: MomentTrendDto[]; period: string }> {
     const period = query.period ?? "week";
     const limit = Math.min(query.limit ?? 10, 50);
-    const since = new Date(Date.now() - (period === "day" ? 24 : period === "month" ? 30 : 7) * 3600_000);
+    const since = new Date(
+      Date.now() -
+        (period === "day" ? 24 : period === "month" ? 30 : 7) * 3600_000,
+    );
 
     const assignments = await this.prisma.momentTagAssignment.findMany({
-      where: { moment: { status: "PUBLISHED", deletedAt: null, createdAt: { gte: since } } },
+      where: { moment: { ...visibleMomentWhere(), createdAt: { gte: since } } },
       select: {
         tag: { select: { name: true, slug: true } },
-        moment: { select: { id: true, postId: true, post: { select: { _count: { select: { reactions: true } } } } } },
+        moment: {
+          select: {
+            id: true,
+            postId: true,
+            post: { select: { _count: { select: { reactions: true } } } },
+          },
+        },
       },
     });
 
-    const byTag = new Map<string, { tag: string; moments: Set<number>; likes: number }>();
+    const byTag = new Map<
+      string,
+      { tag: string; moments: Set<number>; likes: number }
+    >();
     for (const a of assignments) {
       const key = a.tag.slug;
-      const entry = byTag.get(key) ?? { tag: a.tag.name, moments: new Set<number>(), likes: 0 };
+      const entry = byTag.get(key) ?? {
+        tag: a.tag.name,
+        moments: new Set<number>(),
+        likes: 0,
+      };
       entry.moments.add(a.moment.id);
       entry.likes += a.moment.post?._count.reactions ?? 0;
       byTag.set(key, entry);
@@ -727,7 +1112,10 @@ export class MomentsService {
         tag: v.tag,
         moments: v.moments.size,
         likes: v.likes,
-        growth: currentTotal > 0 ? Math.round((v.moments.size / Math.max(1, currentTotal)) * 100) : 0,
+        growth:
+          currentTotal > 0
+            ? Math.round((v.moments.size / Math.max(1, currentTotal)) * 100)
+            : 0,
       }))
       .sort((a, b) => b.likes - a.likes || b.moments - a.moments)
       .slice(0, limit)
@@ -741,45 +1129,75 @@ export class MomentsService {
     const since = new Date(Date.now() - 30 * 24 * 3600_000);
     const grouped = await this.prisma.momentTagAssignment.groupBy({
       by: ["tagId"],
-      where: { moment: { status: "PUBLISHED", deletedAt: null, createdAt: { gte: since } } },
+      where: { moment: { ...visibleMomentWhere(), createdAt: { gte: since } } },
       _count: { _all: true },
       orderBy: { _count: { tagId: "desc" } },
       take: 20,
     });
 
     const tagIds = grouped.map((g) => g.tagId);
-    const tags = await this.prisma.momentTag.findMany({ where: { id: { in: tagIds } }, select: { id: true, name: true } });
+    const tags = await this.prisma.momentTag.findMany({
+      where: { id: { in: tagIds } },
+      select: { id: true, name: true },
+    });
     const tagMap = new Map(tags.map((t) => [t.id, t.name]));
 
-    const items: MomentTopicDto[] = grouped.map((g) => ({ tag: tagMap.get(g.tagId) ?? "desconocido", count: g._count._all }));
+    const items: MomentTopicDto[] = grouped.map((g) => ({
+      tag: tagMap.get(g.tagId) ?? "desconocido",
+      count: g._count._all,
+    }));
     return { items };
   }
 
   // --- helpers ---
-  private async ensureVisibleMoment(id: number): Promise<{ id: number; postId: number | null }> {
+  private async ensureVisibleMoment(
+    id: number,
+  ): Promise<{ id: number; postId: number | null }> {
     const moment = await this.prisma.moment.findFirst({
-      where: { id, status: "PUBLISHED", deletedAt: null },
+      where: { id, ...visibleMomentWhere() },
       select: { id: true, postId: true },
     });
-    if (!moment) throw new NotFoundException("Momento no encontrado o ya no disponible.");
+    if (!moment)
+      throw new NotFoundException("Momento no encontrado o ya no disponible.");
     return moment;
   }
 
-  private async fetchViewerStates(momentIds: number[], viewerUserId?: number): Promise<Map<number, ViewerStateRow>> {
+  private async fetchViewerStates(
+    momentIds: number[],
+    viewerUserId?: number,
+  ): Promise<Map<number, ViewerStateRow>> {
     const map = new Map<number, ViewerStateRow>();
     if (!viewerUserId || momentIds.length === 0) return map;
     const moments = await this.prisma.moment.findMany({
       where: { id: { in: momentIds } },
       select: { id: true, postId: true },
     });
-    const postIds = moments.map((m) => m.postId).filter((p): p is number => p != null);
-    for (const m of moments) map.set(m.id, { momentId: m.id, userId: viewerUserId, liked: false, saved: false, confirmed: false });
+    const postIds = moments
+      .map((m) => m.postId)
+      .filter((p): p is number => p != null);
+    for (const m of moments)
+      map.set(m.id, {
+        momentId: m.id,
+        userId: viewerUserId,
+        liked: false,
+        saved: false,
+        confirmed: false,
+      });
 
     if (postIds.length === 0) return map;
     const [likes, saves, confirms] = await Promise.all([
-      this.prisma.reaction.findMany({ where: { userId: viewerUserId, postId: { in: postIds } }, select: { postId: true } }),
-      this.prisma.savedPost.findMany({ where: { userId: viewerUserId, postId: { in: postIds } }, select: { postId: true } }),
-      this.prisma.momentConfirmation.findMany({ where: { userId: viewerUserId, momentId: { in: momentIds } }, select: { momentId: true } }),
+      this.prisma.reaction.findMany({
+        where: { userId: viewerUserId, postId: { in: postIds } },
+        select: { postId: true },
+      }),
+      this.prisma.savedPost.findMany({
+        where: { userId: viewerUserId, postId: { in: postIds } },
+        select: { postId: true },
+      }),
+      this.prisma.momentConfirmation.findMany({
+        where: { userId: viewerUserId, momentId: { in: momentIds } },
+        select: { momentId: true },
+      }),
     ]);
     const likedPosts = new Set(likes.map((l) => l.postId));
     const savedPosts = new Set(saves.map((s) => s.postId));
@@ -796,9 +1214,19 @@ export class MomentsService {
   }
 
   private relevanceScore(moment: MomentRow, nowMs: number): number {
-    const ageHours = Math.max(1, (nowMs - moment.createdAt.getTime()) / 3_600_000);
+    const ageHours = Math.max(
+      1,
+      (nowMs - moment.createdAt.getTime()) / 3_600_000,
+    );
     const recency = 1 / (ageHours + 1);
-    return (moment.post?._count.reactions ?? 0) * 3 + moment._count.confirmations * 4 + (moment.post?._count.comments ?? 0) * 2 + Math.max(0, moment.post?.shareCount ?? 0) * 1 - ageHours * 0.5 + recency * 5;
+    return (
+      (moment.post?._count.reactions ?? 0) * 3 +
+      moment._count.confirmations * 4 +
+      (moment.post?._count.comments ?? 0) * 2 +
+      Math.max(0, moment.post?.shareCount ?? 0) * 1 -
+      ageHours * 0.5 +
+      recency * 5
+    );
   }
 
   private isUniqueViolation(error: unknown): boolean {
