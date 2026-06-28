@@ -28,36 +28,72 @@ function MomentsSkeleton() {
   );
 }
 
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
   return (
     <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
       <p className="text-sm font-semibold text-red-700">{message}</p>
-      <button onClick={onRetry} className="mt-3 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+      <button
+        onClick={onRetry}
+        className="mt-3 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+      >
         Reintentar
       </button>
     </div>
   );
 }
 
-function ViewPreferenceModal({ onChoose }: { onChoose: (mode: "single" | "explore") => void }) {
+function ViewPreferenceModal({
+  onChoose,
+}: {
+  onChoose: (mode: "single" | "explore") => void;
+}) {
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-6">
-        <h2 className="text-xl font-black text-slate-900">¿Cómo prefieres explorar Momentos?</h2>
-        <p className="mt-1 text-sm text-slate-600">Puedes cambiarlo cuando quieras desde la cabecera.</p>
+        <h2 className="text-xl font-black text-slate-900">
+          ¿Cómo prefieres explorar Momentos?
+        </h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Puedes cambiarlo cuando quieras desde la cabecera.
+        </p>
         <div className="mt-4 space-y-3">
-          <button onClick={() => onChoose("single")} className="flex w-full items-start gap-3 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-100 text-indigo-700">1</span>
+          <button
+            onClick={() => onChoose("single")}
+            className="flex w-full items-start gap-3 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50"
+          >
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-100 text-indigo-700">
+              1
+            </span>
             <span>
-              <span className="block font-semibold text-slate-800">Ver uno por uno</span>
-              <span className="block text-xs text-slate-500">Explora una publicación a la vez y navega con las flechas.</span>
+              <span className="block font-semibold text-slate-800">
+                Ver uno por uno
+              </span>
+              <span className="block text-xs text-slate-500">
+                Explora una publicación a la vez y navega con las flechas.
+              </span>
             </span>
           </button>
-          <button onClick={() => onChoose("explore")} className="flex w-full items-start gap-3 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-700">2</span>
+          <button
+            onClick={() => onChoose("explore")}
+            className="flex w-full items-start gap-3 rounded-2xl border border-slate-200 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50"
+          >
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-700">
+              2
+            </span>
             <span>
-              <span className="block font-semibold text-slate-800">Explorar en tarjetas</span>
-              <span className="block text-xs text-slate-500">Mira varias publicaciones, noticias, fotografías y videos antes de elegir cuál abrir.</span>
+              <span className="block font-semibold text-slate-800">
+                Explorar en tarjetas
+              </span>
+              <span className="block text-xs text-slate-500">
+                Mira varias publicaciones, noticias, fotografías y videos antes
+                de elegir cuál abrir.
+              </span>
             </span>
           </button>
         </div>
@@ -73,7 +109,11 @@ export default function MomentsPage() {
 
   // Explore mode defaults to the news view.
   useEffect(() => {
-    if (moments.preferenceAsked && moments.viewMode === "explore" && moments.activeView === "moments") {
+    if (
+      moments.preferenceAsked &&
+      moments.viewMode === "explore" &&
+      moments.activeView === "moments"
+    ) {
       moments.setActiveView("news");
     }
   }, [moments.preferenceAsked, moments.viewMode]);
@@ -87,14 +127,21 @@ export default function MomentsPage() {
 
   // Keyboard navigation (left/right) only in single view, not while typing or modal open.
   useEffect(() => {
-    if (moments.viewMode !== "single" || moments.activeView !== "moments") return;
+    if (moments.viewMode !== "single" || moments.activeView !== "moments")
+      return;
     function onKey(e: KeyboardEvent) {
       if (showCreate || showComments) return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea" || target?.isContentEditable) return;
-      if (e.key === "ArrowLeft") { e.preventDefault(); moments.previousMoment(); }
-      else if (e.key === "ArrowRight") { e.preventDefault(); moments.nextMoment(); }
+      if (tag === "input" || tag === "textarea" || target?.isContentEditable)
+        return;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        moments.previousMoment();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        moments.nextMoment();
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -102,32 +149,78 @@ export default function MomentsPage() {
 
   return (
     <MomentsPortalLayout>
-      <MomentsHeader activeView={moments.activeView} setActiveView={moments.setActiveView} query={moments.query} setQuery={moments.setQuery} viewMode={moments.viewMode} onChangeViewMode={moments.setViewMode} />
+      <MomentsHeader
+        activeView={moments.activeView}
+        setActiveView={moments.setActiveView}
+        query={moments.query}
+        setQuery={moments.setQuery}
+        viewMode={moments.viewMode}
+        onChangeViewMode={moments.setViewMode}
+      />
       <section className="mx-auto max-w-[1680px] space-y-4 px-4 py-5 sm:px-6 lg:px-8">
-        {moments.toast ? <p className="mb-1 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{moments.toast}</p> : null}
+        {moments.toast ? (
+          <p className="mb-1 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            {moments.toast}
+          </p>
+        ) : null}
 
         {moments.activeView === "moments" ? (
-          moments.loading ? <MomentsSkeleton /> :
-          moments.error ? <ErrorState message={moments.error} onRetry={moments.retry} /> :
-          moments.currentMoment ? (
+          moments.loading ? (
+            <MomentsSkeleton />
+          ) : moments.error ? (
+            <ErrorState message={moments.error} onRetry={moments.retry} />
+          ) : moments.currentMoment ? (
             <>
               <MomentViewer
                 moment={moments.currentMoment}
                 previousMoment={moments.previousMoment}
                 nextMoment={moments.nextMoment}
-                onLike={() => moments.currentMoment && moments.likeMoment(moments.currentMoment.id)}
-                onConfirm={() => moments.currentMoment && moments.confirmMoment(moments.currentMoment.id)}
+                onLike={() =>
+                  moments.currentMoment &&
+                  moments.likeMoment(moments.currentMoment.id)
+                }
+                onConfirm={() =>
+                  moments.currentMoment &&
+                  moments.confirmMoment(moments.currentMoment.id)
+                }
                 onComment={openComments}
-                onSave={() => moments.currentMoment && moments.saveMoment(moments.currentMoment.id)}
-                onShare={() => moments.currentMoment && moments.shareMoment(moments.currentMoment.id)}
+                onSave={() =>
+                  moments.currentMoment &&
+                  moments.saveMoment(moments.currentMoment.id)
+                }
+                onShare={() =>
+                  moments.currentMoment &&
+                  moments.shareMoment(moments.currentMoment.id)
+                }
+                onShareToFeed={() =>
+                  moments.currentMoment &&
+                  moments.shareToFeed(moments.currentMoment.id)
+                }
+                onRemoveFromFeed={() =>
+                  moments.currentMoment &&
+                  moments.removeFromFeed(moments.currentMoment.id)
+                }
+                onDelete={() =>
+                  moments.currentMoment &&
+                  moments.removeMoment(moments.currentMoment.id)
+                }
               />
-              <MomentHistoryStrip moments={moments.filteredMoments.slice(0, 8)} currentMomentId={moments.currentMoment?.id} selectFromHistory={moments.selectFromHistory} />
-              <p className="hidden text-center text-xs text-slate-400 lg:block">Usa las flechas ← → del teclado para navegar</p>
+              <MomentHistoryStrip
+                moments={moments.filteredMoments.slice(0, 8)}
+                currentMomentId={moments.currentMoment?.id}
+                selectFromHistory={moments.selectFromHistory}
+              />
+              <p className="hidden text-center text-xs text-slate-400 lg:block">
+                Usa las flechas ← → del teclado para navegar
+              </p>
             </>
           ) : (
             <div className="rounded-2xl border border-dashed bg-white p-10 text-center">
               <p className="text-slate-700">No hay momentos activos ahora.</p>
-              <button onClick={() => setShowCreate(true)} className="mt-3 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+              <button
+                onClick={() => setShowCreate(true)}
+                className="mt-3 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              >
                 Crear momento
               </button>
             </div>
@@ -135,27 +228,57 @@ export default function MomentsPage() {
         ) : null}
 
         {moments.activeView === "news" ? (
-          moments.newsLoading ? <MomentsSkeleton /> :
-          moments.newsError ? <ErrorState message={moments.newsError} onRetry={moments.retry} /> :
-          <MomentsNewsView news={moments.newsSummaries} />
+          moments.newsLoading ? (
+            <MomentsSkeleton />
+          ) : moments.newsError ? (
+            <ErrorState message={moments.newsError} onRetry={moments.retry} />
+          ) : (
+            <MomentsNewsView news={moments.newsSummaries} />
+          )
         ) : null}
 
         {moments.activeView === "gallery" ? (
-          moments.galleryLoading ? <MomentsSkeleton /> :
-          moments.galleryError ? <ErrorState message={moments.galleryError} onRetry={moments.retry} /> :
-          <MomentsGalleryView moments={moments.galleryMoments} loading={false} />
+          moments.galleryLoading ? (
+            <MomentsSkeleton />
+          ) : moments.galleryError ? (
+            <ErrorState
+              message={moments.galleryError}
+              onRetry={moments.retry}
+            />
+          ) : (
+            <MomentsGalleryView
+              moments={moments.galleryMoments}
+              loading={false}
+            />
+          )
         ) : null}
 
         {moments.activeView === "saved" ? (
-          moments.savedLoading ? <MomentsSkeleton /> :
-          moments.savedError ? <ErrorState message={moments.savedError} onRetry={moments.retry} /> :
-          <MomentsSavedView moments={moments.savedMoments} onRemove={moments.saveMoment} onShare={moments.shareMoment} />
+          moments.savedLoading ? (
+            <MomentsSkeleton />
+          ) : moments.savedError ? (
+            <ErrorState message={moments.savedError} onRetry={moments.retry} />
+          ) : (
+            <MomentsSavedView
+              moments={moments.savedMoments}
+              onRemove={moments.saveMoment}
+              onShare={moments.shareMoment}
+            />
+          )
         ) : null}
 
         {moments.activeView === "trends" ? (
-          moments.trendsLoading ? <MomentsSkeleton /> :
-          moments.trendsError ? <ErrorState message={moments.trendsError} onRetry={moments.retry} /> :
-          <MomentsTrendsView trends={moments.trends} topics={moments.topics} onView={(tag) => moments.setQuery(tag)} />
+          moments.trendsLoading ? (
+            <MomentsSkeleton />
+          ) : moments.trendsError ? (
+            <ErrorState message={moments.trendsError} onRetry={moments.retry} />
+          ) : (
+            <MomentsTrendsView
+              trends={moments.trends}
+              topics={moments.topics}
+              onView={(tag) => moments.setQuery(tag)}
+            />
+          )
         ) : null}
       </section>
 
@@ -167,15 +290,26 @@ export default function MomentsPage() {
       >
         +
       </button>
-      <Link href="/app/momentos/crear" className="sr-only">Crear momento</Link>
+      <Link href="/app/momentos/crear" className="sr-only">
+        Crear momento
+      </Link>
 
       <MomentCommentsDrawer
         open={showComments}
         onClose={() => setShowComments(false)}
-        comments={commentsForCurrent(moments.comments, moments.currentMoment?.id)}
+        comments={commentsForCurrent(
+          moments.comments,
+          moments.currentMoment?.id,
+        )}
         loading={moments.commentsLoading}
-        onComment={(text) => moments.currentMoment && moments.commentMoment(moments.currentMoment.id, text)}
-        onDelete={(commentId) => moments.currentMoment && moments.deleteComment(moments.currentMoment.id, commentId)}
+        onComment={(text) =>
+          moments.currentMoment &&
+          moments.commentMoment(moments.currentMoment.id, text)
+        }
+        onDelete={(commentId) =>
+          moments.currentMoment &&
+          moments.deleteComment(moments.currentMoment.id, commentId)
+        }
       />
 
       {showCreate ? (
@@ -187,11 +321,16 @@ export default function MomentsPage() {
         />
       ) : null}
 
-      {!moments.preferenceAsked ? <ViewPreferenceModal onChoose={moments.setViewMode} /> : null}
+      {!moments.preferenceAsked ? (
+        <ViewPreferenceModal onChoose={moments.setViewMode} />
+      ) : null}
     </MomentsPortalLayout>
   );
 }
 
-function commentsForCurrent(comments: ReturnType<typeof useMoments>["comments"], momentId?: string) {
+function commentsForCurrent(
+  comments: ReturnType<typeof useMoments>["comments"],
+  momentId?: string,
+) {
   return momentId ? comments.filter((c) => c.momentId === momentId) : [];
 }
