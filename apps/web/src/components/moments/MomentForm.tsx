@@ -161,9 +161,16 @@ export function MomentForm({
         <label className="text-xs font-semibold text-slate-600">Imagen o video (opcional)</label>
         <input className="mt-1 block w-full text-sm file:mr-3 file:rounded-xl file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-indigo-700" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" onChange={(e) => handleFile(e.target.files?.[0])} />
         {previewUrl ? (
-          <div className="mt-2 flex items-center justify-between rounded-xl border border-slate-200 p-2 text-xs">
-            <span className="truncate pr-2">{uploading ? "Subiendo..." : "Archivo listo para publicar"}</span>
-            <button type="button" onClick={removeFile} className="rounded-lg border px-2 py-1">Quitar</button>
+          <div className="mt-2 overflow-hidden rounded-xl border border-slate-200 text-xs">
+            {uploaded?.mimeType.startsWith("video/") ? (
+              <video src={previewUrl} controls className="max-h-72 w-full bg-black object-contain" />
+            ) : (
+              <img src={previewUrl} alt="Vista previa del momento" className="max-h-72 w-full object-cover" />
+            )}
+            <div className="flex items-center justify-between p-2">
+              <span className="truncate pr-2">{uploading ? "Subiendo..." : "Archivo listo para publicar"}</span>
+              <button type="button" onClick={removeFile} className="rounded-lg border px-2 py-1">Quitar</button>
+            </div>
           </div>
         ) : null}
       </div>

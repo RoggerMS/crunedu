@@ -1,4 +1,4 @@
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
 
 export const MOMENT_TYPES = ["NOW", "ALERT", "FOOD", "HUMOR", "EVENT", "CAMPUS", "COMMUNITY", "LOST_FOUND"] as const;
@@ -36,6 +36,7 @@ export class CreateMomentDto {
   description?: string;
 
   @IsOptional()
+  @Transform(({ value }) => (typeof value === "string" ? value.toUpperCase() : value))
   @IsEnum(MOMENT_TYPES)
   type?: MomentTypeValue;
 

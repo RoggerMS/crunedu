@@ -14,6 +14,7 @@ import { saveMediaBlob } from "@/features/feed/feed-media-store";
 import type { FeedAttachment } from "@/features/feed/feed.types";
 import { useFeed } from "@/features/feed/useFeed";
 import { uploadPostImage } from "@/lib/api-helpers";
+import { createMoment } from "@/lib/moments-api";
 import { HttpClientError } from "@/lib/http-client";
 import { useAccessToken } from "@/hooks/useAccessToken";
 import { useCommunities } from "@/hooks/useCommunities";
@@ -117,16 +118,34 @@ export default function AppPage() {
             ? { type: "community" as const, id: data.communityId, label: community.name }
             : { type: "general" as const, label: "Feed general" };
 
-          await feed.createPost({
-            title: data.title.trim() || undefined,
-            content: trimmedContent || " ",
-            communityId: data.communityId || undefined,
-            attachments,
-            destination,
-            visibility: data.visibility === "comunidad" ? "community" : "public",
-          });
+          if (data.shareToMoment) {
+            const momentTitle = data.title.trim() || trimmedContent.slice(0, 120).trim() || "Momento CrunEdu";
+            await createMoment({
+              title: momentTitle,
+              description: trimmedContent || undefined,
+              type: "now",
+              shareToFeed: true,
+              media: attachments
+                .filter((attachment) => attachment.apiImageUrl && attachment.storageKey)
+                .map((attachment) => ({
+                  imageUrl: attachment.apiImageUrl as string,
+                  storageKey: attachment.storageKey as string,
+                  mimeType: attachment.mimeType,
+                  sizeBytes: Math.max(1, attachment.size),
+                })),
+            });
+          } else {
+            await feed.createPost({
+              title: data.title.trim() || undefined,
+              content: trimmedContent || " ",
+              communityId: data.communityId || undefined,
+              attachments,
+              destination,
+              visibility: data.visibility === "comunidad" ? "community" : "public",
+            });
+          }
 
-          showToast("Listo, tu publicación ya está en el feed.", "success");
+          showToast(data.shareToMoment ? "Listo, publicado en Momentos y visible en el feed." : "Listo, tu publicación ya está en el feed.", "success");
         } catch (error) {
           showToast(publishErrorMessage(error), "error");
           throw error;
