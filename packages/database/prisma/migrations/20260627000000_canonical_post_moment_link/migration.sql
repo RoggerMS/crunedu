@@ -4,7 +4,7 @@ ALTER TABLE "posts" ADD COLUMN "view_count" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "posts" ADD COLUMN "share_count" INTEGER NOT NULL DEFAULT 0;
 
 CREATE INDEX "posts_in_feed_idx" ON "posts"("in_feed");
-CREATE INDEX "posts_status_in_feed_created_at_id_idx" ON "posts"("status", "in_feed", "created_at"(DESC), "id"(DESC));
+CREATE INDEX "posts_status_in_feed_created_at_id_idx" ON "posts"("status", "in_feed", "created_at" DESC, "id" DESC);
 
 -- Moment: link to canonical Post + permanence + nullable expiration
 ALTER TABLE "moments" ADD COLUMN "post_id" INTEGER;
