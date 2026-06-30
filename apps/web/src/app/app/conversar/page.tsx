@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { ConversarActionBar } from "@/components/conversar/ConversarActionBar";
 import { ConversarCompactCard } from "@/components/conversar/ConversarCompactCard";
+import { ConversarRightSidebar } from "@/components/conversar/ConversarRightSidebar";
 import { ConversarSkeleton, ConversarError, ConversarEmpty } from "@/components/conversar/ConversarStates";
 import { useConversations } from "@/hooks/useConversations";
 import { adaptConversation } from "@/modules/conversar/adapters";
@@ -71,58 +72,63 @@ export default function ConversarPage() {
         </div>
       </div>
 
-      {loading ? (
-        <ConversarSkeleton />
-      ) : error ? (
-        <ConversarError message={error} onRetry={refresh} />
-      ) : adapted.length === 0 ? (
-        <ConversarEmpty
-          title="No hay conversaciones aún"
-          description="Crea la primera conversación de audio o busca compañeros para estudiar juntos."
-        />
-      ) : (
-        <>
-          {live.length > 0 ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                  <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                  En vivo ahora
-                </h2>
-                <Link href="/app/conversar/en-vivo" className="text-sm font-semibold text-indigo-700">
-                  Ver todas
-                </Link>
-              </div>
-              {live.map((conversation) => (
-                <ConversarCompactCard key={conversation.id} conversation={conversation} />
-              ))}
-            </div>
-          ) : null}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="space-y-5">
+          {loading ? (
+            <ConversarSkeleton />
+          ) : error ? (
+            <ConversarError message={error} onRetry={refresh} />
+          ) : adapted.length === 0 ? (
+            <ConversarEmpty
+              title="No hay conversaciones aún"
+              description="Crea la primera conversación de audio o busca compañeros para estudiar juntos."
+            />
+          ) : (
+            <>
+              {live.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                      <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                      En vivo ahora
+                    </h2>
+                    <Link href="/app/conversar/en-vivo" className="text-sm font-semibold text-indigo-700">
+                      Ver todas
+                    </Link>
+                  </div>
+                  {live.map((conversation) => (
+                    <ConversarCompactCard key={conversation.id} conversation={conversation} />
+                  ))}
+                </div>
+              ) : null}
 
-          {waiting.length > 0 ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-slate-900">En espera</h2>
-                <Link href="/app/conversar/en-espera" className="text-sm font-semibold text-indigo-700">
-                  Ver todas
-                </Link>
-              </div>
-              {waiting.map((conversation) => (
-                <ConversarCompactCard key={conversation.id} conversation={conversation} forceWaitingAction />
-              ))}
-            </div>
-          ) : null}
+              {waiting.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-bold text-slate-900">En espera</h2>
+                    <Link href="/app/conversar/en-espera" className="text-sm font-semibold text-indigo-700">
+                      Ver todas
+                    </Link>
+                  </div>
+                  {waiting.map((conversation) => (
+                    <ConversarCompactCard key={conversation.id} conversation={conversation} forceWaitingAction />
+                  ))}
+                </div>
+              ) : null}
 
-          {adapted.length > 0 && live.length === 0 && waiting.length === 0 ? (
-            <div className="space-y-3">
-              <h2 className="text-sm font-bold text-slate-900">Conversaciones</h2>
-              {adapted.map((conversation) => (
-                <ConversarCompactCard key={conversation.id} conversation={conversation} />
-              ))}
-            </div>
-          ) : null}
-        </>
-      )}
+              {adapted.length > 0 && live.length === 0 && waiting.length === 0 ? (
+                <div className="space-y-3">
+                  <h2 className="text-sm font-bold text-slate-900">Conversaciones</h2>
+                  {adapted.map((conversation) => (
+                    <ConversarCompactCard key={conversation.id} conversation={conversation} />
+                  ))}
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+        <ConversarRightSidebar conversations={adapted} />
+      </div>
     </section>
   );
 }

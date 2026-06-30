@@ -226,6 +226,13 @@ export class ConversationsService {
     const visibility = (dto.visibility ?? "PUBLIC") as ConversationVisibility;
     const type = (dto.type ?? "OPEN") as Conversation["type"];
     const universityId = visibility === "UNIVERSITY" ? profile?.universityId ?? null : null;
+    const maxParticipants = dto.maxParticipants ?? 50;
+    const maxSpeakers = dto.maxSpeakers ?? 5;
+
+    this.validateCapacity(maxParticipants, maxSpeakers);
+    if (visibility === "UNIVERSITY" && !universityId) {
+      throw new BadRequestException("Completa tu universidad en el perfil antes de crear una conversación solo para tu universidad.");
+    }
 
     if (type === "DEBATE" && (!dto.initialStances || dto.initialStances.length < 2)) {
       throw new BadRequestException("Un debate necesita al menos dos posturas iniciales.");
@@ -249,8 +256,8 @@ export class ConversationsService {
         course: dto.course?.trim() || null,
         rules: dto.rules?.trim() || null,
         visibility,
-        maxParticipants: dto.maxParticipants ?? 50,
-        maxSpeakers: dto.maxSpeakers ?? 5,
+        maxParticipants,
+        maxSpeakers,
         allowListeners: dto.allowListeners ?? true,
         allowRaiseHand: dto.allowRaiseHand ?? true,
         recordingEnabled: dto.recordingEnabled ?? false,
@@ -304,6 +311,10 @@ export class ConversationsService {
   async update(id: number, dto: UpdateConversationDto, userId: number, role: string) {
     const conv = await this.getOwnedConversation(id, userId, role);
     const data: Prisma.ConversationUpdateInput = {};
+    const maxParticipants = dto.maxParticipants ?? conv.maxParticipants;
+    const maxSpeakers = dto.maxSpeakers ?? conv.maxSpeakers;
+    this.validateCapacity(maxParticipants, maxSpeakers);
+
     if (dto.title !== undefined) data.title = dto.title.trim();
     if (dto.description !== undefined) data.description = dto.description.trim();
     if (dto.category !== undefined) data.category = dto.category.trim();
@@ -314,6 +325,9 @@ export class ConversationsService {
       data.visibility = dto.visibility;
       if (dto.visibility === "UNIVERSITY") {
         const profile = await this.prisma.profile.findUnique({ where: { userId }, select: { universityId: true } });
+        if (!profile?.universityId) {
+          throw new BadRequestException("Completa tu universidad en el perfil antes de limitar la conversación a tu universidad.");
+        }
         data.university = profile?.universityId ? { connect: { id: profile.universityId } } : { disconnect: true };
       } else {
         data.university = { disconnect: true };
@@ -345,6 +359,14 @@ export class ConversationsService {
     const livekitRoomName = `conv-${slug}-${Date.now().toString(36)}`;
     const profile = await this.prisma.profile.findUnique({ where: { userId }, select: { universityId: true } });
     const visibility = (dto.visibility ?? "PUBLIC") as ConversationVisibility;
+    const universityId = visibility === "UNIVERSITY" ? profile?.universityId ?? null : null;
+    const maxParticipants = dto.maxParticipants ?? 50;
+    const maxSpeakers = dto.maxSpeakers ?? 5;
+
+    this.validateCapacity(maxParticipants, maxSpeakers);
+    if (visibility === "UNIVERSITY" && !universityId) {
+      throw new BadRequestException("Completa tu universidad en el perfil antes de guardar una conversación solo para tu universidad.");
+    }
 
     const conversation = await this.prisma.conversation.create({
       data: {
@@ -357,8 +379,8 @@ export class ConversationsService {
         course: dto.course?.trim() || null,
         rules: dto.rules?.trim() || null,
         visibility,
-        maxParticipants: dto.maxParticipants ?? 50,
-        maxSpeakers: dto.maxSpeakers ?? 5,
+        maxParticipants,
+        maxSpeakers,
         allowListeners: dto.allowListeners ?? true,
         allowRaiseHand: dto.allowRaiseHand ?? true,
         recordingEnabled: dto.recordingEnabled ?? false,
@@ -366,7 +388,7 @@ export class ConversationsService {
         tags: (dto.tags ?? []).map((t) => t.trim()).filter(Boolean).slice(0, 8),
         livekitRoomName,
         createdById: userId,
-        universityId: visibility === "UNIVERSITY" ? profile?.universityId ?? null : null,
+        universityId,
         participants: { create: { userId, role: "HOST" as ConversationParticipantRole } },
       },
     });
@@ -379,13 +401,28 @@ export class ConversationsService {
     });
     if (!conv) throw new NotFoundException("Borrador no encontrado.");
     const data: Prisma.ConversationUpdateInput = {};
+    const maxParticipants = dto.maxParticipants ?? conv.maxParticipants;
+    const maxSpeakers = dto.maxSpeakers ?? conv.maxSpeakers;
+    this.validateCapacity(maxParticipants, maxSpeakers);
+
     if (dto.title !== undefined) data.title = dto.title.trim();
     if (dto.description !== undefined) data.description = dto.description.trim();
     if (dto.category !== undefined) data.category = dto.category.trim();
     if (dto.course !== undefined) data.course = dto.course.trim() || null;
     if (dto.rules !== undefined) data.rules = dto.rules.trim() || null;
     if (dto.type !== undefined) data.type = dto.type;
-    if (dto.visibility !== undefined) data.visibility = dto.visibility;
+    if (dto.visibility !== undefined) {
+      data.visibility = dto.visibility;
+      if (dto.visibility === "UNIVERSITY") {
+        const profile = await this.prisma.profile.findUnique({ where: { userId }, select: { universityId: true } });
+        if (!profile?.universityId) {
+          throw new BadRequestException("Completa tu universidad en el perfil antes de limitar el borrador a tu universidad.");
+        }
+        data.university = { connect: { id: profile.universityId } };
+      } else {
+        data.university = { disconnect: true };
+      }
+    }
     if (dto.maxParticipants !== undefined) data.maxParticipants = dto.maxParticipants;
     if (dto.maxSpeakers !== undefined) data.maxSpeakers = dto.maxSpeakers;
     if (dto.allowListeners !== undefined) data.allowListeners = dto.allowListeners;
@@ -1320,7 +1357,15 @@ export class ConversationsService {
   private async getOwnedConversation(id: number, userId: number, role: string) {
     const conv = await this.prisma.conversation.findFirst({
       where: { id, deletedAt: null },
-      select: { id: true, createdById: true, status: true, livekitRoomName: true, recordingEnabled: true },
+      select: {
+        id: true,
+        createdById: true,
+        status: true,
+        livekitRoomName: true,
+        recordingEnabled: true,
+        maxParticipants: true,
+        maxSpeakers: true,
+      },
     });
     if (!conv) throw new NotFoundException("Conversación no encontrada.");
     if (conv.createdById !== userId && role !== "ADMIN") {
@@ -1356,6 +1401,12 @@ export class ConversationsService {
       slug = `${base}-${i++}`;
     }
     return slug;
+  }
+
+  private validateCapacity(maxParticipants: number, maxSpeakers: number) {
+    if (maxSpeakers > maxParticipants) {
+      throw new BadRequestException("El máximo de hablantes no puede superar el máximo de participantes.");
+    }
   }
 
   // ---------- MAPPERS ----------
