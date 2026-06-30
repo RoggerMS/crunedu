@@ -54,6 +54,7 @@ export default function ConversarNuevaPage() {
     if (!category) return "Selecciona una categoría.";
     if (maxParticipants < 2 || maxParticipants > 200) return "El máximo de participantes debe estar entre 2 y 200.";
     if (maxSpeakers < 1 || maxSpeakers > 25) return "El máximo de hablantes debe estar entre 1 y 25.";
+    if (maxSpeakers > maxParticipants) return "El máximo de hablantes no puede superar el máximo de participantes.";
     if (conversationType === "debate" && stances.filter((s) => s.title.trim()).length < 2) {
       return "Un debate necesita al menos dos posturas iniciales.";
     }
@@ -197,6 +198,9 @@ export default function ConversarNuevaPage() {
               <input type="number" min={1} max={25} value={maxSpeakers} onChange={(e) => setMaxSpeakers(Number(e.target.value))} className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200" />
             </label>
           </div>
+          <p className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-800">
+            Consejo: define pocos hablantes para mantener ordenada la sala. El número de hablantes nunca debe superar el total de participantes.
+          </p>
           <label className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
             <span>Permitir oyentes</span>
             <input type="checkbox" checked={allowListeners} onChange={() => setAllowListeners((v) => !v)} className="h-5 w-5 accent-indigo-600" />
