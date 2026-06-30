@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { AuthModule } from "./modules/auth/auth.module";
 import { CommunitiesModule } from "./modules/communities/communities.module";
 import { CacheModule } from "./modules/cache/cache.module";
+import { ConversationsModule } from "./modules/conversations/conversations.module";
 import { JobsModule } from "./modules/jobs/jobs.module";
 import { DocumentsModule } from "./modules/documents/documents.module";
 import { DebatesModule } from "./modules/debates/debates.module";
@@ -42,6 +43,7 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
     ReportsModule,
     NotificationsModule,
     MomentsModule,
+    ConversationsModule,
     ObservabilityModule,
   ],
   providers: [RateLimitGuard],

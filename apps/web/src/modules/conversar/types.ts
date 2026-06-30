@@ -104,6 +104,7 @@ export interface Conversation {
   sharedLinks: SharedLink[];
   debateStances?: DebateStance[];
   sourceConversationId?: string;
+  rules?: string;
 }
 
 export interface Companion {

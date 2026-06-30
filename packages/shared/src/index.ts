@@ -225,3 +225,155 @@ export interface SearchResults {
   communities: SearchCommunityResult[];
   products: SearchProductResult[];
 }
+
+// --- CONVERSAR (salas de audio) ---
+export type ConversationType = "OPEN" | "STUDY" | "QUESTION" | "DEBATE";
+export type ConversationStatus = "DRAFT" | "WAITING" | "LIVE" | "ENDED" | "CANCELLED";
+export type ConversationVisibility = "PUBLIC" | "UNIVERSITY" | "PRIVATE";
+export type ConversationParticipantRole = "HOST" | "MODERATOR" | "SPEAKER" | "LISTENER";
+export type ConversationSpeakerRequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export type ConversationRecordingStatus = "REQUESTED" | "RECORDING" | "PROCESSING" | "AVAILABLE" | "FAILED" | "DELETED";
+export type ConversationMaterialType = "PDF" | "DOCX" | "PPTX" | "IMAGE" | "OTHER";
+export type ConversationSharedLinkType = "MEET" | "ZOOM" | "TEAMS" | "DISCORD" | "DOCUMENT" | "VIDEO" | "OTHER";
+
+export interface ConversationAuthor {
+  id: number;
+  name: string;
+  avatarUrl: string | null;
+}
+
+export interface ConversationListItem {
+  id: number;
+  slug: string;
+  type: ConversationType;
+  status: ConversationStatus;
+  title: string;
+  description: string;
+  category: string;
+  course: string | null;
+  visibility: ConversationVisibility;
+  isRecording: boolean;
+  isLocked: boolean;
+  tags: string[];
+  createdAt: string;
+  scheduledAt: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  maxParticipants: number;
+  maxSpeakers: number;
+  allowListeners: boolean;
+  allowRaiseHand: boolean;
+  allowNewStances: boolean;
+  livekitRoomName: string;
+  conclusion: string | null;
+  createdBy: ConversationAuthor;
+  university: { id: number; name: string; shortName: string | null } | null;
+  participantsCount: number;
+  speakersCount: number;
+  listenersCount: number;
+  isMine: boolean;
+  materials: Array<{ id: number; title: string; type: ConversationMaterialType; fileUrl: string; mimeType: string; sizeBytes: number; createdAt: string; uploadedById: number }>;
+  links: Array<{ id: number; title: string; url: string; domain: string; type: ConversationSharedLinkType; createdAt: string; sharedById: number }>;
+}
+
+export interface ConversationDetail extends ConversationListItem {
+  rules: string | null;
+  debateStances: Array<{ id: number; title: string; description: string | null; order: number; participants: number; argumentsCount: number }>;
+  recordings: Array<{ id: number; durationSeconds: number; plays: number; status: ConversationRecordingStatus }>;
+  startSubscriptionsCount: number;
+}
+
+export interface ConversationListResponse {
+  items: ConversationListItem[];
+  nextCursor: string | null;
+}
+
+export interface ConversationJoinResponse {
+  conversation: ConversationDetail;
+  livekitUrl: string;
+  token: string;
+  role: ConversationParticipantRole;
+}
+
+export interface ConversationSpeakerRequest {
+  id: number;
+  conversationId: number;
+  userId: number;
+  status: ConversationSpeakerRequestStatus;
+  requestedAt: string;
+  resolvedAt: string | null;
+  resolvedById: number | null;
+  user: ConversationAuthor;
+}
+
+export interface ConversationInvite {
+  id: number;
+  token: string;
+  expiresAt: string;
+  maxUses: number;
+}
+
+export interface ConversationRecordingItem {
+  id: number;
+  conversationId: number;
+  title: string;
+  type: ConversationType;
+  category: string;
+  durationSeconds: number;
+  sizeBytes: number;
+  plays: number;
+  status: ConversationRecordingStatus;
+  createdAt: string;
+  fileUrl: string | null;
+  mimeType: string;
+}
+
+export interface ConversationCompanion {
+  userId: number;
+  description: string;
+  topics: string[];
+  courses: string[];
+  availabilityText: string | null;
+  availableForVoice: boolean;
+  isActive: boolean;
+  user: {
+    id: number;
+    name: string;
+    avatarUrl: string | null;
+    university: { id: number; name: string; shortName: string | null } | null;
+    career: { id: number; name: string } | null;
+  };
+  isMine: boolean;
+}
+
+export interface ConversationDebateStance {
+  id: number;
+  title: string;
+  description: string | null;
+  order: number;
+  participants: number;
+  argumentsCount: number;
+  memberships: Array<{ userId: number; user: ConversationAuthor }>;
+  arguments: Array<{ id: number; content: string; createdAt: string; updatedAt: string; authorId: number; author: ConversationAuthor }>;
+}
+
+export interface CreateConversationPayload {
+  title: string;
+  description: string;
+  category?: string;
+  course?: string;
+  rules?: string;
+  type?: ConversationType;
+  visibility?: ConversationVisibility;
+  maxParticipants?: number;
+  maxSpeakers?: number;
+  allowListeners?: boolean;
+  allowRaiseHand?: boolean;
+  recordingEnabled?: boolean;
+  allowNewStances?: boolean;
+  tags?: string[];
+  startNow?: boolean;
+  initialStances?: Array<{ title: string; description?: string }>;
+  initialLinkUrl?: string;
+  initialLinkTitle?: string;
+}

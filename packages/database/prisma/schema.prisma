@@ -166,6 +166,68 @@ enum MomentType {
   LOST_FOUND
 }
 
+enum ConversationType {
+  OPEN
+  STUDY
+  QUESTION
+  DEBATE
+}
+
+enum ConversationStatus {
+  DRAFT
+  WAITING
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+enum ConversationVisibility {
+  PUBLIC
+  UNIVERSITY
+  PRIVATE
+}
+
+enum ConversationParticipantRole {
+  HOST
+  MODERATOR
+  SPEAKER
+  LISTENER
+}
+
+enum ConversationSpeakerRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ConversationRecordingStatus {
+  REQUESTED
+  RECORDING
+  PROCESSING
+  AVAILABLE
+  FAILED
+  DELETED
+}
+
+enum ConversationMaterialType {
+  PDF
+  DOCX
+  PPTX
+  IMAGE
+  OTHER
+}
+
+enum ConversationSharedLinkType {
+  MEET
+  ZOOM
+  TEAMS
+  DISCORD
+  DOCUMENT
+  VIDEO
+  OTHER
+}
+
 // --- 1. ESTRUCTURA ACADÉMICA ---
 model University {
   id        Int      @id @default(autoincrement())
@@ -179,6 +241,7 @@ model University {
   profiles                Profile[]
   universityAreas         UniversityArea[]
   universityCalendarItems UniversityCalendarItem[]
+  conversations           Conversation[]
 
   @@map("universities")
 }
@@ -265,6 +328,21 @@ model User {
   momentConfirmations  MomentConfirmation[]
   savedMoments         SavedMoment[]
   momentComments       MomentComment[]
+
+  conversationsCreated            Conversation[]
+  conversationParticipants        ConversationParticipant[]
+  conversationSpeakerRequests     ConversationSpeakerRequest[]
+  conversationSpeakerResolved     ConversationSpeakerRequest[]   @relation("SpeakerRequestResolver")
+  conversationBansIssued          ConversationBan[]              @relation("ConversationBanBannedBy")
+  conversationBansReceived        ConversationBan[]              @relation("ConversationBanUser")
+  conversationMaterialsUploaded   ConversationMaterial[]
+  conversationLinksShared         ConversationSharedLink[]
+  conversationDebateStances       ConversationDebateStance[]
+  conversationDebateMemberships   ConversationDebateMembership[]
+  conversationDebateArguments     ConversationDebateArgument[]
+  conversationInvitesCreated      ConversationInvite[]
+  conversationStartSubscriptions  ConversationStartSubscription[]
+  conversationCompanionProfile    ConversationCompanionProfile?
 
   @@index([role])
   @@index([createdAt])
@@ -1348,4 +1426,279 @@ model MomentComment {
   @@index([status])
   @@index([momentId, status, createdAt])
   @@map("moment_comments")
+}
+
+// --- 12. CONVERSAR (salas de audio) ---
+model Conversation {
+  id                Int                  @id @default(autoincrement())
+  slug              String               @unique
+  type              ConversationType     @default(OPEN)
+  status            ConversationStatus   @default(WAITING)
+  title             String
+  description       String               @default("")
+  category          String               @default("")
+  course            String?
+  rules             String?
+  visibility        ConversationVisibility @default(PUBLIC)
+  maxParticipants   Int                  @default(50) @map("max_participants")
+  maxSpeakers       Int                  @default(5) @map("max_speakers")
+  allowListeners    Boolean              @default(true) @map("allow_listeners")
+  allowRaiseHand    Boolean              @default(true) @map("allow_raise_hand")
+  recordingEnabled  Boolean              @default(false) @map("recording_enabled")
+  allowNewStances   Boolean              @default(true) @map("allow_new_stances")
+  isLocked          Boolean              @default(false) @map("is_locked")
+  tags              String[]             @default([])
+  livekitRoomName   String               @unique @map("livekit_room_name")
+  conclusion        String?
+  createdById       Int                  @map("created_by_id")
+  universityId      Int?                 @map("university_id")
+  scheduledAt       DateTime?            @map("scheduled_at")
+  startedAt         DateTime?            @map("started_at")
+  endedAt           DateTime?            @map("ended_at")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  deletedAt         DateTime?            @map("deleted_at")
+
+  creator              User                         @relation(fields: [createdById], references: [id])
+  university           University?                  @relation(fields: [universityId], references: [id])
+  participants         ConversationParticipant[]
+  speakerRequests      ConversationSpeakerRequest[]
+  invites              ConversationInvite[]
+  bans                 ConversationBan[]
+  materials            ConversationMaterial[]
+  links                ConversationSharedLink[]
+  recordings           ConversationRecording[]
+  debateStances        ConversationDebateStance[]
+  startSubscriptions   ConversationStartSubscription[]
+
+  @@index([createdById])
+  @@index([status])
+  @@index([type])
+  @@index([visibility])
+  @@index([category])
+  @@index([universityId])
+  @@index([createdAt])
+  @@index([status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([type, status, createdAt(sort: Desc)])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id              Int                        @id @default(autoincrement())
+  conversationId  Int                        @map("conversation_id")
+  userId          Int                        @map("user_id")
+  role            ConversationParticipantRole @default(LISTENER)
+  joinedAt        DateTime                   @default(now()) @map("joined_at")
+  leftAt          DateTime?                  @map("left_at")
+  totalSpeakingSeconds Int                   @default(0) @map("total_speaking_seconds")
+  createdAt       DateTime                   @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId, role])
+  @@index([leftAt])
+  @@map("conversation_participants")
+}
+
+model ConversationSpeakerRequest {
+  id             Int                             @id @default(autoincrement())
+  conversationId Int                             @map("conversation_id")
+  userId         Int                             @map("user_id")
+  status         ConversationSpeakerRequestStatus @default(PENDING)
+  requestedAt    DateTime                        @default(now()) @map("requested_at")
+  resolvedAt     DateTime?                       @map("resolved_at")
+  resolvedById   Int?                            @map("resolved_by_id")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resolver     User?         @relation("SpeakerRequestResolver", fields: [resolvedById], references: [id])
+
+  @@unique([conversationId, userId])
+  @@index([conversationId, status])
+  @@index([userId])
+  @@map("conversation_speaker_requests")
+}
+
+model ConversationInvite {
+  id             Int       @id @default(autoincrement())
+  conversationId Int       @map("conversation_id")
+  createdById    Int       @map("created_by_id")
+  tokenHash      String    @unique @map("token_hash")
+  expiresAt      DateTime  @map("expires_at")
+  maxUses        Int       @default(1) @map("max_uses")
+  uses           Int       @default(0)
+  revokedAt      DateTime? @map("revoked_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  creator      User          @relation(fields: [createdById], references: [id])
+
+  @@index([conversationId])
+  @@index([expiresAt])
+  @@map("conversation_invites")
+}
+
+model ConversationBan {
+  id             Int        @id @default(autoincrement())
+  conversationId Int        @map("conversation_id")
+  userId         Int        @map("user_id")
+  bannedById     Int        @map("banned_by_id")
+  reason         String?
+  createdAt      DateTime   @default(now()) @map("created_at")
+  expiresAt      DateTime?  @map("expires_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User          @relation("ConversationBanUser", fields: [userId], references: [id], onDelete: Cascade)
+  bannedBy     User          @relation("ConversationBanBannedBy", fields: [bannedById], references: [id])
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_bans")
+}
+
+model ConversationMaterial {
+  id             Int                     @id @default(autoincrement())
+  conversationId Int                     @map("conversation_id")
+  title          String
+  type           ConversationMaterialType @default(OTHER)
+  objectKey      String                  @map("object_key")
+  fileUrl        String                  @map("file_url")
+  mimeType       String                  @map("mime_type")
+  sizeBytes      Int                     @map("size_bytes")
+  uploadedById   Int                     @map("uploaded_by_id")
+  createdAt      DateTime                @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  uploadedBy   User          @relation(fields: [uploadedById], references: [id])
+
+  @@index([conversationId])
+  @@map("conversation_materials")
+}
+
+model ConversationSharedLink {
+  id             Int                        @id @default(autoincrement())
+  conversationId Int                        @map("conversation_id")
+  title          String
+  url            String
+  domain         String
+  type           ConversationSharedLinkType @default(OTHER)
+  sharedById     Int                        @map("shared_by_id")
+  createdAt      DateTime                   @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sharedBy     User          @relation(fields: [sharedById], references: [id])
+
+  @@index([conversationId])
+  @@map("conversation_shared_links")
+}
+
+model ConversationRecording {
+  id              Int                          @id @default(autoincrement())
+  conversationId  Int                          @map("conversation_id")
+  status          ConversationRecordingStatus  @default(REQUESTED)
+  objectKey       String?                      @map("object_key")
+  fileUrl         String?                      @map("file_url")
+  durationSeconds Int                          @default(0) @map("duration_seconds")
+  sizeBytes       Int                          @default(0) @map("size_bytes")
+  mimeType        String                       @default("audio/mpeg") @map("mime_type")
+  plays           Int                          @default(0)
+  egressId        String?                      @map("egress_id")
+  errorMessage    String?                      @map("error_message")
+  startedAt       DateTime?                    @map("started_at")
+  endedAt         DateTime?                    @map("ended_at")
+  createdAt       DateTime                     @default(now()) @map("created_at")
+  deletedAt       DateTime?                    @map("deleted_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("conversation_recordings")
+}
+
+model ConversationDebateStance {
+  id             Int      @id @default(autoincrement())
+  conversationId Int      @map("conversation_id")
+  title          String
+  description    String?
+  order          Int      @default(0)
+  createdById    Int      @map("created_by_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdBy    User          @relation(fields: [createdById], references: [id])
+  memberships  ConversationDebateMembership[]
+  arguments    ConversationDebateArgument[]
+
+  @@index([conversationId])
+  @@map("conversation_debate_stances")
+}
+
+model ConversationDebateMembership {
+  id        Int      @id @default(autoincrement())
+  stanceId  Int      @map("stance_id")
+  userId    Int      @map("user_id")
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  stance ConversationDebateStance @relation(fields: [stanceId], references: [id], onDelete: Cascade)
+  user   User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([stanceId, userId])
+  @@index([userId])
+  @@map("conversation_debate_memberships")
+}
+
+model ConversationDebateArgument {
+  id        Int       @id @default(autoincrement())
+  stanceId  Int       @map("stance_id")
+  authorId  Int       @map("author_id")
+  content   String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  stance ConversationDebateStance @relation(fields: [stanceId], references: [id], onDelete: Cascade)
+  author User                     @relation(fields: [authorId], references: [id])
+
+  @@index([stanceId])
+  @@index([authorId])
+  @@map("conversation_debate_arguments")
+}
+
+model ConversationCompanionProfile {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @unique @map("user_id")
+  description       String   @default("")
+  topics            String[] @default([])
+  courses           String[] @default([])
+  availabilityText  String?  @map("availability_text")
+  availableForVoice Boolean  @default(true) @map("available_for_voice")
+  isActive          Boolean  @default(true) @map("is_active")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([isActive])
+  @@index([availableForVoice])
+  @@map("conversation_companion_profiles")
+}
+
+model ConversationStartSubscription {
+  id             Int       @id @default(autoincrement())
+  conversationId Int       @map("conversation_id")
+  userId         Int       @map("user_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  notifiedAt     DateTime? @map("notified_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([notifiedAt])
+  @@map("conversation_start_subscriptions")
 }

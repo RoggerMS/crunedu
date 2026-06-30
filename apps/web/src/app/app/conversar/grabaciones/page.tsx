@@ -1,56 +1,115 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { PrimaryButton, SecondaryButton } from "@/components/ui";
-import { ConversarRecordingCard } from "@/components/conversar/ConversarRecordingCard";
-import { ConversarRecordingsEmptyState } from "@/components/conversar/ConversarRecordingsEmptyState";
-import { ConversarRecordingsFilters } from "@/components/conversar/ConversarRecordingsFilters";
-import { ConversarRecordingsRightRail } from "@/components/conversar/ConversarRecordingsRightRail";
-import { mockConversations } from "@/modules/conversar/mock-data";
-import type { Conversation, ConversationType } from "@/modules/conversar/types";
-import { isVisibleRecording } from "@/modules/conversar/utils";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Search } from "lucide-react";
+import { SecondaryButton } from "@/components/ui";
+import { ConversarAudioPlayer } from "@/components/conversar/ConversarAudioPlayer";
+import { ConversarSkeleton, ConversarError, ConversarEmpty } from "@/components/conversar/ConversarStates";
+import { fetchRecordings, playRecording, getMaterialUrl } from "@/lib/conversations-api";
+import { mapApiError } from "@/lib/http-client";
+import type { ConversationRecordingItem, ConversationType } from "@crunedu/shared";
 
-type RecordingsTabKey = "all" | "academic" | "debates" | "study" | "mostPlayed" | "recent";
-type SortOption = "latest" | "plays" | "duration";
-type DateOption = "all" | "7d" | "30d";
+type TabKey = "all" | "academic" | "debates" | "study" | "mostPlayed" | "recent";
 
-const tabs = [{ key: "all", label: "Todas" }, { key: "academic", label: "Académicas" }, { key: "debates", label: "Debates" }, { key: "study", label: "Salas de estudio" }, { key: "mostPlayed", label: "Más escuchadas" }, { key: "recent", label: "Recientes" }] as const;
-const academicCategories = new Set(["Matemática", "Historia", "Física", "Programación", "Inglés", "Filosofía", "Tecnología / Educación", "Educación"]);
+const tabs: Array<{ key: TabKey; label: string }> = [
+  { key: "all", label: "Todas" },
+  { key: "academic", label: "Académicas" },
+  { key: "debates", label: "Debates" },
+  { key: "study", label: "Salas de estudio" },
+  { key: "mostPlayed", label: "Más escuchadas" },
+  { key: "recent", label: "Recientes" },
+];
+
+const ACADEMIC_CATEGORIES = new Set(["Matemática", "Historia", "Física", "Programación", "Inglés", "Filosofía", "Tecnología / Educación"]);
 
 export default function ConversarRecordingsPage() {
-  const [activeTab, setActiveTab] = useState<RecordingsTabKey>("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [topic, setTopic] = useState("all");
-  const [type, setType] = useState<ConversationType | "all">("all");
-  const [duration, setDuration] = useState("all");
-  const [date, setDate] = useState<DateOption>("all");
-  const [sort, setSort] = useState<SortOption>("latest");
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
+  const [search, setSearch] = useState("");
+  const [recordings, setRecordings] = useState<ConversationRecordingItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const visibleRecordings = useMemo(() => {
-    let recordings = mockConversations.filter(isVisibleRecording);
-    recordings = applyTabFilter(recordings, activeTab);
-    const normalizedSearch = searchTerm.trim().toLocaleLowerCase();
-    if (normalizedSearch) recordings = recordings.filter((c) => [c.title, c.description, c.category, c.course ?? "", c.createdBy.name, ...c.tags].join(" ").toLocaleLowerCase().includes(normalizedSearch));
-    if (topic !== "all") recordings = recordings.filter((c) => c.category === topic || c.course === topic);
-    if (type !== "all") recordings = recordings.filter((c) => c.type === type);
-    if (duration !== "all") recordings = recordings.filter((c) => (c.recording?.durationLabel ?? "").includes(duration));
-    if (date !== "all") {
-      const threshold = new Date();
-      threshold.setDate(threshold.getDate() - (date === "7d" ? 7 : 30));
-      recordings = recordings.filter((c) => new Date(c.createdAt) >= threshold);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const sort = activeTab === "mostPlayed" ? "popular" : undefined;
+      const typeFilter: ConversationType | undefined =
+        activeTab === "debates" ? "DEBATE" : activeTab === "study" ? "STUDY" : undefined;
+      const res = await fetchRecordings({ search: search || undefined, sort, type: typeFilter });
+      let items = res.items;
+      if (activeTab === "academic") {
+        items = items.filter((r) => ACADEMIC_CATEGORIES.has(r.category));
+      }
+      if (activeTab === "recent") {
+        items = [...items].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      }
+      setRecordings(items);
+    } catch (err) {
+      setError(mapApiError(err, "No se pudieron cargar las grabaciones."));
+    } finally {
+      setLoading(false);
     }
-    const finalSort = activeTab === "mostPlayed" ? "plays" : activeTab === "recent" ? "latest" : sort;
-    return recordings.sort((a, b) => sortRecordings(a, b, finalSort));
-  }, [activeTab, date, duration, searchTerm, sort, topic, type]);
+  }, [activeTab, search]);
 
-  const mostPlayed = useMemo(() => [...visibleRecordings].sort((a, b) => (b.recording?.plays ?? 0) - (a.recording?.plays ?? 0)).slice(0, 3), [visibleRecordings]);
-  const featuredCreators = useMemo(() => Array.from(new Map(visibleRecordings.map((c) => [c.createdBy.id, c.createdBy])).values()).slice(0, 4), [visibleRecordings]);
-  const topicOptions = useMemo(() => Array.from(new Set(mockConversations.flatMap((c) => [c.category, c.course].filter(Boolean) as string[]))).sort((a, b) => a.localeCompare(b)).map((item) => ({ value: item, label: item })), []);
+  useEffect(() => {
+    const timeout = setTimeout(load, 300);
+    return () => clearTimeout(timeout);
+  }, [load]);
 
-  return <section className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8"><header className="rounded-3xl border border-indigo-100 bg-gradient-to-r from-white via-indigo-50/40 to-violet-50/30 p-5 shadow-soft sm:p-6"><div className="flex flex-wrap items-start justify-between gap-4"><div className="space-y-2"><h1 className="text-3xl font-black tracking-tight text-slate-900">Grabaciones</h1><p className="text-sm text-slate-600 sm:text-base">Escucha conversaciones pasadas, debates y salas de estudio grabadas.</p></div><div className="flex flex-wrap gap-3"><Link href="/app/conversar"><SecondaryButton type="button">Volver a Conversar</SecondaryButton></Link><PrimaryButton type="button" disabled>Explorar temas</PrimaryButton></div></div></header><div className="flex flex-wrap gap-2 rounded-3xl border border-slate-200 bg-white/95 p-3 shadow-soft">{tabs.map((tab) => <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)} className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${activeTab === tab.key ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>{tab.label}</button>)}</div><ConversarRecordingsFilters searchTerm={searchTerm} onSearchTermChange={setSearchTerm} topic={topic} onTopicChange={setTopic} type={type} onTypeChange={(value) => setType(value as ConversationType | "all")} duration={duration} onDurationChange={setDuration} date={date} onDateChange={(value) => setDate(value as DateOption)} sort={sort} onSortChange={(value) => setSort(value as SortOption)} topicOptions={topicOptions} /><div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_330px]"><main className="space-y-4">{visibleRecordings.length ? visibleRecordings.map((conversation) => <ConversarRecordingCard key={conversation.id} conversation={conversation} />) : <ConversarRecordingsEmptyState />}</main><ConversarRecordingsRightRail mostPlayed={mostPlayed} featuredCreators={featuredCreators} /></div></section>;
+  const totalPlays = useMemo(() => recordings.reduce((sum, r) => sum + r.plays, 0), [recordings]);
+
+  return (
+    <section className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+      <header className="rounded-3xl border border-indigo-100 bg-gradient-to-r from-white via-indigo-50/40 to-violet-50/30 p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-black tracking-tight text-slate-900">Grabaciones</h1>
+            <p className="text-sm text-slate-600 sm:text-base">Escucha conversaciones pasadas, debates y salas de estudio grabadas.</p>
+          </div>
+          <Link href="/app/conversar"><SecondaryButton type="button">Volver a Conversar</SecondaryButton></Link>
+        </div>
+      </header>
+
+      <div className="flex flex-wrap gap-2 rounded-3xl border border-slate-200 bg-white p-3">
+        {tabs.map((tab) => (
+          <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)} className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${activeTab === tab.key ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>{tab.label}</button>
+        ))}
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar grabaciones..." className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" />
+      </div>
+
+      {loading ? <ConversarSkeleton /> : error ? <ConversarError message={error} onRetry={load} /> : recordings.length === 0 ? (
+        <ConversarEmpty title="No hay grabaciones disponibles" description="Las conversaciones grabadas aparecerán aquí cuando estén listas." />
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-slate-500">{recordings.length} grabaciones · {totalPlays} reproducciones totales</p>
+          {recordings.map((rec) => (
+            <div key={rec.id}>
+              <div className="mb-1 flex items-center justify-between">
+                <Link href={`/app/conversar/${rec.conversationId}/finalizada`} className="text-sm font-semibold text-slate-900 hover:text-indigo-700">{rec.title}</Link>
+                <span className="text-xs text-slate-500">{rec.plays} reproducciones</span>
+              </div>
+              {rec.fileUrl ? (
+                <ConversarAudioPlayer
+                  src={getMaterialUrl(rec.fileUrl)}
+                  title={rec.title}
+                  durationSeconds={rec.durationSeconds}
+                  onPlayCount={() => playRecording(rec.id).catch(() => undefined)}
+                />
+              ) : (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  El archivo de audio no está disponible todavía.
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
-
-function applyTabFilter(conversations: Conversation[], tab: RecordingsTabKey) { if (tab === "all" || tab === "mostPlayed" || tab === "recent") return conversations; if (tab === "debates") return conversations.filter((conversation) => conversation.type === "debate"); if (tab === "study") return conversations.filter((conversation) => conversation.type === "study"); if (tab === "academic") return conversations.filter((conversation) => academicCategories.has(conversation.category) || (conversation.course ? academicCategories.has(conversation.course) : false)); return conversations; }
-function sortRecordings(a: Conversation, b: Conversation, sort: SortOption) { if (sort === "plays") return (b.recording?.plays ?? 0) - (a.recording?.plays ?? 0); if (sort === "duration") return parseDurationMinutes(b.recording?.durationLabel) - parseDurationMinutes(a.recording?.durationLabel); return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); }
-function parseDurationMinutes(durationLabel?: string | null) { if (!durationLabel) return 0; const value = Number.parseInt(durationLabel, 10); return Number.isNaN(value) ? 0 : value; }

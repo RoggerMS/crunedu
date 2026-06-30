@@ -11,6 +11,7 @@
     "test:integration": "ts-node -r tsconfig-paths/register src/tests/integration.smoke.ts",
     "test:regression:mvp": "ts-node -r tsconfig-paths/register src/tests/integration.smoke.ts",
     "test:moments": "ts-node -r tsconfig-paths/register src/tests/moments.smoke.ts",
+    "test:conversations": "ts-node -r tsconfig-paths/register src/tests/conversations.smoke.ts",
     "test:bootstrap": "ts-node -r tsconfig-paths/register src/tests/bootstrap.dependencies.spec.ts",
     "test:contract": "ts-node -r tsconfig-paths/register src/tests/api.contract.spec.ts",
     "quality:gate": "npm run test:bootstrap && npm run test:contract && npm run test:regression:mvp && npm run test:release:e2e",
@@ -28,6 +29,7 @@
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "livekit-server-sdk": "^2.11.0",
     "redis": "^4.7.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"

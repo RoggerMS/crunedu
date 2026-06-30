@@ -1,4 +1,4 @@
-import { PrismaClient, ProductType, ProductPriceType, ProductCondition, ProductDeliveryType, Role, UniversityContentType, UniversityContentVisibility, UniversityItemType, UniversityItemModality, UniversityItemPriority, UniversityItemStatus, MomentType } from "@prisma/client";
+import { PrismaClient, ProductType, ProductPriceType, ProductCondition, ProductDeliveryType, Role, UniversityContentType, UniversityContentVisibility, UniversityItemType, UniversityItemModality, UniversityItemPriority, UniversityItemStatus, MomentType, ConversationType, ConversationStatus, ConversationVisibility, ConversationParticipantRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -978,11 +978,126 @@ async function main() {
     }
   }
 
+  // --- Conversar: conversations + companion profiles ---
+  const convSlug1 = `repaso-logica-${admin.id}`;
+  const conv1 = await prisma.conversation.upsert({
+    where: { slug: convSlug1 },
+    update: {},
+    create: {
+      slug: convSlug1,
+      type: ConversationType.STUDY,
+      status: ConversationStatus.WAITING,
+      title: "Repaso de lógica matemática",
+      description: "Repaso guiado para cachimbos con ejercicios paso a paso antes del parcial.",
+      category: "Matemática",
+      course: "Lógica Matemática",
+      rules: "Respeta los turnos y aporta con respeto.",
+      visibility: ConversationVisibility.PUBLIC,
+      maxParticipants: 30,
+      maxSpeakers: 5,
+      tags: ["lógica", "cachimbos", "parcial"],
+      livekitRoomName: `conv-${convSlug1}`,
+      createdById: admin.id,
+      universityId: une.id,
+      participants: { create: { userId: admin.id, role: ConversationParticipantRole.HOST } },
+    },
+  });
+
+  const convSlug2 = `tecnicas-estudio-${admin.id}`;
+  const startedAt2 = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  const endedAt2 = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 45 * 60 * 1000);
+  const conv2 = await prisma.conversation.upsert({
+    where: { slug: convSlug2 },
+    update: {},
+    create: {
+      slug: convSlug2,
+      type: ConversationType.QUESTION,
+      status: ConversationStatus.ENDED,
+      title: "¿Qué técnicas de estudio realmente funcionan?",
+      description: "Conversación sobre métodos de estudio efectivos para cursos pesados.",
+      category: "Vida universitaria",
+      rules: "Escucha con atención y comparte tu experiencia.",
+      visibility: ConversationVisibility.PUBLIC,
+      maxParticipants: 20,
+      maxSpeakers: 4,
+      tags: ["hábitos", "exámenes", "organización"],
+      livekitRoomName: `conv-${convSlug2}`,
+      createdById: admin.id,
+      universityId: une.id,
+      startedAt: startedAt2,
+      endedAt: endedAt2,
+      conclusion: "La técnica Pomodoro y el repaso espaciado son las más recomendadas por los participantes.",
+      participants: { create: { userId: admin.id, role: ConversationParticipantRole.HOST } },
+    },
+  });
+
+  const convSlug3 = `debate-ia-${admin.id}`;
+  const startedAt3 = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000);
+  const endedAt3 = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000);
+  const conv3 = await prisma.conversation.upsert({
+    where: { slug: convSlug3 },
+    update: {},
+    create: {
+      slug: convSlug3,
+      type: ConversationType.DEBATE,
+      status: ConversationStatus.ENDED,
+      title: "¿La inteligencia artificial mejora o perjudica el aprendizaje universitario?",
+      description: "Debate formal con posturas definidas y argumentos estructurados.",
+      category: "Tecnología / Educación",
+      rules: "Argumenta con evidencia y respeta los turnos.",
+      visibility: ConversationVisibility.PUBLIC,
+      maxParticipants: 50,
+      maxSpeakers: 10,
+      allowNewStances: true,
+      tags: ["ia", "ética", "aprendizaje"],
+      livekitRoomName: `conv-${convSlug3}`,
+      createdById: admin.id,
+      universityId: une.id,
+      startedAt: startedAt3,
+      endedAt: endedAt3,
+      participants: { create: { userId: admin.id, role: ConversationParticipantRole.HOST } },
+    },
+  });
+
+  // Debate stances for the ended debate
+  const stance1 = await prisma.conversationDebateStance.create({
+    data: { conversationId: conv3.id, title: "A favor", description: "La IA personaliza el aprendizaje y mejora la productividad.", order: 0, createdById: admin.id },
+  }).catch(() => null);
+  const stance2 = await prisma.conversationDebateStance.create({
+    data: { conversationId: conv3.id, title: "En contra", description: "Puede generar dependencia y reducir el pensamiento crítico.", order: 1, createdById: admin.id },
+  }).catch(() => null);
+  if (stance1) {
+    await prisma.conversationDebateArgument.create({
+      data: { stanceId: stance1.id, authorId: admin.id, content: "Ayuda a resumir textos complejos y optimiza el tiempo de estudio." },
+    }).catch(() => undefined);
+  }
+  if (stance2) {
+    await prisma.conversationDebateArgument.create({
+      data: { stanceId: stance2.id, authorId: admin.id, content: "Muchos estudiantes copian respuestas sin entender realmente los conceptos." },
+    }).catch(() => undefined);
+  }
+
+  // Companion profile for admin (opt-in)
+  await prisma.conversationCompanionProfile.upsert({
+    where: { userId: admin.id },
+    update: {},
+    create: {
+      userId: admin.id,
+      description: "Te ayudo con matemática y lógica desde lo más básico.",
+      topics: ["Matemática", "Lógica", "Álgebra"],
+      courses: ["Lógica Matemática"],
+      availabilityText: "Lunes a viernes 6:00 pm - 9:00 pm",
+      availableForVoice: true,
+      isActive: true,
+    },
+  });
+
   console.log("Seed completed.");
   console.log("Admin email: admin@crunedu.local");
   console.log("Admin password: CrunEdu123!");
   console.log("Store: 10 categories, 4 safe points, 12 products created.");
   console.log("Moments: 6 sample moments created.");
+  console.log("Conversar: 3 conversations (1 waiting, 2 ended), 1 companion profile created.");
 }
 
 main()

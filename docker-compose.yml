@@ -11,6 +11,8 @@ services:
       NODE_ENV: development
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
       NEXT_PUBLIC_FEED_SOURCE: ${NEXT_PUBLIC_FEED_SOURCE:-api}
+      NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-ws://localhost:7880}
+      NEXT_PUBLIC_CONVERSAR_USE_MOCKS: ${NEXT_PUBLIC_CONVERSAR_USE_MOCKS:-false}
     ports:
       - "${WEB_PORT:-3000}:3000"
     volumes:
@@ -45,11 +47,18 @@ services:
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_FROM: ${SMTP_FROM:-no-reply@crunedu.local}
+      LIVEKIT_ENABLED: ${LIVEKIT_ENABLED:-true}
+      LIVEKIT_URL: ${LIVEKIT_INTERNAL_URL:-ws://livekit:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
+      LIVEKIT_EGRESS_ENABLED: ${LIVEKIT_EGRESS_ENABLED:-false}
+      RECORDINGS_DIR: /workspace/tmp/recordings
     ports:
       - "${API_PORT:-4000}:4000"
     volumes:
       - .:/workspace
       - crunedu_node_modules:/workspace/node_modules
+      - crunedu_recordings:/workspace/tmp/recordings
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,6 +67,8 @@ services:
       minio:
         condition: service_started
       mailhog:
+        condition: service_started
+      livekit:
         condition: service_started
 
   postgres:
@@ -109,9 +120,49 @@ services:
       - "1025:1025"
       - "8025:8025"
 
+  livekit:
+    image: livekit/livekit-server:v1.8.0
+    container_name: crunedu_livekit
+    restart: unless-stopped
+    command: --config /etc/livekit/livekit.yaml
+    volumes:
+      - ./docker/livekit/livekit.yaml:/etc/livekit/livekit.yaml:ro
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "50100-50200:50100-50200/udp"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:7880/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  livekit-egress:
+    image: livekit/egress:v1.8.0
+    container_name: crunedu_livekit_egress
+    restart: "no"
+    command:
+      - --log_level=info
+      - --node_id=egress-1
+      - --service_handler=room_composite
+      - --file_output=/recordings
+      - --template_port=7980
+    environment:
+      LIVEKIT_URL: ${LIVEKIT_INTERNAL_URL:-ws://livekit:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
+    volumes:
+      - crunedu_recordings:/recordings
+      - crunedu_recordings:/workspace/tmp/recordings
+    depends_on:
+      livekit:
+        condition: service_started
+    profiles: ["egress"]
+
 volumes:
   crunedu_postgres_data:
   crunedu_redis_data:
   crunedu_minio_data:
   crunedu_node_modules:
   crunedu_next_cache:
+  crunedu_recordings:
