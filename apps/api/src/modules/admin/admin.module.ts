@@ -29,11 +29,13 @@ import { AdminReportsService } from "./services/admin-reports.service";
 import { AdminSessionService } from "./services/admin-session.service";
 import { AdminStoreService } from "./services/admin-store.service";
 import { AdminSystemService } from "./services/admin-system.service";
+import { AdminUsersService } from "./services/admin-users.service";
 import { MarketplaceModule } from "../marketplace/marketplace.module";
 import { ConversationsModule } from "../conversations/conversations.module";
+import { ReportsModule } from "../reports/reports.module";
 
 @Module({
-  imports: [PrismaModule, CacheModule, StorageModule, CoreModule, MarketplaceModule, ConversationsModule],
+  imports: [PrismaModule, CacheModule, StorageModule, CoreModule, MarketplaceModule, ConversationsModule, ReportsModule],
   controllers: [
     AdminAuditController,
     AdminCommunitiesController,
@@ -63,6 +65,7 @@ import { ConversationsModule } from "../conversations/conversations.module";
     AdminSessionService,
     AdminStoreService,
     AdminSystemService,
+    AdminUsersService,
   ],
   exports: [AdminAuditService, AdminSessionService],
 })
