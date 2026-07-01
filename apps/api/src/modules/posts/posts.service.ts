@@ -221,8 +221,9 @@ export class PostsService {
     this.checkRateLimit(this.postRateLimit, userId, 3, 60_000, "Estás publicando demasiado rápido. Intenta de nuevo en un minuto.");
 
     if (dto.communityId) {
-      const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true } });
+      const community = await this.prisma.community.findUnique({ where: { id: dto.communityId }, select: { id: true, status: true } });
       if (!community) throw new BadRequestException("La comunidad seleccionada no está disponible.");
+      if (community.status !== "PUBLISHED") throw new BadRequestException("Esta comunidad está archivada y no acepta nuevas publicaciones.");
     }
 
     this.validateExtremeSize(dto.content, this.MAX_POST_LENGTH, "La publicación es demasiado extensa para el MVP.");

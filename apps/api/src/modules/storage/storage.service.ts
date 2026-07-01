@@ -9,7 +9,7 @@ export interface UploadResult {
   sizeBytes: number;
 }
 
-export type StorageFolder = "avatars" | "covers";
+export type StorageFolder = "avatars" | "covers" | "promotions";
 
 @Injectable()
 export class StorageService implements OnModuleInit {
