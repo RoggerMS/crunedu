@@ -26,6 +26,13 @@ enum ContentStatus {
   PENDING_REVIEW
 }
 
+enum PostVisibility {
+  PUBLIC
+  FOLLOWERS
+  FRIENDS
+  ONLY_ME
+}
+
 enum ProductStatus {
   DRAFT
   ACTIVE
@@ -416,6 +423,13 @@ model Profile {
   lastName         String   @map("last_name")
   avatarUrl        String?  @map("avatar_url")
   avatarStorageKey String?  @map("avatar_storage_key")
+  username         String?  @unique
+  headline         String?
+  coverUrl         String?  @map("cover_url")
+  coverStorageKey  String?  @map("cover_storage_key")
+  coverPositionY   Int      @default(50) @map("cover_position_y")
+  currentCity      String?  @map("current_city")
+  hometown         String?
   description      String?
   universityId     Int?     @map("university_id")
   facultyId        Int?     @map("faculty_id")
@@ -486,6 +500,7 @@ model Post {
   title       String        @default("")
   content     String
   status      ContentStatus @default(PUBLISHED)
+  visibility  PostVisibility @default(PUBLIC)
   inFeed      Boolean       @default(true) @map("in_feed")
   viewCount   Int           @default(0) @map("view_count")
   shareCount  Int           @default(0) @map("share_count")
@@ -506,6 +521,7 @@ model Post {
   @@index([userId])
   @@index([communityId])
   @@index([status])
+  @@index([visibility])
   @@index([createdAt])
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([communityId, status, createdAt(sort: Desc), id(sort: Desc)])
@@ -629,10 +645,10 @@ model Document {
   @@index([userId])
   @@index([communityId])
   @@index([status])
+  @@index([visibility])
   @@index([createdAt])
   @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@index([communityId, status, createdAt(sort: Desc), id(sort: Desc)])
-  @@index([visibility])
   @@index([course])
   @@map("documents")
 }

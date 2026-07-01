@@ -10,6 +10,7 @@ export class PostResponseDto {
     email: string;
     firstName: string | null;
     lastName: string | null;
+    avatarUrl: string | null;
   };
   community: {
     id: number;
@@ -26,6 +27,7 @@ export class PostResponseDto {
   commentsCount: number;
   likesCount: number;
   savesCount: number;
+  visibility: string;
   inFeed: boolean;
   viewCount: number;
   shareCount: number;
