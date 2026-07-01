@@ -51,12 +51,13 @@ export function mapApiPostToFeedPost(apiPost: ApiFeedPost): FeedPost {
     author: {
       id: String(apiPost.author.id),
       name: formatAuthorName(apiPost.author),
+      avatarUrl: (apiPost.author as { avatarUrl?: string | null }).avatarUrl ?? undefined,
     },
     content: apiPost.content,
     destination: community
       ? { type: "community", id: community.id, label: community.name }
       : { type: "general", label: "Feed general" },
-    visibility: community ? "community" : "public",
+    visibility: apiPost.visibility === "ONLY_ME" ? "private" : community ? "community" : "public",
     attachments: (apiPost.images ?? []).map(mapApiImageToAttachment),
     sharedEntity: document
       ? {
@@ -96,6 +97,7 @@ export function mapApiCommentToFeedComment(apiComment: ApiPostComment, postId: s
     author: {
       id: String(apiComment.author.id),
       name: formatAuthorName(apiComment.author),
+      avatarUrl: (apiComment.author as { avatarUrl?: string | null }).avatarUrl ?? undefined,
     },
     content: apiComment.content,
     createdAt: toIsoString(apiComment.createdAt),

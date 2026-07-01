@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from "@nestjs/common";
+import { PostVisibility } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { HotReadCacheService } from "../cache/hot-read-cache.service";
 import { JobsService } from "../jobs/jobs.service";
@@ -22,11 +23,12 @@ type PostWithRelations = {
   id: number;
   title: string;
   content: string;
+  visibility: PostVisibility;
   inFeed: boolean;
   viewCount: number;
   shareCount: number;
   createdAt: Date;
-  user: { id: number; email: string; profile: { firstName: string | null; lastName: string | null } | null };
+  user: { id: number; email: string; profile: { firstName: string | null; lastName: string | null; avatarUrl: string | null } | null };
   community: { id: number; name: string; slug: string } | null;
   document: { id: number; title: string; fileType: string; sizeBytes: number; course: string } | null;
   comments: Array<{ createdAt: Date }>;
@@ -47,6 +49,7 @@ export class PostsService {
     id: true,
     title: true,
     content: true,
+    visibility: true,
     inFeed: true,
     viewCount: true,
     shareCount: true,
@@ -59,6 +62,7 @@ export class PostsService {
           select: {
             firstName: true,
             lastName: true,
+            avatarUrl: true,
           },
         },
       },
@@ -100,7 +104,7 @@ export class PostsService {
   private readonly commentSelect = { id: true, content: true, createdAt: true, user: { select: { id: true, email: true, profile: { select: { firstName: true, lastName: true } } } } } as const;
 
   private mapPostResponse(post: PostWithRelations, userId?: number, viewer?: { liked: boolean; saved: boolean } | null): PostResponseDto {
-    return { id: post.id, title: post.title, content: post.content, inFeed: post.inFeed, viewCount: post.viewCount, shareCount: post.shareCount, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, document: post.document, commentsCount: post._count?.comments ?? 0, likesCount: post._count?.reactions ?? 0, savesCount: post._count?.savedBy ?? 0, images: post.images, isMine: Boolean(userId && post.user.id === userId), liked: viewer?.liked ?? false, saved: viewer?.saved ?? false };
+    return { id: post.id, title: post.title, content: post.content, visibility: post.visibility, inFeed: post.inFeed, viewCount: post.viewCount, shareCount: post.shareCount, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null, avatarUrl: post.user.profile?.avatarUrl ?? null }, community: post.community, document: post.document, commentsCount: post._count?.comments ?? 0, likesCount: post._count?.reactions ?? 0, savesCount: post._count?.savedBy ?? 0, images: post.images, isMine: Boolean(userId && post.user.id === userId), liked: viewer?.liked ?? false, saved: viewer?.saved ?? false };
   }
 
   private async fetchPostViewerStates(postIds: number[], userId?: number): Promise<Map<number, { liked: boolean; saved: boolean }>> {
@@ -133,7 +137,7 @@ export class PostsService {
     }
 
     const posts = await this.prisma.post.findMany({
-      where: { status: "PUBLISHED", inFeed: true },
+      where: { status: "PUBLISHED", inFeed: true, ...this.buildVisibilityWhere(userId) },
       select: this.postSelect,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
@@ -164,7 +168,7 @@ export class PostsService {
 
     const communityPostsPromise = affinityCommunityIds.length
       ? this.prisma.post.findMany({
-          where: { status: "PUBLISHED", communityId: { in: affinityCommunityIds } },
+          where: { status: "PUBLISHED", communityId: { in: affinityCommunityIds }, ...this.buildVisibilityWhere(userId) },
           select: this.postSelect,
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           skip,
@@ -174,7 +178,7 @@ export class PostsService {
 
     const friendsPostsPromise = userId
       ? this.prisma.post.findMany({
-          where: { status: "PUBLISHED", user: { followers: { some: { followerId: userId } } } },
+          where: { status: "PUBLISHED", user: { followers: { some: { followerId: userId } } }, ...this.buildVisibilityWhere(userId) },
           select: this.postSelect,
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           skip,
@@ -183,7 +187,7 @@ export class PostsService {
       : Promise.resolve([] as PostWithRelations[]);
 
     const recommendedRaw = await this.prisma.post.findMany({
-      where: { status: "PUBLISHED" },
+      where: { status: "PUBLISHED", ...this.buildVisibilityWhere(userId) },
       select: this.postSelect,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: 120,
@@ -227,6 +231,8 @@ export class PostsService {
         content: dto.content.trim(),
         communityId: dto.communityId ?? null,
         userId,
+        visibility: this.normalizeVisibility(dto.visibility),
+        inFeed: dto.inFeed ?? true,
         images: dto.images?.length
           ? {
               create: dto.images.slice(0, 4).map((image, index) => ({
@@ -265,7 +271,7 @@ export class PostsService {
   }
 
   async findOne(id: number, userId?: number): Promise<PostResponseDto> {
-    const post = await this.prisma.post.findFirst({ where: { id, status: "PUBLISHED" }, select: this.postSelect });
+    const post = await this.prisma.post.findFirst({ where: { id, status: "PUBLISHED", ...this.buildVisibilityWhere(userId) }, select: this.postSelect });
     if (!post) throw new NotFoundException("Publicación no encontrada.");
     this.registerFeedEvent("click", userId, { postId: id });
     const viewerStates = await this.fetchPostViewerStates([id], userId);
@@ -459,6 +465,24 @@ export class PostsService {
     const maxScore = Math.max(1, ...affinity.values());
     for (const [communityId, score] of affinity.entries()) affinity.set(communityId, score / maxScore);
     return affinity;
+  }
+
+  private normalizeVisibility(value?: string): PostVisibility {
+    const normalized = (value ?? "PUBLIC").toUpperCase();
+    if (["PUBLIC", "FOLLOWERS", "FRIENDS", "ONLY_ME"].includes(normalized)) return normalized as PostVisibility;
+    return PostVisibility.PUBLIC;
+  }
+
+  private buildVisibilityWhere(userId?: number) {
+    if (!userId) return { visibility: PostVisibility.PUBLIC };
+    return {
+      OR: [
+        { visibility: PostVisibility.PUBLIC },
+        { userId },
+        { visibility: PostVisibility.FOLLOWERS, user: { followers: { some: { followerId: userId } } } },
+        { visibility: PostVisibility.FRIENDS, user: { followers: { some: { followerId: userId } }, following: { some: { followingId: userId } } } },
+      ],
+    };
   }
 
   private async ensurePublishedPost(postId: number): Promise<void> { const post = await this.prisma.post.findFirst({ where: { id: postId, status: "PUBLISHED" }, select: { id: true } }); if (!post) throw new NotFoundException("Publicación no encontrada."); }

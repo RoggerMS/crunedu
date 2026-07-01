@@ -1,5 +1,5 @@
 import { Transform } from "class-transformer";
-import { IsOptional, IsString, MaxLength } from "class-validator";
+import { IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from "class-validator";
 
 function sanitizeText(value: unknown): unknown {
   if (typeof value !== "string") {
@@ -22,6 +22,38 @@ export class UpdateMeDto {
   @MaxLength(60)
   @Transform(({ value }) => sanitizeText(value))
   lastName?: string | null;
+
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  @Matches(/^[a-z0-9._-]+$/i, { message: "El nombre de usuario solo puede usar letras, números, puntos, guiones y guiones bajos." })
+  @Transform(({ value }) => sanitizeText(value))
+  username?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Transform(({ value }) => sanitizeText(value))
+  headline?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  @Transform(({ value }) => sanitizeText(value))
+  currentCity?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  @Transform(({ value }) => sanitizeText(value))
+  hometown?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  coverPositionY?: number;
 
   @IsOptional()
   @IsString()

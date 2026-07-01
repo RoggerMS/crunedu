@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsArray, IsInt, IsOptional, IsString, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
+import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
 
 export class CreatePostDto {
   @IsOptional()
@@ -17,6 +17,14 @@ export class CreatePostDto {
   @IsInt()
   @Min(1)
   communityId?: number;
+
+  @IsOptional()
+  @IsIn(["PUBLIC", "FOLLOWERS", "FRIENDS", "ONLY_ME", "public", "followers", "friends", "only_me"] as const)
+  visibility?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  inFeed?: boolean;
 
   @IsOptional()
   @IsArray()

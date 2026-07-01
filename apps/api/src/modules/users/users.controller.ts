@@ -45,6 +45,12 @@ export class UsersController {
     return this.service.unfollowUser(request.user!.sub, userId);
   }
 
+  @Get("users/:id/posts")
+  @UseGuards(OptionalJwtAuthGuard)
+  getUserPosts(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
+    return this.service.getUserPosts(id, request.user?.sub);
+  }
+
   @Get("users/:id/followers")
   @UseGuards(OptionalJwtAuthGuard)
   getFollowers(@Param("id", ParseIntPipe) id: number, @Req() request: AuthenticatedRequest) {
