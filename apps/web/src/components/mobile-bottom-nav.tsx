@@ -33,7 +33,7 @@ export function MobileBottomNav() {
       {ITEMS.map((item) => {
         const active = isActive(item.href, pathname);
         const Icon = item.icon;
-        const showInitials = item.href === "/app/perfil" && initials;
+        const showProfileVisual = item.href === "/app/perfil";
 
         return (
           <Link
@@ -44,14 +44,9 @@ export function MobileBottomNav() {
               active ? "text-indigo-700" : "text-slate-500 hover:text-slate-900"
             }`}
           >
-            {showInitials ? (
-              <span
-                className={`flex h-6 w-6 items-center justify-center rounded-full text-[9px] font-bold ${
-                  active ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-700"
-                }`}
-                aria-hidden="true"
-              >
-                {initials}
+            {showProfileVisual && user ? (
+              <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full border bg-indigo-100 text-[9px] font-bold text-indigo-700" aria-hidden="true">
+                {user.avatarUrl ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" /> : initials}
               </span>
             ) : (
               <Icon size={21} strokeWidth={active ? 2.5 : 2} aria-hidden="true" />

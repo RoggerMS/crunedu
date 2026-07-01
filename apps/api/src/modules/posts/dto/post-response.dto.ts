@@ -10,6 +10,9 @@ export class PostResponseDto {
     email: string;
     firstName: string | null;
     lastName: string | null;
+    avatarUrl: string | null;
+    username: string | null;
+    isVerified: boolean;
   };
   community: {
     id: number;
@@ -27,6 +30,7 @@ export class PostResponseDto {
   likesCount: number;
   savesCount: number;
   inFeed: boolean;
+  visibility: string;
   viewCount: number;
   shareCount: number;
   images: PostImageResponseDto[];

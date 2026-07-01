@@ -1,16 +1,17 @@
 "use client";
 
 import { MAIN_NAVIGATION } from "@crunedu/shared";
-import { ChevronLeft, ChevronRight, GraduationCap, Plus, Search, Settings, UserCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, GraduationCap, LogOut, Plus, Search, Settings, UserCircle2, UserPen } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { buildLoginHref, isAppAuthRequired } from "@/lib/auth-routes";
 import { useSearch } from "@/hooks/useSearch";
 import { ConversarInternalSidebar } from "@/components/conversar/ConversarInternalSidebar";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { NotificationsPopover } from "@/components/notifications/NotificationsPopover";
+import { getAvatarInitials } from "@/components/UserIdentityLink";
 
 function isNavActive(itemHref: string, pathname: string) {
   if (itemHref === "/app") return pathname === "/app";
@@ -25,11 +26,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, user } = useAuth();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const [searchType, setSearchType] = useState<"all" | "posts" | "questions" | "communities" | "products">("all");
   const [searchPage, setSearchPage] = useState(1);
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+  const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
+  const avatarMenuRef = useRef<HTMLDivElement>(null);
   const searchContext = useMemo(() => getSearchContext(pathname), [pathname]);
   const isMomentsPortal = pathname.startsWith("/app/momentos");
   const isStoreRoute = pathname.startsWith("/app/tienda");
@@ -109,6 +112,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       String(isQuickActionsOpen),
     );
   }, [isQuickActionsOpen]);
+
+  useEffect(() => {
+    if (!isAvatarMenuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target as Node)) {
+        setIsAvatarMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isAvatarMenuOpen]);
 
   function handleLogout() {
     logout();
@@ -263,13 +277,43 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 Iniciar sesión
               </Link>
             ) : null}
-            <Link
-              href="/app/perfil"
-              className="hidden shrink-0 rounded-xl border border-slate-200 bg-white p-2 text-slate-700 hover:bg-slate-50 lg:inline-flex"
-              aria-label="Ir a perfil"
-            >
-              <UserCircle2 size={18} />
-            </Link>
+            {isAuthenticated && user ? (
+              <div className="relative shrink-0" ref={avatarMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsAvatarMenuOpen((v) => !v)}
+                  className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border-2 border-slate-200 bg-indigo-100 text-sm font-bold text-indigo-700 transition hover:border-indigo-400"
+                  aria-label="Menú de usuario"
+                  aria-expanded={isAvatarMenuOpen}
+                >
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={`${user.firstName} ${user.lastName}`} className="h-full w-full object-cover" />
+                  ) : (
+                    getAvatarInitials(`${user.firstName} ${user.lastName}`)
+                  )}
+                </button>
+                {isAvatarMenuOpen ? (
+                  <div className="absolute right-0 top-11 z-50 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                    <div className="border-b border-slate-100 px-4 py-2">
+                      <p className="truncate text-sm font-bold text-slate-900">{user.firstName} {user.lastName}</p>
+                      <p className="truncate text-xs text-slate-500">{user.email}</p>
+                    </div>
+                    <Link href="/app/perfil" onClick={() => setIsAvatarMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                      <UserCircle2 size={16} /> Ver mi perfil
+                    </Link>
+                    <Link href="/app/configuracion-perfil" onClick={() => setIsAvatarMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                      <UserPen size={16} /> Editar perfil
+                    </Link>
+                    <Link href="/app/configuracion-perfil" onClick={() => setIsAvatarMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                      <Settings size={16} /> Configuración
+                    </Link>
+                    <button type="button" onClick={() => { setIsAvatarMenuOpen(false); handleLogout(); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50">
+                      <LogOut size={16} /> Cerrar sesión
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           {hasQuery && searchContext.scope === "all" ? (

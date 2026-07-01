@@ -1,5 +1,12 @@
 import { Type } from "class-transformer";
-import { IsArray, IsInt, IsOptional, IsString, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
+import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, MaxLength, Min, MinLength, ValidateNested } from "class-validator";
+
+export enum PostVisibilityEnum {
+  PUBLIC = "PUBLIC",
+  FOLLOWERS = "FOLLOWERS",
+  FRIENDS = "FRIENDS",
+  ONLY_ME = "ONLY_ME",
+}
 
 export class CreatePostDto {
   @IsOptional()
@@ -17,6 +24,14 @@ export class CreatePostDto {
   @IsInt()
   @Min(1)
   communityId?: number;
+
+  @IsOptional()
+  @IsEnum(PostVisibilityEnum)
+  visibility?: PostVisibilityEnum;
+
+  @IsOptional()
+  @IsBoolean()
+  inFeed?: boolean;
 
   @IsOptional()
   @IsArray()

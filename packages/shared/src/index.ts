@@ -26,15 +26,12 @@ export const FILE_LIMITS = {
 export const MAIN_NAVIGATION = [
   { label: "Inicio", href: "/app" },
   { label: "Comunidades", href: "/app/comunidades" },
-  // Debates now lives inside Conversar as an internal tab/filter.
   { label: "Conversar", href: "/app/conversar" },
   { label: "Preguntas", href: "/app/preguntas" },
   { label: "Apuntes", href: "/app/apuntes" },
   { label: "Universidad", href: "/app/universidad" },
   { label: "Momentos", href: "/app/momentos" },
   { label: "Tienda", href: "/app/tienda" },
-  { label: "Mi perfil", href: "/app/perfil" },
-  { label: "Configuración de perfil", href: "/app/configuracion-perfil" },
   { label: "Admin", href: "/app/admin" },
   { label: "Admin tienda", href: "/app/admin/tienda" },
   { label: "Admin reportes", href: "/app/admin/reportes" },
@@ -63,6 +60,9 @@ export interface FeedAuthor {
   email: string;
   firstName: string | null;
   lastName: string | null;
+  avatarUrl: string | null;
+  username: string | null;
+  isVerified: boolean;
 }
 
 export interface FeedCommunity {
@@ -92,6 +92,7 @@ export interface FeedPost {
   title: string;
   content: string;
   inFeed?: boolean;
+  visibility?: string;
   viewCount?: number;
   shareCount?: number;
   createdAt: string;
@@ -143,6 +144,8 @@ export interface CreateFeedPostPayload {
   content: string;
   communityId?: number;
   images?: CreatePostImagePayload[];
+  visibility?: "PUBLIC" | "FOLLOWERS" | "FRIENDS" | "ONLY_ME";
+  inFeed?: boolean;
 }
 
 

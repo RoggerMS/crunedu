@@ -4,6 +4,7 @@ import { FeedMediaViewer } from "./FeedMediaViewer";
 import { PostActions } from "./PostActions";
 import { SharedEntityCard } from "./SharedEntityCard";
 import { DocumentAttachmentCard } from "@/components/notes/DocumentAttachmentCard";
+import { UserIdentityLink } from "@/components/UserIdentityLink";
 import type { NoteFileType } from "@/components/notes/types";
 import type { FeedPost } from "@/features/feed/feed.types";
 import Link from "next/link";
@@ -12,7 +13,10 @@ export function PostCard({ post, onLike, onSave, onShare, onReport, onHide, onDe
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const media = (post.attachments ?? []).map((a) => ({ id: a.id, type: a.mimeType.startsWith("video/") ? "video" as const : "image" as const, previewUrl: a.previewUrl, unavailableLabel: "Imagen pendiente de sincronización." }));
   return <article className="rounded-2xl border border-slate-200 bg-white p-4">
-    <div className="flex items-center gap-3"><Link href={`/app/perfil/${post.author.id}`} className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-sm font-black text-indigo-700">{post.author.name.charAt(0).toUpperCase()}</Link><div><Link href={`/app/perfil/${post.author.id}`} className="text-sm font-bold text-slate-900 hover:text-indigo-700 hover:underline">{post.author.name}</Link><p className="text-xs text-slate-500">{new Date(post.createdAt).toLocaleString("es-PE")}</p></div></div>
+    <div className="flex items-center gap-3">
+      <UserIdentityLink userId={Number(post.author.id)} name={post.author.name} avatarUrl={post.author.avatarUrl} username={post.author.username} isVerified={post.author.isVerified} size="sm" />
+      <p className="ml-auto text-xs text-slate-500">{new Date(post.createdAt).toLocaleString("es-PE")}</p>
+    </div>
     <p className="mt-1 text-xs text-indigo-700">publicación · {post.destination.label}</p>
     {post.title ? <h2 className="mt-2 text-base font-bold text-slate-900">{post.title}</h2> : null}
     {post.content ? <button className="mt-2 text-left text-sm text-slate-700" onClick={() => onOpenPost(post.id)}>{post.content}</button> : null}

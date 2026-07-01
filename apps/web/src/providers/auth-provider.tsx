@@ -6,12 +6,26 @@ import { apiRequest, HttpClientError } from "@/lib/http-client";
 export type AuthUser = {
   id: number;
   email: string;
+  isVerified: boolean;
+  memberSince: string;
   firstName: string;
   lastName: string;
   bio: string;
   avatarUrl?: string | null;
+  coverUrl?: string | null;
+  coverPositionY?: number;
+  username?: string | null;
+  headline?: string | null;
+  currentCity?: string | null;
+  hometown?: string | null;
+  gender?: string | null;
+  pronouns?: string | null;
+  relationshipStatus?: string | null;
   faculty: string;
+  facultyId?: number | null;
   career: string;
+  careerId?: number | null;
+  university?: string | null;
   cycle: string;
 };
 

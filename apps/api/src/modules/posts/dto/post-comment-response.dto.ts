@@ -7,5 +7,8 @@ export class PostCommentResponseDto {
     email: string;
     firstName: string | null;
     lastName: string | null;
+    avatarUrl: string | null;
+    username: string | null;
+    isVerified: boolean;
   };
 }

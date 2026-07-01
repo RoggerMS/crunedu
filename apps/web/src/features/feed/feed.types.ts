@@ -37,10 +37,12 @@ export type FeedPost = {
   id: string;
   title?: string;
   type: FeedPostType;
-  author: { id: string; name: string; avatarUrl?: string };
+  author: { id: string; name: string; avatarUrl?: string; username?: string | null; isVerified?: boolean };
   content: string;
   destination: { type: "general" | "community"; id?: string | number; label: string };
   visibility: "public" | "community" | "private";
+  postVisibility?: "PUBLIC" | "FOLLOWERS" | "FRIENDS" | "ONLY_ME";
+  inFeed?: boolean;
   attachments?: FeedAttachment[];
   sharedEntity?: SharedEntity;
   createdAt: string;
@@ -53,7 +55,7 @@ export type FeedComment = {
   id: string;
   postId: string;
   parentId?: string;
-  author: { id: string; name: string; avatarUrl?: string };
+  author: { id: string; name: string; avatarUrl?: string; username?: string | null; isVerified?: boolean };
   content: string;
   createdAt: string;
   stats?: { likes: number; replies: number };

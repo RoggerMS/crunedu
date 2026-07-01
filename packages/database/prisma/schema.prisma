@@ -228,6 +228,44 @@ enum ConversationSharedLinkType {
   OTHER
 }
 
+enum PostVisibility {
+  PUBLIC
+  FOLLOWERS
+  FRIENDS
+  ONLY_ME
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  FOLLOWERS
+  FRIENDS
+  ONLY_ME
+}
+
+enum BirthDateDisplay {
+  FULL
+  DAY_MONTH
+  YEAR
+  HIDDEN
+}
+
+enum FeaturedEntityType {
+  POST
+  MOMENT
+  QUESTION
+  DOCUMENT
+}
+
+enum ProfileSectionKey {
+  FEATURED
+  FRIENDS
+  COMMUNITIES
+  PHOTOS
+  EDUCATION
+  EMPLOYMENT
+  INTERESTS
+}
+
 // --- 1. ESTRUCTURA ACADÉMICA ---
 model University {
   id        Int      @id @default(autoincrement())
@@ -424,14 +462,41 @@ model Profile {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
+  username          String?  @unique
+  headline          String?
+  coverUrl          String?  @map("cover_url")
+  coverStorageKey   String?  @map("cover_storage_key")
+  coverPositionY    Int      @default(50) @map("cover_position_y")
+  currentCity       String?  @map("current_city")
+  hometown          String?
+  birthDate         DateTime? @map("birth_date")
+  birthDateDisplay  BirthDateDisplay @default(HIDDEN) @map("birth_date_display")
+  gender            String?
+  pronouns          String?
+  relationshipStatus String? @map("relationship_status")
+  otherNames        String?  @map("other_names")
+  favoriteQuote     String?  @map("favorite_quote")
+
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   university University? @relation(fields: [universityId], references: [id])
   faculty    Faculty?    @relation(fields: [facultyId], references: [id])
   career     Career?     @relation(fields: [careerId], references: [id])
 
+  education       ProfileEducation[]
+  employment      ProfileEmployment[]
+  interests       ProfileInterest[]
+  languages       ProfileLanguage[]
+  links           ProfileLink[]
+  places          ProfilePlace[]
+  customDetails   ProfileCustomDetail[]
+  featuredItems   ProfileFeaturedItem[]
+  sectionSettings ProfileSectionSetting[]
+  privacySettings ProfilePrivacySetting[]
+
   @@index([universityId])
   @@index([facultyId])
   @@index([careerId])
+  @@index([username])
   @@map("profiles")
 }
 
@@ -486,6 +551,7 @@ model Post {
   title       String        @default("")
   content     String
   status      ContentStatus @default(PUBLISHED)
+  visibility  PostVisibility @default(PUBLIC)
   inFeed      Boolean       @default(true) @map("in_feed")
   viewCount   Int           @default(0) @map("view_count")
   shareCount  Int           @default(0) @map("share_count")
@@ -502,6 +568,7 @@ model Post {
   tags      PostTag[]
   images    PostImage[]
   moments   Moment[]
+  featuredBy ProfileFeaturedItem[]
 
   @@index([userId])
   @@index([communityId])
@@ -512,6 +579,8 @@ model Post {
   @@index([documentId])
   @@index([inFeed])
   @@index([status, inFeed, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([visibility])
+  @@index([userId, status, createdAt(sort: Desc), id(sort: Desc)])
   @@map("posts")
 }
 
@@ -1701,4 +1770,190 @@ model ConversationStartSubscription {
   @@index([userId])
   @@index([notifiedAt])
   @@map("conversation_start_subscriptions")
+}
+
+// --- 13. INFORMACIÓN AMPLIADA DE PERFIL ---
+
+model ProfileEducation {
+  id          Int             @id @default(autoincrement())
+  profileId   Int             @map("profile_id")
+  institution String
+  program     String?
+  degree      String?
+  field       String?         @map("field")
+  startYear   Int?            @map("start_year")
+  endYear     Int?            @map("end_year")
+  isCurrent   Boolean         @default(false) @map("is_current")
+  description String?
+  location    String?
+  visibility  ProfileVisibility @default(PUBLIC)
+  position    Int             @default(0)
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@map("profile_education")
+}
+
+model ProfileEmployment {
+  id          Int             @id @default(autoincrement())
+  profileId   Int             @map("profile_id")
+  position    String
+  company     String
+  modality    String?
+  location    String?
+  startDate   DateTime?       @map("start_date")
+  endDate     DateTime?       @map("end_date")
+  isCurrent   Boolean         @default(false) @map("is_current")
+  description String?
+  visibility  ProfileVisibility @default(PUBLIC)
+  order       Int             @default(0)
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@map("profile_employment")
+}
+
+model ProfileInterest {
+  id         Int             @id @default(autoincrement())
+  profileId  Int             @map("profile_id")
+  category   String
+  value      String
+  visibility ProfileVisibility @default(PUBLIC)
+  position   Int             @default(0)
+  createdAt  DateTime        @default(now()) @map("created_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, category, value])
+  @@index([profileId])
+  @@map("profile_interests")
+}
+
+model ProfileLanguage {
+  id         Int             @id @default(autoincrement())
+  profileId  Int             @map("profile_id")
+  name       String
+  level      String?
+  visibility ProfileVisibility @default(PUBLIC)
+  position   Int             @default(0)
+  createdAt  DateTime        @default(now()) @map("created_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, name])
+  @@index([profileId])
+  @@map("profile_languages")
+}
+
+model ProfileLink {
+  id         Int             @id @default(autoincrement())
+  profileId  Int             @map("profile_id")
+  label      String
+  url        String
+  visibility ProfileVisibility @default(ONLY_ME)
+  position   Int             @default(0)
+  createdAt  DateTime        @default(now()) @map("created_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@map("profile_links")
+}
+
+model ProfilePlace {
+  id         Int             @id @default(autoincrement())
+  profileId  Int             @map("profile_id")
+  type       String
+  country    String?
+  region     String?
+  city       String?
+  district   String?
+  visibility ProfileVisibility @default(FOLLOWERS)
+  position   Int             @default(0)
+  createdAt  DateTime        @default(now()) @map("created_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@map("profile_places")
+}
+
+model ProfileCustomDetail {
+  id         Int             @id @default(autoincrement())
+  profileId  Int             @map("profile_id")
+  label      String
+  value      String
+  visibility ProfileVisibility @default(ONLY_ME)
+  position   Int             @default(0)
+  createdAt  DateTime        @default(now()) @map("created_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@map("profile_custom_details")
+}
+
+model ProfileFeaturedItem {
+  id         Int               @id @default(autoincrement())
+  profileId  Int               @map("profile_id")
+  entityType FeaturedEntityType @map("entity_type")
+  entityId   Int               @map("entity_id")
+  position   Int               @default(0)
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  post    Post?   @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, entityType, entityId])
+  @@index([profileId])
+  @@map("profile_featured_items")
+}
+
+model ProfileSectionSetting {
+  profileId  Int               @id @map("profile_id")
+  featured   Boolean           @default(true)
+  friends    Boolean           @default(true)
+  communities Boolean          @default(true)
+  photos     Boolean           @default(true)
+  education  Boolean           @default(true)
+  employment Boolean           @default(true)
+  interests  Boolean           @default(true)
+  featuredOrder   Int          @default(0) @map("featured_order")
+  friendsOrder    Int          @default(1) @map("friends_order")
+  communitiesOrder Int         @default(2) @map("communities_order")
+  photosOrder     Int          @default(3) @map("photos_order")
+  educationOrder  Int          @default(4) @map("education_order")
+  employmentOrder Int          @default(5) @map("employment_order")
+  interestsOrder  Int          @default(6) @map("interests_order")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("profile_section_settings")
+}
+
+model ProfilePrivacySetting {
+  id              Int             @id @default(autoincrement())
+  profileId       Int             @unique @map("profile_id")
+  bio             ProfileVisibility @default(PUBLIC)
+  academicInfo    ProfileVisibility @default(PUBLIC) @map("academic_info")
+  currentCity     ProfileVisibility @default(FOLLOWERS) @map("current_city")
+  birthDate       ProfileVisibility @default(ONLY_ME) @map("birth_date")
+  contact         ProfileVisibility @default(ONLY_ME)
+  relationship    ProfileVisibility @default(ONLY_ME)
+  friends         ProfileVisibility @default(FRIENDS)
+  communities     ProfileVisibility @default(FOLLOWERS)
+  followersList   ProfileVisibility @default(PUBLIC) @map("followers_list")
+  followingList   ProfileVisibility @default(PUBLIC) @map("following_list")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("profile_privacy_settings")
 }

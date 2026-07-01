@@ -23,10 +23,11 @@ type PostWithRelations = {
   title: string;
   content: string;
   inFeed: boolean;
+  visibility: string;
   viewCount: number;
   shareCount: number;
   createdAt: Date;
-  user: { id: number; email: string; profile: { firstName: string | null; lastName: string | null } | null };
+  user: { id: number; email: string; isVerified: boolean; profile: { firstName: string | null; lastName: string | null; avatarUrl: string | null; username: string | null } | null };
   community: { id: number; name: string; slug: string } | null;
   document: { id: number; title: string; fileType: string; sizeBytes: number; course: string } | null;
   comments: Array<{ createdAt: Date }>;
@@ -48,6 +49,7 @@ export class PostsService {
     title: true,
     content: true,
     inFeed: true,
+    visibility: true,
     viewCount: true,
     shareCount: true,
     createdAt: true,
@@ -55,10 +57,13 @@ export class PostsService {
       select: {
         id: true,
         email: true,
+        isVerified: true,
         profile: {
           select: {
             firstName: true,
             lastName: true,
+            avatarUrl: true,
+            username: true,
           },
         },
       },
@@ -97,10 +102,10 @@ export class PostsService {
     },
   } as const;
 
-  private readonly commentSelect = { id: true, content: true, createdAt: true, user: { select: { id: true, email: true, profile: { select: { firstName: true, lastName: true } } } } } as const;
+  private readonly commentSelect = { id: true, content: true, createdAt: true, user: { select: { id: true, email: true, isVerified: true, profile: { select: { firstName: true, lastName: true, avatarUrl: true, username: true } } } } } as const;
 
   private mapPostResponse(post: PostWithRelations, userId?: number, viewer?: { liked: boolean; saved: boolean } | null): PostResponseDto {
-    return { id: post.id, title: post.title, content: post.content, inFeed: post.inFeed, viewCount: post.viewCount, shareCount: post.shareCount, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null }, community: post.community, document: post.document, commentsCount: post._count?.comments ?? 0, likesCount: post._count?.reactions ?? 0, savesCount: post._count?.savedBy ?? 0, images: post.images, isMine: Boolean(userId && post.user.id === userId), liked: viewer?.liked ?? false, saved: viewer?.saved ?? false };
+    return { id: post.id, title: post.title, content: post.content, inFeed: post.inFeed, visibility: post.visibility, viewCount: post.viewCount, shareCount: post.shareCount, createdAt: post.createdAt, author: { id: post.user.id, email: post.user.email, firstName: post.user.profile?.firstName ?? null, lastName: post.user.profile?.lastName ?? null, avatarUrl: post.user.profile?.avatarUrl ?? null, username: post.user.profile?.username ?? null, isVerified: post.user.isVerified ?? false }, community: post.community, document: post.document, commentsCount: post._count?.comments ?? 0, likesCount: post._count?.reactions ?? 0, savesCount: post._count?.savedBy ?? 0, images: post.images, isMine: Boolean(userId && post.user.id === userId), liked: viewer?.liked ?? false, saved: viewer?.saved ?? false };
   }
 
   private async fetchPostViewerStates(postIds: number[], userId?: number): Promise<Map<number, { liked: boolean; saved: boolean }>> {
@@ -117,7 +122,7 @@ export class PostsService {
   }
 
   private mapCommentResponse(comment: any): PostCommentResponseDto {
-    return { id: comment.id, content: comment.content, createdAt: comment.createdAt, author: { id: comment.user.id, email: comment.user.email, firstName: comment.user.profile?.firstName ?? null, lastName: comment.user.profile?.lastName ?? null } };
+    return { id: comment.id, content: comment.content, createdAt: comment.createdAt, author: { id: comment.user.id, email: comment.user.email, firstName: comment.user.profile?.firstName ?? null, lastName: comment.user.profile?.lastName ?? null, avatarUrl: comment.user.profile?.avatarUrl ?? null, username: comment.user.profile?.username ?? null, isVerified: comment.user.isVerified ?? false } };
   }
 
   async index(query: GetPostsQueryDto, userId?: number): Promise<{ items: PostResponseDto[]; nextCursor: number | null; mode: "recent" | "relevant" }> {
@@ -132,8 +137,9 @@ export class PostsService {
       if (cached) return cached;
     }
 
+    const visibilityFilter = this.buildFeedVisibilityFilter(userId);
     const posts = await this.prisma.post.findMany({
-      where: { status: "PUBLISHED", inFeed: true },
+      where: { status: "PUBLISHED", inFeed: true, ...visibilityFilter },
       select: this.postSelect,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
@@ -227,6 +233,8 @@ export class PostsService {
         content: dto.content.trim(),
         communityId: dto.communityId ?? null,
         userId,
+        visibility: (dto.visibility as any) ?? "PUBLIC",
+        inFeed: dto.inFeed ?? true,
         images: dto.images?.length
           ? {
               create: dto.images.slice(0, 4).map((image, index) => ({
@@ -267,6 +275,7 @@ export class PostsService {
   async findOne(id: number, userId?: number): Promise<PostResponseDto> {
     const post = await this.prisma.post.findFirst({ where: { id, status: "PUBLISHED" }, select: this.postSelect });
     if (!post) throw new NotFoundException("Publicación no encontrada.");
+    if (!this.canViewPost(post.visibility, userId, post.user.id)) throw new NotFoundException("Publicación no encontrada.");
     this.registerFeedEvent("click", userId, { postId: id });
     const viewerStates = await this.fetchPostViewerStates([id], userId);
     return this.mapPostResponse(post, userId, viewerStates.get(id) ?? null);
@@ -462,4 +471,24 @@ export class PostsService {
   }
 
   private async ensurePublishedPost(postId: number): Promise<void> { const post = await this.prisma.post.findFirst({ where: { id: postId, status: "PUBLISHED" }, select: { id: true } }); if (!post) throw new NotFoundException("Publicación no encontrada."); }
+
+  private buildFeedVisibilityFilter(userId?: number): Record<string, unknown> {
+    if (!userId) return { visibility: "PUBLIC" };
+    return {
+      OR: [
+        { visibility: "PUBLIC" },
+        { visibility: "FOLLOWERS", user: { followers: { some: { followerId: userId } } } },
+        { visibility: "FRIENDS", user: { followers: { some: { followerId: userId } }, following: { some: { followingId: userId } } } },
+        { visibility: "ONLY_ME", userId },
+      ],
+    };
+  }
+
+  private canViewPost(visibility: string, viewerUserId: number | undefined, authorId: number): boolean {
+    if (viewerUserId === authorId) return true;
+    switch (visibility) {
+      case "PUBLIC": return true;
+      default: return false;
+    }
+  }
 }
