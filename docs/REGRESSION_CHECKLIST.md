@@ -165,3 +165,17 @@ npm run quality:gate
 ```
 
 Genera reporte en `docs/RELEASE_E2E_REPORT.md` con pasos PASS/FAIL/WARN, fallos y guía de capturas locales.
+
+## Admin security regression
+
+- [ ] Usuario visitante recibe 401 en `/api/admin/dashboard`.
+- [ ] Usuario `USER` recibe 403 en `/api/admin/dashboard`.
+- [ ] `ADMIN` recibe métricas reales en `/api/admin/dashboard`.
+- [ ] `POST /api/admin/session` rechaza contraseña incorrecta.
+- [ ] `POST /api/admin/session` crea token opaco y auditoría con contraseña correcta.
+- [ ] Acción con `@RequireAdminStepUp()` falla sin `X-Admin-Session`.
+- [ ] Acción con `@RequireAdminStepUp()` funciona con sesión vigente.
+- [ ] `MAIN_NAVIGATION` no muestra enlaces Admin.
+- [ ] Avatar muestra **Administración** solo para `ADMIN`.
+- [ ] Auditoría no contiene `password`, `token`, `cookie` ni `authorization`.
+- [ ] API no inicia en production si `DEV_BYPASS_ADMIN_GATES=true` o `DEV_RELAXED_AUTH=true`.

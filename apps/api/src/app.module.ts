@@ -22,6 +22,7 @@ import { SearchModule } from "./modules/search/search.module";
 import { UniversityModule } from "./modules/university/university.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { StorageModule } from "./modules/storage/storage.module";
+import { AdminModule } from "./modules/admin/admin.module";
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { StorageModule } from "./modules/storage/storage.module";
     ConversationsModule,
     ObservabilityModule,
     StorageModule,
+    AdminModule,
   ],
   providers: [RateLimitGuard],
 })

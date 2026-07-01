@@ -46,6 +46,7 @@ export class UsersService {
         id: true,
         email: true,
         isVerified: true,
+        role: true,
         createdAt: true,
         profile: {
           select: {
@@ -77,6 +78,7 @@ export class UsersService {
       id: user.id,
       email: user.email,
       isVerified: user.isVerified,
+      role: user.role,
       memberSince: user.createdAt,
       firstName: user.profile?.firstName ?? "",
       lastName: user.profile?.lastName ?? "",

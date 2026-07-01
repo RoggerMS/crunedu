@@ -73,3 +73,12 @@ El patrón `contains`/ILIKE no usa bien índices B-Tree para subcadenas arbitrar
 - Regla exacta de reportes graves.
 
 Eso se valida en backend.
+
+## Admin module tables (20260701020000_admin_module)
+
+- `admin_sessions`: sesiones administrativas temporales; guarda `token_hash`, `expires_at`, `last_used_at`, `revoked_at`, `ip_hash` y `user_agent_hash`. No guarda token completo, contraseña ni JWT.
+- `admin_audit_logs`: auditoría central de acciones administrativas con `admin_user_id`, `action`, `module`, objetivo, motivo, `safe_before`, `safe_after`, `request_id` y hashes opcionales. No registra secretos.
+- `promotions`: anuncios/promociones internas administradas por CrunEdu con estado, ubicación, prioridad, fechas, imagen y contadores básicos.
+- `content_placements`: referencias ordenadas a contenido existente por área/slot; no duplica entidades.
+
+Migración no destructiva: `packages/database/prisma/migrations/20260701020000_admin_module/migration.sql`.

@@ -59,3 +59,24 @@ Alta: 2026-06-30. módulo: Panel de administración integral (seguridad + backen
 - Verificación runtime HTTP con ADMIN/USER (PowerShell).
 - Activar Egress/recordings en Conversar (fuera de alcance admin).
 - Pruebas `test:admin` automáticas (casos mínimos de seguridad).
+
+## Actualización 2026-07-01
+
+### Completado en esta iteración
+- `AdminModule` quedó registrado en `AppModule`, por lo que `/api/admin/*` se monta realmente en NestJS.
+- `AdminSessionController` corrige la lectura de `adminMeta(req)` y aplica `AdminStepUpGuard` a revocación total.
+- `/api/users/me` ahora incluye `role` sin exponer `passwordHash`.
+- `AuthUser` contiene `role`; `MAIN_NAVIGATION` ya no expone `Admin`, `Admin tienda` ni `Admin reportes`.
+- El avatar muestra **Administración** solo para `ADMIN`.
+- Se creó `apps/web/src/app/app/admin/layout.tsx` con shell, rol y reautenticación por sesión admin temporal.
+- `/app/admin` consume `/api/admin/dashboard` y muestra métricas reales, reportes, actividad y accesos rápidos.
+- Se añadió validación de arranque para bloquear bypasses inseguros en production.
+- La migración `20260701020000_admin_module` fue normalizada a UTF-8 para `prisma migrate deploy`.
+- Se creó `npm run test:admin -w @crunedu/api` como prueba estática de seguridad del módulo admin.
+
+### Riesgo residual
+- La sesión administrativa usa token opaco en `sessionStorage` y header `X-Admin-Session`, no cookie HttpOnly. Es temporal para no romper la arquitectura actual de auth/CORS; debe migrarse a cookie HttpOnly cuando se unifique el dominio web/API.
+
+### Pendiente real
+- Ejecutar Docker local y aplicar migración en la máquina Windows del usuario.
+- Completar UI CRUD detallada para todas las páginas administrativas; los servicios/endpoints base ya existen, pero algunas pantallas específicas aún necesitan tablas y formularios dedicados.

@@ -229,3 +229,38 @@ Invoke-RestMethod "http://localhost:4000/api/debates" -Method POST -Headers $hea
   - Ejemplo: `GET /api/posts/999999` si ese ID no existe.
 - **200 con lista vacía `[]`**: no hay registros en una tabla limpia o filtro sin resultados.
 
+
+## Admin namespace
+
+Todas las rutas `/admin/*` requieren `Authorization: Bearer <token>` y rol backend `ADMIN`, salvo `/promotions/public` que es público para ubicaciones visibles.
+
+| Método | Ruta | Auth requerida | Body / Query | Respuesta esperada |
+|---|---|---|---|---|
+| GET | `/admin/dashboard` | JWT ADMIN | N/A | Métricas reales, reportes prioritarios y actividad reciente. |
+| POST | `/admin/session` | JWT ADMIN | `{ password }` | Token opaco temporal y `expiresAt` para acciones step-up. |
+| GET | `/admin/session` | JWT ADMIN | N/A | Sesiones administrativas activas propias. |
+| DELETE | `/admin/session/:id` | JWT ADMIN | N/A | Revoca sesión administrativa propia. |
+| DELETE | `/admin/session/all` | JWT ADMIN + `X-Admin-Session` | N/A | Revoca todas las sesiones propias. |
+| GET | `/admin/users` | JWT ADMIN | `search`, `role`, `status`, `verified`, `cursor`, `limit` | Lista paginada sin `passwordHash`. |
+| GET | `/admin/users/:id` | JWT ADMIN | N/A | Detalle administrativo seguro. |
+| PATCH | `/admin/users/:id/role` | JWT ADMIN + step-up | `{ role, reason }` | Cambio de rol auditado. |
+| POST | `/admin/users/:id/sanction` | JWT ADMIN + step-up | `{ type, reason, expiresAt? }` | Sanción reversible auditada. |
+| GET | `/admin/reports` | JWT ADMIN/MODERATOR según permiso | Filtros | Casos unificados de reportes. |
+| POST | `/admin/reports/:id/moderate` | JWT ADMIN/MODERATOR según permiso | Moderación | Decisión auditada. |
+| GET | `/admin/feed/posts` | JWT ADMIN | Filtros | Publicaciones administrables. |
+| POST | `/admin/feed/posts/:id/status` | JWT ADMIN | `{ status, reason }` | Oculta/restaura publicación e invalida caché. |
+| GET | `/admin/communities` | JWT ADMIN | Filtros | Comunidades administrables. |
+| POST | `/admin/communities/:id/archive` | JWT ADMIN + step-up | `{ reason }` | Archiva comunidad sin borrar contenido. |
+| GET | `/admin/questions` | JWT ADMIN | Filtros | Preguntas administrables. |
+| GET | `/admin/documents` | JWT ADMIN | Filtros | Apuntes/documentos administrables. |
+| GET | `/admin/university` | JWT ADMIN | Filtros | Contenido universitario administrable. |
+| GET | `/admin/moments` | JWT ADMIN | Filtros | Momentos administrables. |
+| GET | `/admin/conversations` | JWT ADMIN | Filtros | Salas Conversar administrables. |
+| POST | `/admin/conversations/:id/end` | JWT ADMIN + step-up | `{ reason }` | Termina sala y audita. |
+| GET | `/admin/store/products` | JWT ADMIN | Filtros | Productos administrables. |
+| GET | `/admin/store/categories` | JWT ADMIN | N/A | Categorías de tienda. |
+| GET | `/admin/store/inquiries` | JWT ADMIN | Filtros | Consultas administrables. |
+| GET/POST | `/admin/promotions` | JWT ADMIN | DTO validado | Lista/crea promociones internas. |
+| GET/POST | `/admin/placements` | JWT ADMIN | DTO validado | Lista/crea ubicaciones de contenido. |
+| GET | `/admin/audit` | JWT ADMIN | Filtros | Auditoría central solo lectura. |
+| GET | `/admin/system/health` | JWT ADMIN | N/A | Salud sin secretos. |

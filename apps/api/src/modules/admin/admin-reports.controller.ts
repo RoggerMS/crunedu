@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
-import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "./guards/admin.guard";
 import { AdminPermissionGuard } from "./guards/admin-permission.guard";
 import { AdminOnly } from "./decorators/admin-only.decorator";
 import { AdminPermission } from "./decorators/admin-permission.decorator";
 import { AdminReportsService } from "./services/admin-reports.service";
 import { AdminAuditService } from "./services/admin-audit.service";
-import { ModerateReportDto } from "../../reports/dto/moderate-report.dto";
+import { ModerateReportDto } from "../reports/dto/moderate-report.dto";
 import { AdminReasonDto } from "./dto/admin-moderation.dto";
 import { AdminRequest, adminMeta } from "./types/admin-request";
 

@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { PromotionPlacement, PromotionStatus } from "@prisma/client";
-import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "./guards/admin.guard";
 import { AdminPermissionGuard } from "./guards/admin-permission.guard";
 import { AdminStepUpGuard } from "./guards/admin-step-up.guard";

@@ -63,7 +63,7 @@ export class AdminUsersService {
         isVerified: true,
         createdAt: true,
         profile: { select: { firstName: true, lastName: true, username: true } },
-        sanctions: { where: { isActive: true }, select: { id: true, type: true, expiresAt: true } },
+        sanctions: { where: { isActive: true }, select: { id: true, type: true, isActive: true, expiresAt: true } },
       },
     });
 

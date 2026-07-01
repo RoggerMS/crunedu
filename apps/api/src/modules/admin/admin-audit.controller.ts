@@ -1,5 +1,5 @@
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
-import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "./guards/admin.guard";
 import { AdminPermissionGuard } from "./guards/admin-permission.guard";
 import { AdminOnly } from "./decorators/admin-only.decorator";

@@ -15,7 +15,8 @@
     "test:bootstrap": "ts-node -r tsconfig-paths/register src/tests/bootstrap.dependencies.spec.ts",
     "test:contract": "ts-node -r tsconfig-paths/register src/tests/api.contract.spec.ts",
     "quality:gate": "npm run test:bootstrap && npm run test:contract && npm run test:regression:mvp && npm run test:release:e2e",
-    "test:release:e2e": "ts-node -r tsconfig-paths/register src/tests/release.e2e.local.ts"
+    "test:release:e2e": "ts-node -r tsconfig-paths/register src/tests/release.e2e.local.ts",
+    "test:admin": "ts-node -r tsconfig-paths/register src/tests/admin.security.spec.ts"
   },
   "dependencies": {
     "@crunedu/database": "*",

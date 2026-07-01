@@ -6,6 +6,7 @@ import { apiRequest, HttpClientError } from "@/lib/http-client";
 export type AuthUser = {
   id: number;
   email: string;
+  role: "USER" | "MODERATOR" | "ADMIN";
   isVerified: boolean;
   memberSince: string;
   firstName: string;

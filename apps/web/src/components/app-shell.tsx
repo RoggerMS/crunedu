@@ -1,7 +1,7 @@
 "use client";
 
 import { MAIN_NAVIGATION } from "@crunedu/shared";
-import { ChevronLeft, ChevronRight, GraduationCap, LogOut, Plus, Search, Settings, UserCircle2, UserPen } from "lucide-react";
+import { ChevronLeft, ChevronRight, GraduationCap, LogOut, Plus, Search, Settings, ShieldCheck, UserCircle2, UserPen } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -307,6 +307,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <Link href="/app/configuracion-perfil" onClick={() => setIsAvatarMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
                       <Settings size={16} /> Configuración
                     </Link>
+                    {user.role === "ADMIN" ? (
+                      <Link href="/app/admin" onClick={() => setIsAvatarMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50">
+                        <ShieldCheck size={16} /> Administración
+                      </Link>
+                    ) : null}
                     <button type="button" onClick={() => { setIsAvatarMenuOpen(false); handleLogout(); }} className="flex w-full items-center gap-2 px-4 py-2 text-sm text-rose-600 hover:bg-rose-50">
                       <LogOut size={16} /> Cerrar sesión
                     </button>

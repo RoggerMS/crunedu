@@ -13,6 +13,15 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
   const port = Number(config.get("PORT") ?? 4000);
+  const isProduction = config.get<string>("NODE_ENV") === "production";
+  const devBypassAdmin = config.get<string>("DEV_BYPASS_ADMIN_GATES") === "true";
+  const devRelaxedAuth = config.get<string>("DEV_RELAXED_AUTH") === "true";
+  if (isProduction && (devBypassAdmin || devRelaxedAuth)) {
+    throw new Error("Insecure development auth bypass flags cannot be enabled in production.");
+  }
+  if (devBypassAdmin || devRelaxedAuth) {
+    console.warn("[security] Development auth bypass flags are enabled. Never use this in production.");
+  }
 
   app.use(express.json({ limit: "30mb" }));
   app.use(express.urlencoded({ extended: true, limit: "30mb" }));

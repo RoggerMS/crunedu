@@ -1,5 +1,5 @@
 import { Controller, Get, Req, UseGuards } from "@nestjs/common";
-import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "./guards/admin.guard";
 import { AdminPermissionGuard } from "./guards/admin-permission.guard";
 import { AdminOnly } from "./decorators/admin-only.decorator";
@@ -13,7 +13,7 @@ import { AdminRequest } from "./types/admin-request";
 @AdminOnly()
 export class AdminDashboardController {
   constructor(
-    private readonly dashboard: AdminDashboardService,
+    private readonly dashboardService: AdminDashboardService,
     private readonly system: AdminSystemService,
   ) {}
 
@@ -21,9 +21,9 @@ export class AdminDashboardController {
   @AdminPermission("dashboard.read")
   async dashboard(@Req() _req: AdminRequest) {
     const [overview, reports, activity] = await Promise.all([
-      this.dashboard.getOverview(),
-      this.dashboard.getReportsSummary(),
-      this.dashboard.getRecentActivity(),
+      this.dashboardService.getOverview(),
+      this.dashboardService.getReportsSummary(),
+      this.dashboardService.getRecentActivity(),
     ]);
     return { overview, reports, activity };
   }

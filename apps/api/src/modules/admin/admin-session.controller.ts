@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Req, UseGuards } from "@nestjs/common";
-import { JwtAuthGuard } from "../../auth/guards/jwt-auth.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AdminGuard } from "./guards/admin.guard";
+import { AdminStepUpGuard } from "./guards/admin-step-up.guard";
 import { AdminOnly } from "./decorators/admin-only.decorator";
 import { RequireAdminStepUp } from "./decorators/require-admin-step-up.decorator";
 import { AdminSessionService } from "./services/admin-session.service";
@@ -8,7 +9,7 @@ import { CreateAdminSessionDto } from "./dto/create-admin-session.dto";
 import { AdminRequest, adminMeta } from "./types/admin-request";
 
 @Controller("admin/session")
-@UseGuards(JwtAuthGuard, AdminGuard)
+@UseGuards(JwtAuthGuard, AdminGuard, AdminStepUpGuard)
 @AdminOnly()
 export class AdminSessionController {
   constructor(private readonly sessions: AdminSessionService) {}
@@ -21,7 +22,7 @@ export class AdminSessionController {
 
   @Get()
   async list(@Req() req: AdminRequest) {
-    return this.sessions.listActive(meta(req).adminId);
+    return this.sessions.listActive(adminMeta(req).adminId);
   }
 
   @Delete("all")
