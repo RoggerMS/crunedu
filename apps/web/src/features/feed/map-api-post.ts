@@ -15,7 +15,7 @@ function toIsoString(value: string | Date | null | undefined): string {
   return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
 }
 
-function formatAuthorName(author: ApiFeedPost["author"] | ApiPostComment["author"]): string {
+function formatAuthorName(author: { email?: string | null; firstName: string | null; lastName: string | null }): string {
   const fullName = [author.firstName, author.lastName].map((part) => part?.trim()).filter(Boolean).join(" ");
   return fullName || author.email || "Estudiante CrunEdu";
 }
